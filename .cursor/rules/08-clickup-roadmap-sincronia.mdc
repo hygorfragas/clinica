@@ -1,0 +1,49 @@
+---
+description: Sincronia de roadmap local com ClickUp — status, timer e relatório por atividade
+alwaysApply: true
+---
+
+# ClickUp e roadmap (`documentacao/roadmap_e_plano_clickup.md`)
+
+## Quando aplicar
+Sempre que o trabalho estiver **ligado a uma task do ClickUp** (usuário informou **task_id**, **custom ID** ou link). **Cada atividade** segue o fluxo abaixo do início ao fim (ou à pausa).
+
+Se **não** houver task ClickUp explícita, seguir apenas o workflow de entrega; oferecer criar/vincular task se fizer sentido.
+
+## Nomes de status (obrigatórios neste projeto)
+Use **exatamente** estes valores em `clickup_update_task` (campo `status`), salvo ajuste acordado no workspace:
+
+| Momento | Status ClickUp |
+|--------|----------------|
+| Ao **iniciar** trabalho na task | **Fazendo** |
+| Ao **concluir** com critério de pronto | **Complete** |
+| Ao **parar sem concluir** (revisão, pendência, entrega parcial) | **Revisar** |
+
+Se a API rejeitar o status, confirmar o nome real da coluna no ClickUp (`clickup_get_task`) e alinhar com o time — não inventar status.
+
+## Fluxo por atividade
+
+### 1) Confirmar a task correta
+- Resolver ambiguidade com `clickup_search` ou `clickup_get_task`.
+- Garantir que o **task_id** (ou custom ID) corresponde ao que o usuário pediu.
+
+### 2) Timer (obrigatório)
+- Antes de **iniciar**: `clickup_get_current_time_entry`. Se houver timer em **outra** task, **parar** com `clickup_stop_time_tracking` (só pode um timer ativo) ou alinhar com o usuário.
+- Ao **começar** a trabalhar nesta task: `clickup_start_time_tracking` com `task_id` da task correta.
+- Ao **encerrar** a sessão de trabalho (Complete **ou** Revisar): `clickup_stop_time_tracking` (e descrição curta opcional do que foi feito).
+
+### 3) Status ao iniciar
+- `clickup_update_task` → `status: "Fazendo"`.
+
+### 4) Ao finalizar
+- **Concluído:** `clickup_stop_time_tracking` → `clickup_update_task` → `status: "Complete"`.
+- **Não concluído / precisa revisão:** `clickup_stop_time_tracking` → `clickup_update_task` → `status: "Revisar"`.
+
+### 5) Relatório e documento local
+- Registrar `clickup_create_task_comment` na task com o modelo do arquivo `documentacao/roadmap_e_plano_clickup.md` (seção **Modelo de relatório**).
+- **Atualizar** `documentacao/roadmap_e_plano_clickup.md`: “O que já está pronto”, “Onde paramos”, “Próximas entregas”, “Histórico”, e a tabela **Tarefas ClickUp** se mudou o vínculo.
+
+## Princípios
+- **Uma atividade = uma task = um ciclo** iniciar timer + status Fazendo → parar timer + status final.
+- Não deixar timer rodando após encerrar o trabalho na task.
+- O roadmap local e o ClickUp devem dizer a **mesma história** (estado e próximo passo).

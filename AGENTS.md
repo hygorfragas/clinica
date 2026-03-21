@@ -47,6 +47,10 @@ Entregar um produto web seguro, simples e operacional para uso diário de uma pr
 8. Fotos, documentos e assinaturas
 9. Controle de estoque vinculado ao consumo
 
+## Planejamento e ClickUp
+- Roadmap e controle do plano: `documentacao/roadmap_e_plano_clickup.md` (manter atualizado com o ClickUp).
+- Fluxo por task: regra `.cursor/rules/08-clickup-roadmap-sincronia.mdc` (status **Fazendo** / **Complete** / **Revisar**, timer ao iniciar/parar, comentário de relatório).
+
 ## Como responder neste projeto
 - Primeiro confirmar entendimento da tarefa.
 - Depois propor plano curto.

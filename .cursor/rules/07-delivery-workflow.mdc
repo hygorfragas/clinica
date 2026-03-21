@@ -12,6 +12,8 @@ alwaysApply: true
 4. implementar com foco no domínio
 5. apontar riscos e próximos passos
 
+Se a tarefa tiver **task ClickUp** associada, seguir também **ClickUp e roadmap** (`.cursor/rules/08-clickup-roadmap-sincronia.mdc`) e manter `documentacao/roadmap_e_plano_clickup.md` alinhado ao status e ao relatório da task.
+
 ## Em mudanças estruturais
 Sempre considerar:
 - banco
