@@ -158,6 +158,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      clinic_bootstrap_status: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
       create_default_categories: {
         Args: { p_user_id: string };
         Returns: undefined;

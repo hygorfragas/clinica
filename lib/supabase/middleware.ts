@@ -1,6 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import type { Database } from "./database.types";
+import { parseBootstrapStatus } from "@/lib/bootstrap";
+import {
+  canAccessAgenda,
+  fetchClinicProfile,
+  isPendingRegistration,
+  isPlatformSuperAdmin,
+} from "@/lib/auth/clinic-profile";
+
+function redirect(request: NextRequest, path: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = path;
+  return NextResponse.redirect(url);
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -34,7 +47,91 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const pathname = request.nextUrl.pathname;
 
-  return supabaseResponse;
+  const { data: bootRaw } = await supabase.rpc("clinic_bootstrap_status");
+  const bootstrap = parseBootstrapStatus(bootRaw);
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (pathname === "/cadastro") {
+    if (!bootstrap.signupOpen) {
+      return redirect(request, "/login");
+    }
+    if (user) {
+      const profile = await fetchClinicProfile(supabase, user.id);
+      if (isPlatformSuperAdmin(profile)) {
+        return redirect(request, "/plataforma");
+      }
+      if (canAccessAgenda(profile)) {
+        return redirect(request, "/agenda");
+      }
+      if (isPendingRegistration(profile)) {
+        return redirect(request, "/aguardando-acesso");
+      }
+      return redirect(request, "/login");
+    }
+  }
+
+  const isPublicPath =
+    pathname === "/login" ||
+    pathname === "/cadastro" ||
+    pathname === "/";
+
+  if (!user) {
+    if (!isPublicPath) {
+      return redirect(request, "/login");
+    }
+    return supabaseResponse;
+  }
+
+  const profile = await fetchClinicProfile(supabase, user.id);
+
+  if (!profile) {
+    if (pathname === "/login" || pathname === "/cadastro") {
+      return supabaseResponse;
+    }
+    return redirect(request, "/login");
+  }
+
+  if (isPendingRegistration(profile)) {
+    if (pathname.startsWith("/aguardando-acesso")) {
+      return supabaseResponse;
+    }
+    if (pathname === "/login") {
+      return redirect(request, "/aguardando-acesso");
+    }
+    return redirect(request, "/aguardando-acesso");
+  }
+
+  if (isPlatformSuperAdmin(profile)) {
+    if (pathname.startsWith("/aguardando-acesso")) {
+      return redirect(request, "/plataforma");
+    }
+    if (
+      pathname === "/login" ||
+      pathname === "/cadastro" ||
+      pathname.startsWith("/agenda")
+    ) {
+      return redirect(request, "/plataforma");
+    }
+    return supabaseResponse;
+  }
+
+  if (canAccessAgenda(profile)) {
+    if (pathname.startsWith("/aguardando-acesso")) {
+      return redirect(request, "/agenda");
+    }
+    if (pathname === "/login" || pathname === "/cadastro") {
+      return redirect(request, "/agenda");
+    }
+    if (pathname.startsWith("/plataforma")) {
+      return redirect(request, "/agenda");
+    }
+    return supabaseResponse;
+  }
+
+  return redirect(request, "/aguardando-acesso");
 }
