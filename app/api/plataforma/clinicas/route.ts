@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import { fetchClinicProfile, isPlatformSuperAdmin } from "@/lib/auth/clinic-profile";
 import { createClinicBodySchema } from "@/lib/validations/tenant";
+import { isSupabasePublicEnvConfigured } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { slugifyName } from "@/lib/strings";
 
 export async function POST(request: Request) {
+  if (!isSupabasePublicEnvConfigured()) {
+    return NextResponse.json(
+      { error: "Supabase não configurado (variáveis de ambiente)." },
+      { status: 503 },
+    );
+  }
+
   const json: unknown = await request.json().catch(() => null);
   const parsed = createClinicBodySchema.safeParse(json);
   if (!parsed.success) {
@@ -102,6 +110,13 @@ export async function POST(request: Request) {
 
 /** Lista clínicas (apenas super admin de plataforma). */
 export async function GET() {
+  if (!isSupabasePublicEnvConfigured()) {
+    return NextResponse.json(
+      { error: "Supabase não configurado (variáveis de ambiente)." },
+      { status: 503 },
+    );
+  }
+
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },

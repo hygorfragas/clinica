@@ -6,9 +6,14 @@ import {
   fetchClinicProfile,
   isPlatformSuperAdmin,
 } from "@/lib/auth/clinic-profile";
+import { isSupabasePublicEnvConfigured } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
+  if (!isSupabasePublicEnvConfigured()) {
+    redirect("/");
+  }
+
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
