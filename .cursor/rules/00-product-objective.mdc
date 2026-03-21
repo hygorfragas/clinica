@@ -1,0 +1,43 @@
+---
+description: Objetivo do produto, escopo do MVP e contexto de negócio da clínica estética
+alwaysApply: true
+---
+
+# Objetivo do sistema
+
+Este projeto é um SaaS multitenant para clínica de estética com foco em:
+- agenda e agendamento
+- cadastro de pacientes
+- anamnese digital
+- ficha de evolução
+- orçamentos e protocolos
+- controle de sessões e retornos
+- documentos e assinatura digital
+- galeria de fotos clínicas
+- controle básico de estoque
+
+## Escopo do MVP
+Entregar a operação essencial de uma profissional de estética com substituição de papel por fluxo digital.
+
+## O que é prioridade
+- agendamento funcional
+- prontuário da paciente
+- documentos digitais
+- orçamento/protocolo
+- estoque básico
+- integração com Google Agenda
+- isolamento multitenant
+
+## O que não deve entrar no MVP sem necessidade clara
+- ERP financeiro completo
+- automações excessivas
+- chat interno
+- permissões muito complexas
+- dashboards pesados antes da operação básica
+
+## Regra de decisão
+Sempre que houver dúvida de produto, priorizar:
+1. simplicidade operacional
+2. segurança de dados
+3. velocidade de entrega
+4. base técnica sustentável

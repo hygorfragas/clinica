@@ -1,0 +1,37 @@
+---
+description: Regras obrigatórias de multitenancy, autenticação, autorização e segurança
+alwaysApply: true
+---
+
+# Multitenancy e segurança
+
+## Regras mandatórias
+- Toda entidade de domínio da clínica deve considerar `tenant_id`
+- Todo acesso a dados deve respeitar RLS
+- Nunca confiar apenas no frontend para isolamento entre tenants
+- Nunca expor bucket público de documentos sensíveis
+- Sempre usar signed URLs para arquivos privados
+- Logs nunca devem vazar dados clínicos sensíveis
+
+## Banco
+- tabelas principais com `id`, `tenant_id`, `created_at`, `updated_at`
+- índices para `tenant_id`
+- políticas RLS explícitas por tabela
+- auditoria mínima em ações críticas
+
+## Auth
+- login por email e senha no MVP
+- sessão tratada pelo Supabase Auth
+- perfis vinculados a tenant
+- preparo para expansão futura com papéis e permissões
+
+## Segurança de aplicação
+- validar payloads com Zod
+- sanitizar nomes de arquivos
+- limitar tamanho de uploads
+- registrar origem e timestamp de assinaturas e documentos
+- evitar dados clínicos sensíveis em localStorage
+
+## Privacidade
+- fotos, anamnese, evolução e contratos são dados sensíveis
+- toda exibição deve seguir princípio do menor acesso necessário

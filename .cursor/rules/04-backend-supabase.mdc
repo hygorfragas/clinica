@@ -1,0 +1,54 @@
+---
+description: Padrões de backend com Supabase, SQL, migrations, edge functions e realtime
+globs:
+  - "supabase/**/*.sql"
+  - "supabase/**/*.ts"
+  - "lib/server/**/*.ts"
+  - "features/**/server/**/*.ts"
+---
+
+# Backend Supabase
+
+## Banco
+Entidades base esperadas:
+- tenants
+- profiles
+- clients
+- appointments
+- anamnesis_forms
+- evolutions
+- procedures
+- budget_items / budgets
+- sessions
+- stock_items
+- stock_movements
+- documents
+- photos
+- signatures
+- google_calendar_connections
+
+## SQL
+- migrations idempotentes quando possível
+- nomes consistentes e legíveis
+- constraints explícitas
+- FKs sempre que fizer sentido
+- JSONB apenas para estruturas realmente variáveis
+
+## Edge Functions
+Usar para:
+- geração de signed URL
+- integração com Google Calendar
+- geração de PDF
+- webhooks
+- tarefas que exigem segredo do servidor
+
+## Realtime
+Usar apenas onde entrega valor real:
+- agenda em tempo real
+- atualização de status de sessão
+- mudanças relevantes visíveis em múltiplas telas
+
+## Não fazer
+- lógica sensível apenas no client
+- consultas sem filtro por tenant
+- funções grandes demais com múltiplas responsabilidades

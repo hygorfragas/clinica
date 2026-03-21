@@ -1,0 +1,41 @@
+---
+description: Stack oficial, convenções arquiteturais e decisões técnicas base
+alwaysApply: true
+---
+
+# Arquitetura e stack
+
+## Stack oficial
+- Next.js App Router
+- React
+- TypeScript com strict mode
+- TailwindCSS
+- shadcn/ui
+- React Hook Form
+- Zod
+- TanStack Query
+- Zustand
+- Supabase
+- Cloudflare R2
+- React Konva
+- Google Calendar API
+
+## Convenções
+- TypeScript em todo o projeto
+- Separação clara entre client components e server logic
+- Validação de entrada com Zod
+- Tipos compartilhados para entidades principais
+- Query keys padronizadas
+- Erros sempre tratados com mensagens úteis
+
+## Preferências
+- composições pequenas e reutilizáveis
+- evitar abstrações prematuras
+- módulos por domínio de negócio
+- código orientado a casos reais do produto
+
+## Não fazer
+- usar any sem justificativa
+- acoplar UI direto à resposta bruta do banco
+- colocar regra crítica apenas no frontend
+- criar serviços genéricos demais sem necessidade

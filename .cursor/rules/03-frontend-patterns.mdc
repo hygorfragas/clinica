@@ -1,0 +1,44 @@
+---
+description: Padrões de frontend para React, Next.js, formulários, estado e UI
+globs:
+  - "app/**/*.ts"
+  - "app/**/*.tsx"
+  - "components/**/*.ts"
+  - "components/**/*.tsx"
+  - "features/**/*.ts"
+  - "features/**/*.tsx"
+---
+
+# Frontend patterns
+
+## Organização
+Preferir estrutura por domínio:
+- features/appointments
+- features/clients
+- features/anamnesis
+- features/evolutions
+- features/budgets
+- features/documents
+- features/stock
+
+## Componentes
+- componentes de tela finos
+- regras de negócio fora de componentes
+- hooks para acesso a dados e mutations
+- componentes de formulário com RHF + Zod
+
+## UI/UX
+- UI limpa e rápida para uso clínico
+- poucos cliques para ações frequentes
+- priorizar legibilidade em agenda e prontuário
+- sempre mostrar estados de carregamento, erro e sucesso
+
+## Dados
+- TanStack Query para server state
+- Zustand apenas para estado de interface ou fluxo temporário
+- invalidar cache com estratégia explícita
+
+## Formulários
+- schemas Zod por formulário
+- mensagens de erro claras
+- autosave apenas quando fizer sentido clínico e técnico

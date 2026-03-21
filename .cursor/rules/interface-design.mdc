@@ -1,0 +1,15 @@
+---
+description: >-
+  Lembra o agente a usar a skill interface-design (craft, tokens, system.md)
+  ao editar UI de produto — dashboards, apps, painéis; não landing/marketing.
+globs: "**/*.{tsx,jsx,vue,svelte,css,scss}"
+alwaysApply: false
+---
+
+# Interface design (projeto)
+
+Ao alterar ou criar UI de **produto** (dashboard, admin, SaaS, ferramentas), siga a skill em `.cursor/skills/interface-design/SKILL.md` (princípios, intent, checks).
+
+Se existir `.interface-design/system.md` na raiz do repositório de trabalho, **aplique** spacing, depth, paleta e padrões documentados ali. Para status, auditoria, extração ou crítica, use os fluxos em `.cursor/skills/interface-design/workflows/`.
+
+Landing pages e sites de marketing ficam **fora** do escopo desta skill.

@@ -1,0 +1,45 @@
+---
+description: Diretrizes para o módulo visual de face mapping, overlay com foto e experiência clínica
+globs:
+  - "features/evolutions/**/*.ts"
+  - "features/evolutions/**/*.tsx"
+  - "components/face-mapping/**/*.ts"
+  - "components/face-mapping/**/*.tsx"
+---
+
+# Face mapping clínico
+
+## Objetivo
+Ajudar a profissional a demonstrar e registrar visualmente:
+- regiões tratadas
+- pontos de aplicação
+- marcações em imagem de rosto
+- associação com procedimento e observações
+
+## Implementação preferida
+- React Konva
+- camada base com boneco anatômico
+- opção de usar foto real da paciente como fundo
+- camadas separadas para imagem, pontos, áreas e labels
+
+## Requisitos de UX
+- interação simples por clique/toque
+- undo/redo
+- salvar rascunho
+- exportar visual para documento clínico quando necessário
+- manter boa usabilidade em tablet
+
+## Modelo de dados
+Salvar marcações como estrutura tipada, não como bitmap puro.
+Exemplo conceitual:
+- tipo da marcação
+- coordenadas
+- label
+- procedimento relacionado
+- cor/estilo
+- timestamp opcional
+
+## Cuidados
+- compressão e redimensionamento de fotos
+- performance com imagens grandes
+- preservação da proporção original

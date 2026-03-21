@@ -1,0 +1,40 @@
+---
+description: Regras para storage em R2, uploads, documentos e integração com Google Agenda
+globs:
+  - "features/documents/**/*.ts"
+  - "features/photos/**/*.ts"
+  - "features/appointments/**/*.ts"
+  - "supabase/functions/**/*.ts"
+---
+
+# Storage e Google Calendar
+
+## Cloudflare R2
+Estrutura preferida:
+- tenant/{tenantId}/clients/{clientId}/photos
+- tenant/{tenantId}/clients/{clientId}/documents
+- tenant/{tenantId}/clients/{clientId}/signatures
+- tenant/{tenantId}/generated/budgets
+- tenant/{tenantId}/generated/forms
+
+## Uploads
+- upload direto com signed URL
+- validar mime type
+- validar tamanho
+- nomes de arquivo normalizados
+- metadados mínimos persistidos no banco
+
+## Downloads
+- usar signed URL temporária
+- nunca expor arquivos sensíveis em modo público
+
+## Google Calendar
+- armazenar credenciais de integração com segurança
+- sincronização inicial pode ser unidirecional do sistema para o Google
+- eventos devem conter referência do appointment interno
+- tratar re-sync e falhas de token com robustez
+
+## Regras de agenda
+- evitar dupla criação de eventos
+- registrar external_event_id
+- suportar remarcar e cancelar

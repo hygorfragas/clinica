@@ -1,0 +1,43 @@
+---
+description: Como o agente deve trabalhar, propor mudanças e entregar código neste projeto
+alwaysApply: true
+---
+
+# Workflow de entrega
+
+## Ao receber uma tarefa
+1. resumir objetivo
+2. listar impacto técnico
+3. propor plano curto
+4. implementar com foco no domínio
+5. apontar riscos e próximos passos
+
+## Em mudanças estruturais
+Sempre considerar:
+- banco
+- RLS
+- tipos
+- API / edge functions
+- UI
+- testes básicos
+- migrações necessárias
+
+## Em geração de código
+- entregar código completo e consistente
+- evitar pseudoimplementação
+- usar nomes alinhados ao domínio da clínica
+- preferir exemplos executáveis
+
+## Em revisões
+- identificar riscos de segurança
+- identificar quebra de multitenancy
+- identificar acoplamento desnecessário
+- sugerir melhorias objetivas
+
+## Critério de qualidade
+Uma entrega só é considerada boa quando:
+- está tipada
+- respeita tenant
+- respeita segurança
+- é coerente com o PRD
+- é coerente com a arquitetura técnica

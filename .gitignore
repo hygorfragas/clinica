@@ -1,0 +1,32 @@
+# Dependências e build
+node_modules/
+.next/
+out/
+dist/
+build/
+.turbo/
+
+# Ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Logs e caches
+*.log
+npm-debug.log*
+.pnpm-debug.log*
+.eslintcache
+.cache/
+
+# Testes / cobertura
+coverage/
+
+# IDE / SO
+.DS_Store
+Thumbs.db
+
+# Deploy
+.vercel/
+
+# TypeScript
+*.tsbuildinfo
