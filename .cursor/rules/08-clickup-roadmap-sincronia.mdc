@@ -16,7 +16,7 @@ Use **exatamente** estes valores em `clickup_update_task` (campo `status`), salv
 | Momento | Status ClickUp |
 |--------|----------------|
 | Ao **iniciar** trabalho na task | **Fazendo** |
-| Ao **concluir** com critério de pronto | **Complete** |
+| Ao **concluir** com critério de pronto | **Complete** ou, na lista *Nathalia*, **`completo`** |
 | Ao **parar sem concluir** (revisão, pendência, entrega parcial) | **Revisar** |
 
 Se a API rejeitar o status, confirmar o nome real da coluna no ClickUp (`clickup_get_task`) e alinhar com o time — não inventar status.
@@ -36,7 +36,7 @@ Se a API rejeitar o status, confirmar o nome real da coluna no ClickUp (`clickup
 - `clickup_update_task` → `status: "Fazendo"`.
 
 ### 4) Ao finalizar
-- **Concluído:** `clickup_stop_time_tracking` → `clickup_update_task` → `status: "Complete"`.
+- **Concluído:** `clickup_stop_time_tracking` → `clickup_update_task` → `status: "Complete"` **ou** `"completo"` (lista Nathalia / Projetos Pessoais).
 - **Não concluído / precisa revisão:** `clickup_stop_time_tracking` → `clickup_update_task` → `status: "Revisar"`.
 
 ### 5) Relatório e documento local

@@ -20,17 +20,17 @@ Os nomes de status (**Fazendo**, **Complete**, **Revisar**) devem ser **exatamen
 
 | Área | Task ClickUp (ID ou link) | Notas |
 |------|---------------------------|--------|
-| Ex.: Schema Supabase / `clinic` | *(preencher)* | Migração inicial aplicada no projeto Supabase vinculado |
-| Ex.: App Next.js | *(preencher)* | |
-| *(adicionar linhas)* | | |
+| Multitenancy + RLS (`clinic`) | `86e0ggp44` | Concluído (banco + tipos + doc) |
+| Supabase: envs, tipos, client SSR | `86e0ggp42` | Concluído (repo + Next mínimo para cookies) |
+| Fundação Next (stack completa) | `86e0ggp41` | Parcial: app mínimo criado para cumprir SSR; falta shadcn, rotas, layout produto |
 
 ---
 
 ## Status geral (leitura rápida)
 
 - **Última atualização:** 2026-03-21
-- **Foco atual:** *(definir próxima task ClickUp + bootstrap do app)*
-- **Principal risco / bloqueio:** *(preencher)*
+- **Foco atual:** Auth + onboarding tenant (`86e0ggp45`) e UI produto
+- **Principal risco / bloqueio:** criação de tenant só com service role / Edge Function (ainda não implementado)
 
 ---
 
@@ -39,22 +39,22 @@ Os nomes de status (**Fazendo**, **Complete**, **Revisar**) devem ser **exatamen
 Marque entregas verificáveis (código, migração, documento). Referencie PR/commit ou pasta quando fizer sentido.
 
 - [x] Migração multitenant no schema **`clinic`** (tabelas MVP + RLS + extensão de `handle_new_user`) — `supabase/migrations/20260321195600_initial_multitenant_clinic_schema.sql` (commit `0ac8dd2`).
-- [ ] *(próximas entregas)*
+- [x] **Supabase no repo:** `lib/supabase/` — `database.types.ts` (public legado + `clinic`), `client.ts`, `server.ts`, `middleware.ts`, `clinic()` helper, `env` Zod; `.env.example`; Next 15 mínimo + `middleware` de sessão.
+- [ ] Auth + vínculo tenant + telas de domínio
 
 ---
 
 ## Onde paramos
 
-Descreva o estado exato ao pausar (branch, decisão pendente, teste manual faltando).
-
-- *(preencher)*
+- Camada **Supabase + shell Next** pronta para começar **Auth** e **onboarding de tenant**; sem telas de negócio ainda.
 
 ---
 
 ## Próximas entregas (ordem sugerida)
 
-1. *(ex.: Bootstrap Next.js + cliente Supabase com `.schema('clinic')`)*
-2. *(ex.: Fluxo onboarding tenant + primeiro usuário)*
+1. **`86e0ggp45`** — Auth email/senha + perfil `clinic.profiles` + fluxo criar tenant (Edge Function ou server com service role).
+2. Completar **`86e0ggp41`** — Tailwind/shadcn, estrutura de pastas do produto (se ainda não considerado “feito”).
+3. **`86e0ggp46`** em diante (pacientes, agenda, …).
 
 ---
 
@@ -70,7 +70,7 @@ Itens em **Revisar** no ClickUp ou aguardando alguém de fora.
 
 Formato sugerido: `AAAA-MM-DD — task — o que mudou (1–2 linhas)`.
 
-- *(preencher)*
+- 2026-03-21 — `86e0ggp42` + `86e0ggp44` — Tipos `clinic`+`public`, clientes SSR/browser, middleware sessão, `.env.example`, Next mínimo; tasks fechadas no ClickUp.
 
 ---
 
