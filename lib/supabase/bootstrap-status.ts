@@ -19,7 +19,16 @@ export async function getBootstrapStatusServer(): Promise<{
   const { data, error } = await supabase.rpc("clinic_bootstrap_status");
 
   if (error) {
-    console.error("clinic_bootstrap_status:", error.message);
+    const missingFn =
+      error.message.includes("Could not find the function") ||
+      error.code === "PGRST202";
+    if (process.env.NODE_ENV === "development" && missingFn) {
+      console.warn(
+        "[bootstrap] Aplique as migrações no Supabase ou rode o SQL em supabase/manual/01_clinic_bootstrap_status.sql",
+      );
+    } else if (!missingFn) {
+      console.error("clinic_bootstrap_status:", error.message);
+    }
     return {
       signupOpen: false,
       hasPlatformSuperAdmin: false,
