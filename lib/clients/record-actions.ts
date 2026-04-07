@@ -12,6 +12,13 @@ import {
 } from "@/lib/anamnesis/schema";
 import { DOCUMENT_KINDS } from "@/lib/clinical/document-kinds";
 import {
+  BODY_REGIONS,
+  isBodyRegion,
+  isFaceBonecoAngle,
+  MAX_PHOTOS_PER_BATCH,
+  type BodyRegion,
+} from "@/lib/clinical/body-regions";
+import {
   assertDocumentMime,
   assertPhotoMime,
   assertSignatureMime,
@@ -319,6 +326,21 @@ export async function uploadClinicalPhoto(
     taken_at = takenRaw;
   }
 
+  const brRaw = formData.get("body_region");
+  const body_region: BodyRegion =
+    typeof brRaw === "string" && isBodyRegion(brRaw) ? brRaw : BODY_REGIONS.other;
+
+  const caRaw = formData.get("capture_angle");
+  let capture_angle: string | null = null;
+  if (body_region === BODY_REGIONS.face) {
+    if (
+      typeof caRaw === "string" &&
+      (isFaceBonecoAngle(caRaw) || caRaw === "custom")
+    ) {
+      capture_angle = caRaw;
+    }
+  }
+
   const path = buildClinicalStoragePath({
     tenantId: ctx.tenantId,
     clientId,
@@ -349,11 +371,165 @@ export async function uploadClinicalPhoto(
     storage_key: path,
     caption,
     taken_at,
+    body_region,
+    capture_angle,
   });
 
   if (dbErr) {
     await ctx.supabase.storage.from(CLINICAL_BUCKET).remove([path]);
     return { ok: false, error: dbErr.message ?? "Erro ao registrar foto." };
+  }
+
+  revalidatePaciente(clientId);
+  return { ok: true };
+}
+
+type BatchPhotoMeta = {
+  angle: string | null;
+  caption?: string | null;
+  taken_at?: string | null;
+};
+
+export async function uploadClinicalPhotosBatch(
+  clientId: string,
+  formData: FormData,
+): Promise<ActionOk | ActionError> {
+  const ctx = await requireClinicalContext();
+  if (!ctx.ok) return ctx;
+
+  const belongs = await assertClientInTenant(
+    ctx.supabase,
+    ctx.tenantId,
+    clientId,
+  );
+  if (!belongs) {
+    return { ok: false, error: "Paciente não encontrada." };
+  }
+
+  const brRaw = formData.get("body_region");
+  if (typeof brRaw !== "string" || !isBodyRegion(brRaw)) {
+    return { ok: false, error: "Selecione a região do procedimento." };
+  }
+  const body_region = brRaw;
+
+  const metaRaw = formData.get("meta");
+  if (typeof metaRaw !== "string") {
+    return { ok: false, error: "Metadados do envio ausentes." };
+  }
+
+  let meta: BatchPhotoMeta[];
+  try {
+    meta = JSON.parse(metaRaw) as BatchPhotoMeta[];
+  } catch {
+    return { ok: false, error: "Metadados inválidos." };
+  }
+
+  const files = formData
+    .getAll("files")
+    .filter((x): x is File => x instanceof File && x.size > 0);
+
+  if (files.length === 0) {
+    return { ok: false, error: "Selecione ao menos uma imagem." };
+  }
+  if (files.length > MAX_PHOTOS_PER_BATCH) {
+    return {
+      ok: false,
+      error: `Máximo de ${MAX_PHOTOS_PER_BATCH} fotos por envio.`,
+    };
+  }
+  if (meta.length !== files.length) {
+    return {
+      ok: false,
+      error: "Cada arquivo precisa de legenda/ângulo correspondente nos metadados.",
+    };
+  }
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const item = meta[i];
+    if (!item) {
+      return { ok: false, error: "Metadados incompletos." };
+    }
+
+    if (file.size > MAX_PHOTO_BYTES) {
+      return {
+        ok: false,
+        error: `A foto ${i + 1} excede o tamanho máximo (12 MB).`,
+      };
+    }
+    const mimeErr = assertPhotoMime(file.type);
+    if (mimeErr) return { ok: false, error: mimeErr };
+
+    let capture_angle: string | null = null;
+    if (body_region === BODY_REGIONS.face) {
+      const a = item.angle;
+      if (
+        typeof a !== "string" ||
+        (!isFaceBonecoAngle(a) && a !== "custom")
+      ) {
+        return {
+          ok: false,
+          error: `Foto ${i + 1}: selecione o ângulo de captura (obrigatório para rosto).`,
+        };
+      }
+      capture_angle = a;
+    }
+
+    let taken_at: string | null = null;
+    const t = item.taken_at;
+    if (typeof t === "string" && /^\d{4}-\d{2}-\d{2}$/.test(t)) {
+      taken_at = t;
+    }
+
+    const cap =
+      typeof item.caption === "string" && item.caption.trim() !== ""
+        ? item.caption.trim().slice(0, 500)
+        : null;
+
+    const path = buildClinicalStoragePath({
+      tenantId: ctx.tenantId,
+      clientId,
+      category: "photos",
+      originalFileName: file.name,
+    });
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { error: upErr } = await ctx.supabase.storage
+      .from(CLINICAL_BUCKET)
+      .upload(path, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (upErr) {
+      return {
+        ok: false,
+        error:
+          upErr.message ??
+          "Falha no upload. Confira o bucket clinical e as políticas de Storage.",
+      };
+    }
+
+    const { error: dbErr } = await ctx.supabase
+      .schema("clinic")
+      .from("photos")
+      .insert({
+        tenant_id: ctx.tenantId,
+        client_id: clientId,
+        storage_key: path,
+        caption: cap,
+        taken_at,
+        body_region,
+        capture_angle,
+      });
+
+    if (dbErr) {
+      await ctx.supabase.storage.from(CLINICAL_BUCKET).remove([path]);
+      return {
+        ok: false,
+        error: dbErr.message ?? `Erro ao registrar a foto ${i + 1}.`,
+      };
+    }
   }
 
   revalidatePaciente(clientId);

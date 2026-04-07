@@ -817,6 +817,8 @@ export type Database = {
           storage_key: string;
           caption: string | null;
           taken_at: string | null;
+          body_region: string;
+          capture_angle: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -827,6 +829,8 @@ export type Database = {
           storage_key: string;
           caption?: string | null;
           taken_at?: string | null;
+          body_region?: string;
+          capture_angle?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -837,6 +841,8 @@ export type Database = {
           storage_key?: string;
           caption?: string | null;
           taken_at?: string | null;
+          body_region?: string;
+          capture_angle?: string | null;
           created_at?: string;
           updated_at?: string;
         };

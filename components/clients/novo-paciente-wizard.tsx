@@ -12,10 +12,8 @@ import {
   DOCUMENT_KIND_OPTIONS,
 } from "@/lib/clinical/document-kinds";
 import type { DocumentKind } from "@/lib/clinical/document-kinds";
-import {
-  uploadClinicalDocument,
-  uploadClinicalPhoto,
-} from "@/lib/clients/record-actions";
+import { ClinicalPhotoUploader } from "@/components/clients/clinical-photo-uploader";
+import { uploadClinicalDocument } from "@/lib/clients/record-actions";
 import { cn } from "@/lib/utils";
 
 const steps = [
@@ -32,29 +30,9 @@ export function NovoPacienteWizard() {
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
 
-  const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [docFile, setDocFile] = useState<File | null>(null);
   const [docKind, setDocKind] = useState<DocumentKind>("procedure");
   const [docTitle, setDocTitle] = useState("");
-
-  function uploadFotoOptional() {
-    if (!clientId || !fotoFile) {
-      setStep(4);
-      return;
-    }
-    setMsg(null);
-    const fd = new FormData();
-    fd.set("file", fotoFile);
-    startTransition(async () => {
-      const result = await uploadClinicalPhoto(clientId, fd);
-      if (result.ok) {
-        setFotoFile(null);
-        setStep(4);
-        return;
-      }
-      setMsg(result.error);
-    });
-  }
 
   function uploadDocOptional() {
     if (!clientId || !docFile) {
@@ -144,30 +122,21 @@ export function NovoPacienteWizard() {
       )}
 
       {step === 3 && clientId && (
-        <section className="rounded-[1.75rem] bg-surface p-6 shadow-lift ring-1 ring-line md:p-7">
-          <h2 className="text-lg font-semibold text-ink">Foto de evolução (opcional)</h2>
-          <p className="mt-2 text-sm text-ink-muted">
-            Uma imagem por vez neste passo. Você pode enviar mais na ficha depois.
-          </p>
-          <div className="mt-6 space-y-3">
-            <Label htmlFor="wiz_foto">Arquivo</Label>
-            <Input
-              id="wiz_foto"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => setFotoFile(e.target.files?.[0] ?? null)}
-            />
-          </div>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button
-              type="button"
-              disabled={pending}
-              onClick={uploadFotoOptional}
-            >
-              {fotoFile ? (pending ? "Enviando…" : "Enviar e continuar") : "Pular"}
-            </Button>
-          </div>
-        </section>
+        <div className="space-y-4">
+          <ClinicalPhotoUploader
+            clientId={clientId}
+            compact
+            onBatchComplete={() => setStep(4)}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={pending}
+            onClick={() => setStep(4)}
+          >
+            Pular fotos por agora
+          </Button>
+        </div>
       )}
 
       {step === 4 && clientId && (
