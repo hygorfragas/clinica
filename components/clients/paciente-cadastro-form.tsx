@@ -1,8 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -22,12 +20,22 @@ import {
   type CreatePatientParsed,
 } from "@/lib/clients/schemas";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 const textareaClass =
   "min-h-[6rem] w-full resize-y rounded-md border border-line bg-[#f3f1ee] px-3 py-2 text-sm text-ink shadow-none transition-colors placeholder:text-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:cursor-not-allowed disabled:opacity-50";
 
-export function NovoPacienteForm() {
-  const router = useRouter();
+type Props = {
+  onCreated: (id: string) => void;
+  submitLabel?: string;
+  cancelHref?: string;
+};
+
+export function PacienteCadastroForm({
+  onCreated,
+  submitLabel = "Salvar paciente",
+  cancelHref = "/pacientes",
+}: Props) {
   const [pending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -47,8 +55,7 @@ export function NovoPacienteForm() {
     startTransition(async () => {
       const result = await createPatient(values);
       if (result.ok) {
-        router.push(`/pacientes/${result.id}`);
-        router.refresh();
+        onCreated(result.id);
         return;
       }
       setServerError(result.error);
@@ -95,14 +102,8 @@ export function NovoPacienteForm() {
                 type="tel"
                 autoComplete="tel"
                 placeholder="(00) 00000-0000"
-                aria-invalid={!!form.formState.errors.phone}
                 {...form.register("phone")}
               />
-              {form.formState.errors.phone && (
-                <p className="text-sm text-danger" role="alert">
-                  {form.formState.errors.phone.message}
-                </p>
-              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
@@ -111,7 +112,6 @@ export function NovoPacienteForm() {
                 type="email"
                 autoComplete="email"
                 placeholder="opcional"
-                aria-invalid={!!form.formState.errors.email}
                 {...form.register("email")}
               />
               {form.formState.errors.email && (
@@ -124,12 +124,7 @@ export function NovoPacienteForm() {
 
           <div className="space-y-2">
             <Label htmlFor="birth_date">Data de nascimento</Label>
-            <Input
-              id="birth_date"
-              type="date"
-              aria-invalid={!!form.formState.errors.birth_date}
-              {...form.register("birth_date")}
-            />
+            <Input id="birth_date" type="date" {...form.register("birth_date")} />
             {form.formState.errors.birth_date && (
               <p className="text-sm text-danger" role="alert">
                 {form.formState.errors.birth_date.message}
@@ -144,14 +139,8 @@ export function NovoPacienteForm() {
               rows={4}
               className={textareaClass}
               placeholder="Anotações gerais (alergias relevantes, preferências de contato…)"
-              aria-invalid={!!form.formState.errors.notes}
               {...form.register("notes")}
             />
-            {form.formState.errors.notes && (
-              <p className="text-sm text-danger" role="alert">
-                {form.formState.errors.notes.message}
-              </p>
-            )}
           </div>
 
           {serverError && (
@@ -162,10 +151,10 @@ export function NovoPacienteForm() {
 
           <div className="flex flex-wrap gap-3 pt-2">
             <Button type="submit" disabled={pending}>
-              {pending ? "Salvando…" : "Salvar paciente"}
+              {pending ? "Salvando…" : submitLabel}
             </Button>
             <Link
-              href="/pacientes"
+              href={cancelHref}
               className={cn(
                 buttonVariants({ variant: "secondary" }),
                 pending && "pointer-events-none opacity-50",

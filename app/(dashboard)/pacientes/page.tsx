@@ -54,9 +54,9 @@ export default async function PacientesPage() {
             Pacientes
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-ink-muted">
-            Cadastro centralizado da clínica. Busque por nome ou contato, abra a
-            ficha para ver detalhes (anamnese, evolução e documentos em
-            construção).
+            Cadastro centralizado com prontuário: anamnese, evolução, fotos,
+            documentos e assinaturas. Use &quot;Nova paciente&quot; para o fluxo
+            guiado ou abra a ficha para continuar o preenchimento.
           </p>
         </header>
         <Link

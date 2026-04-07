@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { NovoPacienteForm } from "@/components/clients/novo-paciente-form";
+import { NovoPacienteWizard } from "@/components/clients/novo-paciente-wizard";
 import {
   canAccessAgenda,
   fetchClinicProfile,
@@ -26,7 +26,7 @@ export default async function NovoPacientePage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-4xl space-y-8">
       <div>
         <Link
           href="/pacientes"
@@ -38,13 +38,16 @@ export default async function NovoPacientePage() {
           <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-4xl">
             Nova paciente
           </h1>
-          <p className="mt-2 text-sm text-ink-muted">
-            Cadastro vinculado à sua clínica; só sua equipe enxerga estes dados.
+          <p className="mt-2 max-w-2xl text-sm text-ink-muted">
+            Fluxo completo: cadastro, anamnese, foto opcional, documento opcional
+            e acesso à ficha com evolução, galeria, contratos e assinaturas.
+            Requer bucket <code className="rounded bg-muted px-1 text-xs">clinical</code>{" "}
+            no Storage (migração do repositório).
           </p>
         </div>
       </div>
 
-      <NovoPacienteForm />
+      <NovoPacienteWizard />
     </div>
   );
 }

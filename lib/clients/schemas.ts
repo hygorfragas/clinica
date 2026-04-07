@@ -37,3 +37,7 @@ export const createPatientSchema = z.object({
 export type CreatePatientParsed = z.infer<typeof createPatientSchema>;
 /** Valores brutos do formulário (antes dos transforms). */
 export type CreatePatientFormValues = z.input<typeof createPatientSchema>;
+
+export const updatePatientSchema = createPatientSchema.partial();
+export type UpdatePatientParsed = z.infer<typeof updatePatientSchema>;
+export type UpdatePatientFormValues = z.input<typeof updatePatientSchema>;

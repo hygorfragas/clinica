@@ -60,7 +60,7 @@ export async function createPatient(
   }
 
   revalidatePath("/pacientes");
-  revalidatePath(`/pacientes/${data.id}`);
+  revalidatePath(`/pacientes/${data.id}`, "layout");
 
   return { ok: true, id: data.id };
 }
