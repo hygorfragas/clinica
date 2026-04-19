@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -26,7 +25,6 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 
 export function LoginForm({ signupOpen }: { signupOpen: boolean }) {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -48,8 +46,14 @@ export function LoginForm({ signupOpen }: { signupOpen: boolean }) {
         setError(signError.message);
         return;
       }
-      router.refresh();
-      router.push("/");
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setError("Sessão não iniciada. Tente novamente.");
+        return;
+      }
+      // Navegação completa: garante que os cookies da sessão cheguem ao servidor
+      // (router.push sozinho costuma correr antes do SSR enxergar a sessão).
+      window.location.assign("/");
     } finally {
       setLoading(false);
     }

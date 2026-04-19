@@ -81,6 +81,24 @@ export function PacienteDadosEditor({ clientId, initial }: Props) {
           )}
         </div>
         <div className="space-y-2">
+          <Label htmlFor="edit_cpf">CPF / documento</Label>
+          <Input id="edit_cpf" {...form.register("cpf")} />
+          {form.formState.errors.cpf && (
+            <p className="text-sm text-danger" role="alert">
+              {form.formState.errors.cpf.message}
+            </p>
+          )}
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="edit_address">Endereço</Label>
+          <Input id="edit_address" {...form.register("address")} />
+          {form.formState.errors.address && (
+            <p className="text-sm text-danger" role="alert">
+              {form.formState.errors.address.message}
+            </p>
+          )}
+        </div>
+        <div className="space-y-2">
           <Label htmlFor="edit_birth">Data de nascimento</Label>
           <Input id="edit_birth" type="date" {...form.register("birth_date")} />
         </div>

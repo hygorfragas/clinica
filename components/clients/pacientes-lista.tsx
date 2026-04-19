@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
+import { PacienteOcultarDaListaButton } from "@/components/clients/paciente-ocultar-da-lista-button";
 import { Input } from "@/components/ui/input";
 
 export type PacienteListaItem = {
@@ -60,10 +61,13 @@ export function PacientesLista({ clients }: { clients: PacienteListaItem[] }) {
       ) : (
         <ul className="divide-y divide-line/80">
           {filtered.map((c) => (
-            <li key={c.id}>
+            <li
+              key={c.id}
+              className="flex items-stretch divide-x divide-line/80"
+            >
               <Link
                 href={`/pacientes/${c.id}`}
-                className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-muted/40"
+                className="flex min-w-0 flex-1 items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-muted/40"
               >
                 <div className="min-w-0">
                   <p className="truncate font-medium text-ink">{c.full_name}</p>
@@ -77,6 +81,15 @@ export function PacientesLista({ clients }: { clients: PacienteListaItem[] }) {
                   aria-hidden
                 />
               </Link>
+              <div className="flex items-center px-2 py-2 sm:px-3">
+                <PacienteOcultarDaListaButton
+                  clientId={c.id}
+                  afterSuccess="refresh"
+                  compact
+                  variant="ghost"
+                  label="Ocultar da lista"
+                />
+              </div>
             </li>
           ))}
         </ul>

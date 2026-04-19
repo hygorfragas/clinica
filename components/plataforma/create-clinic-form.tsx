@@ -6,18 +6,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { slugifyName } from "@/lib/strings";
 
-export function CreateClinicForm() {
+export function CreateClinicForm({ onCreated }: { onCreated?: () => void }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
     setError(null);
-    const fd = new FormData(e.currentTarget);
+    const fd = new FormData(form);
     const name = String(fd.get("name") ?? "").trim();
-    const slug = String(fd.get("slug") ?? "").trim();
+    const slugRaw = String(fd.get("slug") ?? "").trim();
+    const slug = slugRaw ? slugifyName(slugRaw) : "";
     const adminFullName = String(fd.get("adminFullName") ?? "").trim();
     const adminEmail = String(fd.get("adminEmail") ?? "").trim();
     const adminPassword = String(fd.get("adminPassword") ?? "");
@@ -35,14 +38,41 @@ export function CreateClinicForm() {
           adminPassword: adminPassword || undefined,
         }),
       });
-      const body = (await res.json().catch(() => ({}))) as {
+      const raw = await res.text();
+      let body: {
         error?: string;
-      };
+        issues?: {
+          fieldErrors?: Record<string, string[] | undefined>;
+          formErrors?: string[];
+        };
+      } = {};
+      if (raw) {
+        try {
+          body = JSON.parse(raw) as typeof body;
+        } catch {
+          setError(
+            `Resposta inválida (${res.status}). Verifique o terminal do servidor ou se SUPABASE_SERVICE_ROLE_KEY está definida.`,
+          );
+          return;
+        }
+      }
       if (!res.ok) {
-        setError(body.error ?? "Não foi possível criar a clínica.");
+        const fieldErrors = body.issues?.fieldErrors ?? {};
+        const fromFields = Object.values(fieldErrors)
+          .flat()
+          .filter(Boolean)
+          .join(" ");
+        const fromForm = (body.issues?.formErrors ?? []).filter(Boolean).join(" ");
+        const detail = [fromFields, fromForm].filter(Boolean).join(" ");
+        setError(
+          detail ||
+            body.error ||
+            `Falha (${res.status} ${res.statusText || ""}).`.trim(),
+        );
         return;
       }
-      e.currentTarget.reset();
+      form.reset();
+      onCreated?.();
       router.refresh();
     } finally {
       setLoading(false);
@@ -71,6 +101,12 @@ export function CreateClinicForm() {
               name="slug"
               placeholder="studio-exemplo"
               pattern="[a-z0-9-]*"
+              onBlur={(e) => {
+                const next = slugifyName(e.currentTarget.value || "");
+                if (next && next !== e.currentTarget.value) {
+                  e.currentTarget.value = next;
+                }
+              }}
             />
             <p className="text-xs text-ink-subtle">
               Apenas letras minúsculas, números e hífen. Se vazio, geramos a

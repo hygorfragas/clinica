@@ -17,9 +17,11 @@ Calma operacional para estética: papel quente, verde-sálvia de confiança, lei
 
 - `--canvas`, `--surface`, `--muted`, `--foreground` (+ muted/subtle), `--border`, `--brand`, `--brand-soft`, `--destructive`, `--ring`.
 
-## Tipografia
+## Tipografia (oficial do projeto)
 
-- DM Sans (`next/font/google`), pesos médios para títulos curtos.
+- **DM Sans** ([Google Fonts](https://fonts.google.com/specimen/DM+Sans)), via `next/font/google` em `app/layout.tsx`.
+- Variável `--font-sans`; pesos médios em títulos, corpo legível para uso prolongado.
+- Regra Cursor: `.cursor/rules/09-typography-and-theme.mdc`.
 
 ## Componentes recorrentes
 

@@ -1,0 +1,25 @@
+---
+description: Tipografia oficial (Google Fonts) e tema visual leve do produto
+globs: "**/*.{tsx,jsx,css}"
+alwaysApply: true
+---
+
+# Tipografia e tema
+
+## Fonte do projeto
+
+- **Família:** [DM Sans](https://fonts.google.com/specimen/DM+Sans) (Google Fonts).
+- **Carregamento:** `next/font/google` em `app/layout.tsx` (`DM_Sans`), variável CSS `--font-sans`.
+- **Uso:** corpo, interface e títulos curtos; pesos médios nos títulos, texto corrido confortável para leitura em telas clínicas.
+
+Não substituir por outra fonte sem atualizar este arquivo e `app/layout.tsx`.
+
+## Paleta e sensação
+
+- **Intenção:** calma operacional, leveza, limpeza; fundos quentes (papel), acento verde-sálvia (confiança), contraste moderado para não cansar a vista.
+- **Tokens:** ver `app/globals.css` (`--canvas`, `--surface`, `--brand`, `--brand-soft`, `--foreground*`, `--border`, `--shadow-lift`).
+- **Detalhes de UI:** sombra suave + bordas discretas; evitar blocos pesados ou cores saturadas em grandes áreas.
+
+## Documentação de design
+
+- Tokens e checks adicionais: `.interface-design/system.md`.

@@ -16,14 +16,21 @@ const config: Config = {
         "ink-subtle": "var(--foreground-subtle)",
         line: "var(--border)",
         brand: "var(--brand)",
+        "brand-hover": "var(--brand-hover)",
         "brand-soft": "var(--brand-soft)",
+        "brand-container": "var(--brand-container)",
+        "secondary-container": "var(--secondary-container)",
+        "on-secondary-container": "var(--on-secondary-container)",
         danger: "var(--destructive)",
-      },
-      fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
       },
       boxShadow: {
         lift: "var(--shadow-lift)",
+        sidebar: "var(--shadow-sidebar)",
+        "card-bento": "var(--shadow-card-bento)",
+        panel: "var(--shadow-panel)",
+      },
+      fontFamily: {
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius-lg)",

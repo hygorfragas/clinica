@@ -16,6 +16,19 @@ function redirect(request: NextRequest, path: string) {
   return NextResponse.redirect(url);
 }
 
+/** Rotas da operação da clínica (não são área da plataforma global). */
+function isClinicAppPath(pathname: string) {
+  return (
+    pathname === "/inicio" ||
+    pathname.startsWith("/agenda") ||
+    pathname.startsWith("/pacientes") ||
+    pathname.startsWith("/orcamentos") ||
+    pathname.startsWith("/estoque") ||
+    pathname.startsWith("/equipe") ||
+    pathname.startsWith("/configuracoes")
+  );
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -55,17 +68,26 @@ export async function updateSession(request: NextRequest) {
 
     const pathname = request.nextUrl.pathname;
 
-    const { data: bootRaw, error: bootRpcError } = await supabase.rpc(
-      "clinic_bootstrap_status",
-    );
-    const bootstrap = parseBootstrapStatus(bootRaw);
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
+    let bootstrap = parseBootstrapStatus(null);
+    let bootstrapRpcOk = false;
+    try {
+      const { data: bootRaw, error: bootRpcError } = await supabase.rpc(
+        "clinic_bootstrap_status",
+      );
+      if (!bootRpcError) {
+        bootstrap = parseBootstrapStatus(bootRaw);
+        bootstrapRpcOk = true;
+      }
+    } catch {
+      /* RPC opcional: falha não deve travar sessão nem redirects */
+    }
+
     if (pathname === "/cadastro") {
-      if (!bootRpcError && !bootstrap.signupOpen) {
+      if (bootstrapRpcOk && !bootstrap.signupOpen) {
         return redirect(request, "/login");
       }
       if (user) {
@@ -74,19 +96,20 @@ export async function updateSession(request: NextRequest) {
           return redirect(request, "/plataforma");
         }
         if (canAccessAgenda(profile)) {
-          return redirect(request, "/agenda");
+          return redirect(request, "/inicio");
         }
         if (isPendingRegistration(profile)) {
           return redirect(request, "/aguardando-acesso");
         }
-        return redirect(request, "/login");
+        return redirect(request, "/aguardando-acesso");
       }
     }
 
     const isPublicPath =
       pathname === "/login" ||
       pathname === "/cadastro" ||
-      pathname === "/";
+      pathname === "/" ||
+      pathname.startsWith("/auth/callback");
 
     if (!user) {
       if (!isPublicPath) {
@@ -99,9 +122,9 @@ export async function updateSession(request: NextRequest) {
 
     if (!profile) {
       if (pathname === "/login" || pathname === "/cadastro") {
-        return supabaseResponse;
+        return redirect(request, "/aguardando-acesso");
       }
-      return redirect(request, "/login");
+      return redirect(request, "/aguardando-acesso");
     }
 
     if (isPendingRegistration(profile)) {
@@ -121,7 +144,7 @@ export async function updateSession(request: NextRequest) {
       if (
         pathname === "/login" ||
         pathname === "/cadastro" ||
-        pathname.startsWith("/agenda")
+        isClinicAppPath(pathname)
       ) {
         return redirect(request, "/plataforma");
       }
@@ -130,13 +153,13 @@ export async function updateSession(request: NextRequest) {
 
     if (canAccessAgenda(profile)) {
       if (pathname.startsWith("/aguardando-acesso")) {
-        return redirect(request, "/agenda");
+        return redirect(request, "/inicio");
       }
       if (pathname === "/login" || pathname === "/cadastro") {
-        return redirect(request, "/agenda");
+        return redirect(request, "/inicio");
       }
       if (pathname.startsWith("/plataforma")) {
-        return redirect(request, "/agenda");
+        return redirect(request, "/inicio");
       }
       return supabaseResponse;
     }

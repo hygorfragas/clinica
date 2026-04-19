@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { NovoPacienteWizard } from "@/components/clients/novo-paciente-wizard";
+import {
+  NovoPacienteWizard,
+  type WizardContractTemplate,
+} from "@/components/clients/novo-paciente-wizard";
 import {
   canAccessAgenda,
   fetchClinicProfile,
@@ -25,6 +28,25 @@ export default async function NovoPacientePage() {
     redirect("/aguardando-acesso");
   }
 
+  const tplRes = await supabase
+    .schema("clinic")
+    .from("contract_templates")
+    .select("id, title, body_html, storage_key, mime_type, is_default")
+    .eq("tenant_id", profile.tenant_id)
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  const contractTemplates: WizardContractTemplate[] = tplRes.error
+    ? []
+    : (tplRes.data ?? []).map((r) => ({
+        id: r.id,
+        title: r.title,
+        body_html: r.body_html,
+        storage_key: r.storage_key,
+        mime_type: r.mime_type,
+        is_default: r.is_default,
+      }));
+
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <div>
@@ -40,14 +62,16 @@ export default async function NovoPacientePage() {
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-ink-muted">
             Fluxo completo: cadastro, anamnese, foto opcional, documento opcional
-            e acesso à ficha com evolução, galeria, contratos e assinaturas.
-            Requer bucket <code className="rounded bg-muted px-1 text-xs">clinical</code>{" "}
-            no Storage (migração do repositório).
+            e acesso à ficha. Contratos cadastrados em{" "}
+            <Link href="/configuracoes/contratos" className="font-medium text-brand hover:underline">
+              Configurações → Contratos
+            </Link>{" "}
+            aparecem aqui quando o tipo for Contrato.
           </p>
         </div>
       </div>
 
-      <NovoPacienteWizard />
+      <NovoPacienteWizard contractTemplates={contractTemplates} />
     </div>
   );
 }

@@ -72,8 +72,12 @@ export function CadastroSuperAdminForm() {
         return;
       }
 
-      router.refresh();
-      router.push("/plataforma");
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setError("Conta criada, mas a sessão não iniciou. Tente entrar pelo login.");
+        return;
+      }
+      window.location.assign("/plataforma");
     } finally {
       setLoading(false);
     }

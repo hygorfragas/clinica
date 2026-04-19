@@ -17,6 +17,18 @@ export const createPatientSchema = z.object({
     .trim()
     .transform((v) => (v === "" ? null : v))
     .nullable(),
+  cpf: z
+    .string()
+    .trim()
+    .max(20, "CPF/documento muito longo")
+    .transform((v) => (v === "" ? null : v))
+    .nullable(),
+  address: z
+    .string()
+    .trim()
+    .max(500, "Endereço muito longo")
+    .transform((v) => (v === "" ? null : v))
+    .nullable(),
   birth_date: z
     .string()
     .trim()
