@@ -45,6 +45,8 @@ export function PacienteCadastroForm({
       full_name: "",
       email: "",
       phone: "",
+      cpf: "",
+      address: "",
       birth_date: "",
       notes: "",
     },
@@ -117,6 +119,37 @@ export function PacienteCadastroForm({
               {form.formState.errors.email && (
                 <p className="text-sm text-danger" role="alert">
                   {form.formState.errors.email.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="cpf">CPF / documento</Label>
+              <Input
+                id="cpf"
+                autoComplete="off"
+                placeholder="opcional"
+                {...form.register("cpf")}
+              />
+              {form.formState.errors.cpf && (
+                <p className="text-sm text-danger" role="alert">
+                  {form.formState.errors.cpf.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="address">Endereço</Label>
+              <Input
+                id="address"
+                autoComplete="street-address"
+                placeholder="opcional"
+                {...form.register("address")}
+              />
+              {form.formState.errors.address && (
+                <p className="text-sm text-danger" role="alert">
+                  {form.formState.errors.address.message}
                 </p>
               )}
             </div>

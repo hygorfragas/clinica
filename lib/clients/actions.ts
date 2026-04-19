@@ -39,6 +39,8 @@ export async function createPatient(
     full_name: parsed.data.full_name,
     email: parsed.data.email,
     phone: parsed.data.phone,
+    cpf: parsed.data.cpf,
+    address: parsed.data.address,
     birth_date: parsed.data.birth_date,
     notes: parsed.data.notes,
   };

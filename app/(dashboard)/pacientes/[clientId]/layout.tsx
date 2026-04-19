@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { PacienteFichaNav } from "@/components/clients/paciente-ficha-nav";
+import { PacienteOcultarDaListaButton } from "@/components/clients/paciente-ocultar-da-lista-button";
 import { loadPacienteClinicContext } from "@/lib/clients/paciente-context";
 
 export default async function PacienteFichaLayout({
@@ -29,10 +30,18 @@ export default async function PacienteFichaLayout({
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink md:text-4xl">
           {ctx.client.full_name}
         </h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Prontuário digital · dados sensíveis · visível apenas para a sua
-          equipe nesta clínica.
-        </p>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-ink-muted">
+            Prontuário digital · dados sensíveis · visível apenas para a sua
+            equipe nesta clínica.
+          </p>
+          <PacienteOcultarDaListaButton
+            clientId={clientId}
+            afterSuccess="redirect"
+            variant="ghost"
+            className="sm:items-end"
+          />
+        </div>
       </div>
       <PacienteFichaNav clientId={clientId} />
       {children}

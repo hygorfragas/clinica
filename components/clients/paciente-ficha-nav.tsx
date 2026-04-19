@@ -26,14 +26,16 @@ export function PacienteFichaNav({ clientId }: { clientId: string }) {
         match: (p) => p.startsWith(`${base}/evolucao`),
       },
       {
-        href: `${base}/fotos`,
-        label: "Fotos",
-        match: (p) => p.startsWith(`${base}/fotos`),
+        href: `${base}/financeiro`,
+        label: "Financeiro",
+        match: (p) =>
+          p.startsWith(`${base}/financeiro`) ||
+          p.startsWith(`${base}/documentos`),
       },
       {
-        href: `${base}/documentos`,
-        label: "Documentos",
-        match: (p) => p.startsWith(`${base}/documentos`),
+        href: `${base}/anexos`,
+        label: "Anexos",
+        match: (p) => p.startsWith(`${base}/anexos`),
       },
     ];
 

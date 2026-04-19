@@ -5,6 +5,7 @@ import {
   canAccessAgenda,
   fetchClinicProfile,
   isPlatformSuperAdmin,
+  isTenantManager,
 } from "@/lib/auth/clinic-profile";
 import { isSupabasePublicEnvConfigured } from "@/lib/supabase/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -38,7 +39,11 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   }
 
   return (
-    <AppShell variant={variant} userEmail={user.email}>
+    <AppShell
+      variant={variant}
+      userEmail={user.email}
+      showEquipe={isTenantManager(profile)}
+    >
       {children}
     </AppShell>
   );

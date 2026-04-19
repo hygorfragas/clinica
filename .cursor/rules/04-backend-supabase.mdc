@@ -9,6 +9,20 @@ globs:
 
 # Backend Supabase
 
+## Operações no projeto remoto
+
+Para inspeção e correções pontuais no Postgres do projeto Supabase (consultas, checagem de dados, DDL quando aplicável), **preferir o MCP do Supabase** (`plugin-supabase-supabase`: `list_projects`, `execute_sql`, `apply_migration`, `list_tables`, etc.) em vez de instruir comandos manuais soltos, mantendo o `project_id` alinhado ao `NEXT_PUBLIC_SUPABASE_URL` do `.env.local`.
+
+## API PostgREST e schema `clinic`
+
+O domínio da app usa tabelas em **`clinic`**. Na API do Supabase, **exponha o schema** ou o cliente devolve erro do tipo `Invalid schema: clinic`:
+
+1. Dashboard do projeto → **Project Settings** → **API**
+2. Em **Exposed schemas**, inclua **`clinic`** (mantendo `public` se precisar de tabelas legadas)
+3. Salvar e aguardar alguns segundos; recarregar o app
+
+Sem isso, `.schema("clinic").from(...)` não funciona no browser nem no SSR.
+
 ## Banco
 Entidades base esperadas:
 - tenants

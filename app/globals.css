@@ -7,19 +7,27 @@
   Profundidade por sombra suave + bordas quase invisíveis (skill interface-design).
 */
 :root {
-  --canvas: #f4f1ec;
-  --surface: #fffcf8;
-  --muted: #ebe6df;
-  --foreground: #1c1917;
-  --foreground-muted: #57534e;
+  /* Alinhado ao Stitch “Curated Clinic”: papel #fbf9f6, sálvia #4a655a, sombras em tom de primário */
+  --canvas: #fbf9f6;
+  --surface: #fffefb;
+  --muted: #f5f3f0;
+  --foreground: #1b1c1a;
+  --foreground-muted: #5e5f5c;
   --foreground-subtle: #78716c;
-  --border: rgba(28, 25, 23, 0.09);
-  --brand: #2d6a66;
-  --brand-soft: #e4f0ef;
+  --border: rgba(28, 25, 23, 0.07);
+  --brand: #4a655a;
+  --brand-hover: #3d564c;
+  --brand-soft: rgba(74, 101, 90, 0.09);
+  --brand-container: #cbe9db;
+  --secondary-container: #e7deff;
+  --on-secondary-container: #544e69;
   --destructive: #b91c1c;
-  --ring: rgba(45, 106, 102, 0.35);
-  --shadow-lift: 0 1px 2px rgba(28, 25, 23, 0.05),
-    0 8px 24px rgba(28, 25, 23, 0.06);
+  --ring: rgba(74, 101, 90, 0.28);
+  --shadow-lift: 0 1px 2px rgba(42, 68, 59, 0.05),
+    0 12px 32px rgba(42, 68, 59, 0.07);
+  --shadow-sidebar: 20px 0 40px rgba(42, 68, 59, 0.04);
+  --shadow-card-bento: 0 4px 24px -4px rgba(42, 68, 59, 0.08);
+  --shadow-panel: 0 20px 50px -12px rgba(42, 68, 59, 0.12);
   --radius-lg: 0.875rem;
   --radius-md: 0.625rem;
   --radius-sm: 0.375rem;
@@ -29,5 +37,33 @@
 @layer base {
   body {
     @apply bg-canvas text-ink antialiased;
+  }
+}
+
+/* TipTap: placeholder visível no editor de contratos */
+.contract-editor-root .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--foreground-subtle);
+}
+
+/* Agenda (Schedule X): alvos de toque maiores em mobile/tablet */
+@media (max-width: 1024px) {
+  .agenda-calendar-shell .sx__calendar-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .agenda-calendar-shell .sx__calendar-header > * {
+    min-height: 2.5rem;
+  }
+
+  .agenda-calendar-shell .sx__date-picker-wrapper,
+  .agenda-calendar-shell .sx__view-selection {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }

@@ -11,10 +11,10 @@ import {
 } from "@/lib/clinical/document-kinds";
 import {
   deleteClinicalDocument,
-  registerSignature,
   uploadClinicalDocument,
 } from "@/lib/clients/record-actions";
 import type { DocumentKind } from "@/lib/clinical/document-kinds";
+import { ContractHtmlPreview } from "@/components/contracts/contract-html-preview";
 
 export type DocComUrl = {
   id: string;
@@ -23,6 +23,7 @@ export type DocComUrl = {
   mime_type: string | null;
   created_at: string;
   url: string | null;
+  body_html: string | null;
 };
 
 export type AssinaturaComUrl = {
@@ -44,13 +45,11 @@ export function PacienteDocumentosPanel({
 }) {
   const router = useRouter();
   const docInputRef = useRef<HTMLInputElement>(null);
-  const sigInputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [kind, setKind] = useState<DocumentKind>("procedure");
   const [title, setTitle] = useState("");
-  const [sigDocId, setSigDocId] = useState("");
-  const [signerName, setSignerName] = useState("");
+  const [htmlPreview, setHtmlPreview] = useState<string | null>(null);
 
   function uploadDoc() {
     const file = docInputRef.current?.files?.[0];
@@ -76,35 +75,12 @@ export function PacienteDocumentosPanel({
     });
   }
 
-  function uploadSig() {
-    const file = sigInputRef.current?.files?.[0];
-    if (!file) {
-      setError("Selecione a imagem da assinatura.");
-      return;
-    }
-    if (signerName.trim().length < 2) {
-      setError("Informe o nome de quem assinou.");
-      return;
-    }
-    setError(null);
-    const fd = new FormData();
-    fd.set("file", file);
-    fd.set("signer_name", signerName.trim());
-    if (sigDocId) fd.set("document_id", sigDocId);
-
-    startTransition(async () => {
-      const result = await registerSignature(clientId, fd);
-      if (result.ok) {
-        setSignerName("");
-        if (sigInputRef.current) sigInputRef.current.value = "";
-        router.refresh();
-        return;
-      }
-      setError(result.error);
-    });
-  }
-
   function openDoc(d: DocComUrl) {
+    setError(null);
+    if (d.body_html) {
+      setHtmlPreview(d.body_html);
+      return;
+    }
     if (!d.url) {
       setError("Link do arquivo indisponível.");
       return;
@@ -113,7 +89,7 @@ export function PacienteDocumentosPanel({
   }
 
   function removeDoc(id: string) {
-    if (!confirm("Excluir este documento e o arquivo no armazenamento?")) return;
+    if (!confirm("Excluir este documento?")) return;
     startTransition(async () => {
       const result = await deleteClinicalDocument(clientId, id);
       if (result.ok) {
@@ -131,8 +107,8 @@ export function PacienteDocumentosPanel({
           Novo documento
         </h2>
         <p className="mt-2 text-sm text-ink-muted">
-          Contratos, termos de procedimento, orientações pós-procedimento, PDFs
-          ou fotos de exames.
+          Contratos, termos, orientações, exames e anexos gerais (PDF, Office,
+          planilhas, texto, ZIP e imagens).
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
@@ -165,7 +141,7 @@ export function PacienteDocumentosPanel({
               id="doc_file"
               ref={docInputRef}
               type="file"
-              accept="application/pdf,image/jpeg,image/png,image/webp"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,image/jpeg,image/png,image/webp"
             />
           </div>
         </div>
@@ -181,66 +157,6 @@ export function PacienteDocumentosPanel({
           onClick={uploadDoc}
         >
           {pending ? "Enviando…" : "Enviar documento"}
-        </Button>
-      </section>
-
-      <section className="rounded-[1.75rem] bg-muted/40 p-6 ring-1 ring-line/60 md:p-7">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-subtle">
-          Assinatura digital (imagem)
-        </h2>
-        <p className="mt-2 text-sm text-ink-muted">
-          Registre a imagem da assinatura da paciente (ou responsável), opcionalmente
-          vinculada a um documento já enviado.
-        </p>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="sig_doc">Vincular a documento (opcional)</Label>
-            <select
-              id="sig_doc"
-              className="flex h-10 w-full rounded-md border border-line bg-[#f3f1ee] px-3 text-sm"
-              value={sigDocId}
-              onChange={(e) => setSigDocId(e.target.value)}
-            >
-              <option value="">Nenhum</option>
-              {documentos.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {(d.title ?? "Sem título") +
-                    ` · ${
-                      d.kind in DOCUMENT_KIND_LABELS
-                        ? DOCUMENT_KIND_LABELS[d.kind as DocumentKind]
-                        : d.kind
-                    }`}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="signer_name">Nome de quem assinou</Label>
-            <Input
-              id="signer_name"
-              value={signerName}
-              onChange={(e) => setSignerName(e.target.value)}
-              placeholder="Nome completo"
-            />
-          </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="sig_file">Imagem da assinatura</Label>
-            <Input
-              id="sig_file"
-              ref={sigInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-            />
-          </div>
-        </div>
-        <Button
-          type="button"
-          className="mt-6"
-          variant="secondary"
-          disabled={pending}
-          onClick={uploadSig}
-        >
-          {pending ? "Enviando…" : "Registrar assinatura"}
         </Button>
       </section>
 
@@ -269,17 +185,21 @@ export function PacienteDocumentosPanel({
                       : d.kind) +
                       " · "}
                     {new Date(d.created_at).toLocaleString("pt-BR")}
-                    {d.mime_type ? ` · ${d.mime_type}` : ""}
+                    {d.body_html
+                      ? " · texto"
+                      : d.mime_type
+                        ? ` · ${d.mime_type}`
+                        : ""}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     size="sm"
-                    disabled={!d.url || pending}
+                    disabled={pending || (!d.url && !d.body_html)}
                     onClick={() => openDoc(d)}
                   >
-                    Abrir
+                    {d.body_html ? "Ver contrato" : "Abrir"}
                   </Button>
                   <Button
                     type="button"
@@ -343,6 +263,25 @@ export function PacienteDocumentosPanel({
           </ul>
         )}
       </section>
+
+      {htmlPreview ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Pré-visualização do documento"
+        >
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[1.5rem] bg-surface p-6 shadow-panel ring-1 ring-line">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <p className="text-sm font-semibold text-ink">Documento (texto)</p>
+              <Button type="button" size="sm" variant="secondary" onClick={() => setHtmlPreview(null)}>
+                Fechar
+              </Button>
+            </div>
+            <ContractHtmlPreview html={htmlPreview} />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

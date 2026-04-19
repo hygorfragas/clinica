@@ -55,7 +55,7 @@ export default async function HomePage() {
 
   const profile = await fetchClinicProfile(supabase, user.id);
   if (!profile) {
-    redirect("/login");
+    redirect("/aguardando-acesso");
   }
 
   if (isPlatformSuperAdmin(profile)) {
@@ -63,7 +63,7 @@ export default async function HomePage() {
   }
 
   if (canAccessAgenda(profile)) {
-    redirect("/agenda");
+    redirect("/inicio");
   }
 
   redirect("/aguardando-acesso");

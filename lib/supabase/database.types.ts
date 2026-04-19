@@ -206,6 +206,11 @@ export type Database = {
           tenant_id: string | null;
           full_name: string;
           phone: string | null;
+          professional_registration: string | null;
+          cpf: string | null;
+          address: string | null;
+          signature_storage_key: string | null;
+          stamp_storage_key: string | null;
           role: string;
           created_at: string;
           updated_at: string;
@@ -215,6 +220,11 @@ export type Database = {
           tenant_id?: string | null;
           full_name?: string;
           phone?: string | null;
+          professional_registration?: string | null;
+          cpf?: string | null;
+          address?: string | null;
+          signature_storage_key?: string | null;
+          stamp_storage_key?: string | null;
           role?: string;
           created_at?: string;
           updated_at?: string;
@@ -224,6 +234,11 @@ export type Database = {
           tenant_id?: string | null;
           full_name?: string;
           phone?: string | null;
+          professional_registration?: string | null;
+          cpf?: string | null;
+          address?: string | null;
+          signature_storage_key?: string | null;
+          stamp_storage_key?: string | null;
           role?: string;
           created_at?: string;
           updated_at?: string;
@@ -245,8 +260,11 @@ export type Database = {
           full_name: string;
           email: string | null;
           phone: string | null;
+          cpf: string | null;
+          address: string | null;
           birth_date: string | null;
           notes: string | null;
+          hidden_from_ui_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -256,8 +274,11 @@ export type Database = {
           full_name: string;
           email?: string | null;
           phone?: string | null;
+          cpf?: string | null;
+          address?: string | null;
           birth_date?: string | null;
           notes?: string | null;
+          hidden_from_ui_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -267,8 +288,11 @@ export type Database = {
           full_name?: string;
           email?: string | null;
           phone?: string | null;
+          cpf?: string | null;
+          address?: string | null;
           birth_date?: string | null;
           notes?: string | null;
+          hidden_from_ui_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -282,6 +306,100 @@ export type Database = {
           },
         ];
       };
+      client_procedure_purchases: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          client_id: string;
+          title: string;
+          procedure_id: string | null;
+          budget_id: string | null;
+          total_cents: number;
+          currency: string;
+          purchased_at: string;
+          contract_document_id: string | null;
+          responsible_profile_id: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          client_id: string;
+          title: string;
+          procedure_id?: string | null;
+          budget_id?: string | null;
+          total_cents: number;
+          currency?: string;
+          purchased_at?: string;
+          contract_document_id?: string | null;
+          responsible_profile_id?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          client_id?: string;
+          title?: string;
+          procedure_id?: string | null;
+          budget_id?: string | null;
+          total_cents?: number;
+          currency?: string;
+          purchased_at?: string;
+          contract_document_id?: string | null;
+          responsible_profile_id?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "client_procedure_purchases_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "client_procedure_purchases_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "client_procedure_purchases_procedure_id_fkey";
+            columns: ["procedure_id"];
+            isOneToOne: false;
+            referencedRelation: "procedures";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "client_procedure_purchases_budget_id_fkey";
+            columns: ["budget_id"];
+            isOneToOne: false;
+            referencedRelation: "budgets";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "client_procedure_purchases_contract_document_id_fkey";
+            columns: ["contract_document_id"];
+            isOneToOne: false;
+            referencedRelation: "documents";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "client_procedure_purchases_responsible_profile_id_fkey";
+            columns: ["responsible_profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       appointments: {
         Row: {
           id: string;
@@ -291,6 +409,17 @@ export type Database = {
           ends_at: string;
           status: string;
           notes: string | null;
+          title: string | null;
+          color: string | null;
+          location: string | null;
+          source: string;
+          procedure_id: string | null;
+          google_event_id: string | null;
+          google_calendar_id: string | null;
+          google_etag: string | null;
+          google_sync_status: string;
+          google_synced_at: string | null;
+          created_by_profile_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -302,6 +431,17 @@ export type Database = {
           ends_at: string;
           status?: string;
           notes?: string | null;
+          title?: string | null;
+          color?: string | null;
+          location?: string | null;
+          source?: string;
+          procedure_id?: string | null;
+          google_event_id?: string | null;
+          google_calendar_id?: string | null;
+          google_etag?: string | null;
+          google_sync_status?: string;
+          google_synced_at?: string | null;
+          created_by_profile_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -313,6 +453,17 @@ export type Database = {
           ends_at?: string;
           status?: string;
           notes?: string | null;
+          title?: string | null;
+          color?: string | null;
+          location?: string | null;
+          source?: string;
+          procedure_id?: string | null;
+          google_event_id?: string | null;
+          google_calendar_id?: string | null;
+          google_etag?: string | null;
+          google_sync_status?: string;
+          google_synced_at?: string | null;
+          created_by_profile_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -331,7 +482,134 @@ export type Database = {
             referencedRelation: "clients";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "appointments_procedure_id_fkey";
+            columns: ["procedure_id"];
+            isOneToOne: false;
+            referencedRelation: "procedures";
+            referencedColumns: ["id"];
+          },
         ];
+      };
+      calendar_settings: {
+        Row: {
+          tenant_id: string;
+          google_sync_mode: string;
+          pull_interval_minutes: number;
+          default_calendar_id: string | null;
+          default_slot_minutes: number;
+          business_hours: Json;
+          timezone: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          tenant_id: string;
+          google_sync_mode?: string;
+          pull_interval_minutes?: number;
+          default_calendar_id?: string | null;
+          default_slot_minutes?: number;
+          business_hours?: Json;
+          timezone?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          tenant_id?: string;
+          google_sync_mode?: string;
+          pull_interval_minutes?: number;
+          default_calendar_id?: string | null;
+          default_slot_minutes?: number;
+          business_hours?: Json;
+          timezone?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      google_calendar_sync_state: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          connection_id: string;
+          calendar_id: string;
+          sync_token: string | null;
+          last_synced_at: string | null;
+          last_error: string | null;
+          webhook_channel_id: string | null;
+          webhook_resource_id: string | null;
+          webhook_expires_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          connection_id: string;
+          calendar_id: string;
+          sync_token?: string | null;
+          last_synced_at?: string | null;
+          last_error?: string | null;
+          webhook_channel_id?: string | null;
+          webhook_resource_id?: string | null;
+          webhook_expires_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          connection_id?: string;
+          calendar_id?: string;
+          sync_token?: string | null;
+          last_synced_at?: string | null;
+          last_error?: string | null;
+          webhook_channel_id?: string | null;
+          webhook_resource_id?: string | null;
+          webhook_expires_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      google_calendar_outbox: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          appointment_id: string;
+          operation: string;
+          payload: Json;
+          attempts: number;
+          last_error: string | null;
+          processed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          appointment_id: string;
+          operation: string;
+          payload?: Json;
+          attempts?: number;
+          last_error?: string | null;
+          processed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          appointment_id?: string;
+          operation?: string;
+          payload?: Json;
+          attempts?: number;
+          last_error?: string | null;
+          processed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       anamnesis_forms: {
         Row: {
@@ -378,6 +656,135 @@ export type Database = {
           },
         ];
       };
+      anamnesis_templates: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          name: string;
+          description: string | null;
+          pdf_storage_path: string;
+          page_count: number;
+          form_schema: Json;
+          ink_regions: Json;
+          is_default: boolean;
+          is_archived: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          name: string;
+          description?: string | null;
+          pdf_storage_path: string;
+          page_count?: number;
+          form_schema?: Json;
+          ink_regions?: Json;
+          is_default?: boolean;
+          is_archived?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          name?: string;
+          description?: string | null;
+          pdf_storage_path?: string;
+          page_count?: number;
+          form_schema?: Json;
+          ink_regions?: Json;
+          is_default?: boolean;
+          is_archived?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "anamnesis_templates_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      anamnesis_submissions: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          client_id: string;
+          template_id: string | null;
+          mode: "interactive" | "desktop";
+          status: "draft" | "submitted" | "signed";
+          form_values: Json;
+          ink_strokes: Json;
+          flattened_pdf_path: string | null;
+          signer_name: string | null;
+          signed_at: string | null;
+          submitted_at: string | null;
+          created_by_profile_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          client_id: string;
+          template_id?: string | null;
+          mode?: "interactive" | "desktop";
+          status?: "draft" | "submitted" | "signed";
+          form_values?: Json;
+          ink_strokes?: Json;
+          flattened_pdf_path?: string | null;
+          signer_name?: string | null;
+          signed_at?: string | null;
+          submitted_at?: string | null;
+          created_by_profile_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          client_id?: string;
+          template_id?: string | null;
+          mode?: "interactive" | "desktop";
+          status?: "draft" | "submitted" | "signed";
+          form_values?: Json;
+          ink_strokes?: Json;
+          flattened_pdf_path?: string | null;
+          signer_name?: string | null;
+          signed_at?: string | null;
+          submitted_at?: string | null;
+          created_by_profile_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "anamnesis_submissions_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "anamnesis_submissions_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "anamnesis_submissions_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "anamnesis_templates";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       evolutions: {
         Row: {
           id: string;
@@ -385,6 +792,10 @@ export type Database = {
           client_id: string;
           appointment_id: string | null;
           body: string;
+          procedure_id: string | null;
+          purchase_id: string | null;
+          session_number: number | null;
+          created_by_profile_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -394,6 +805,10 @@ export type Database = {
           client_id: string;
           appointment_id?: string | null;
           body: string;
+          procedure_id?: string | null;
+          purchase_id?: string | null;
+          session_number?: number | null;
+          created_by_profile_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -403,6 +818,10 @@ export type Database = {
           client_id?: string;
           appointment_id?: string | null;
           body?: string;
+          procedure_id?: string | null;
+          purchase_id?: string | null;
+          session_number?: number | null;
+          created_by_profile_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -438,6 +857,12 @@ export type Database = {
           description: string | null;
           default_price_cents: number | null;
           duration_minutes: number | null;
+          cost_cents: number;
+          profit_margin_percent: number;
+          price_cents: number;
+          contract_template_id: string | null;
+          requires_signed_contract: boolean;
+          is_archived: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -448,6 +873,12 @@ export type Database = {
           description?: string | null;
           default_price_cents?: number | null;
           duration_minutes?: number | null;
+          cost_cents?: number;
+          profit_margin_percent?: number;
+          price_cents?: number;
+          contract_template_id?: string | null;
+          requires_signed_contract?: boolean;
+          is_archived?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -458,6 +889,12 @@ export type Database = {
           description?: string | null;
           default_price_cents?: number | null;
           duration_minutes?: number | null;
+          cost_cents?: number;
+          profit_margin_percent?: number;
+          price_cents?: number;
+          contract_template_id?: string | null;
+          requires_signed_contract?: boolean;
+          is_archived?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -467,6 +904,108 @@ export type Database = {
             columns: ["tenant_id"];
             isOneToOne: false;
             referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "procedures_contract_template_id_fkey";
+            columns: ["contract_template_id"];
+            isOneToOne: false;
+            referencedRelation: "contract_templates";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      products: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          name: string;
+          sku: string | null;
+          description: string | null;
+          unit: string;
+          stock_quantity: number;
+          low_stock_threshold: number;
+          cost_cents: number;
+          price_cents: number;
+          is_archived: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          name: string;
+          sku?: string | null;
+          description?: string | null;
+          unit?: string;
+          stock_quantity?: number;
+          low_stock_threshold?: number;
+          cost_cents?: number;
+          price_cents?: number;
+          is_archived?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          name?: string;
+          sku?: string | null;
+          description?: string | null;
+          unit?: string;
+          stock_quantity?: number;
+          low_stock_threshold?: number;
+          cost_cents?: number;
+          price_cents?: number;
+          is_archived?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      inventory_movements: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          product_id: string;
+          delta: number;
+          reason: Database["clinic"]["Enums"]["inventory_movement_reason"];
+          note: string | null;
+          ref_table: string | null;
+          ref_id: string | null;
+          created_by_profile_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          product_id: string;
+          delta: number;
+          reason?: Database["clinic"]["Enums"]["inventory_movement_reason"];
+          note?: string | null;
+          ref_table?: string | null;
+          ref_id?: string | null;
+          created_by_profile_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          product_id?: string;
+          delta?: number;
+          reason?: Database["clinic"]["Enums"]["inventory_movement_reason"];
+          note?: string | null;
+          ref_table?: string | null;
+          ref_id?: string | null;
+          created_by_profile_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
             referencedColumns: ["id"];
           },
         ];
@@ -758,6 +1297,50 @@ export type Database = {
           },
         ];
       };
+      contract_templates: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          title: string;
+          body_html: string | null;
+          storage_key: string | null;
+          mime_type: string | null;
+          is_default: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          title: string;
+          body_html?: string | null;
+          storage_key?: string | null;
+          mime_type?: string | null;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          title?: string;
+          body_html?: string | null;
+          storage_key?: string | null;
+          mime_type?: string | null;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "contract_templates_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       documents: {
         Row: {
           id: string;
@@ -765,8 +1348,11 @@ export type Database = {
           client_id: string;
           kind: string;
           title: string | null;
-          storage_key: string;
+          storage_key: string | null;
           mime_type: string | null;
+          body_html: string | null;
+          source_template_id: string | null;
+          responsible_profile_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -776,8 +1362,11 @@ export type Database = {
           client_id: string;
           kind: string;
           title?: string | null;
-          storage_key: string;
+          storage_key?: string | null;
           mime_type?: string | null;
+          body_html?: string | null;
+          source_template_id?: string | null;
+          responsible_profile_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -787,8 +1376,11 @@ export type Database = {
           client_id?: string;
           kind?: string;
           title?: string | null;
-          storage_key?: string;
+          storage_key?: string | null;
           mime_type?: string | null;
+          body_html?: string | null;
+          source_template_id?: string | null;
+          responsible_profile_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -807,6 +1399,20 @@ export type Database = {
             referencedRelation: "clients";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "documents_responsible_profile_id_fkey";
+            columns: ["responsible_profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "documents_source_template_id_fkey";
+            columns: ["source_template_id"];
+            isOneToOne: false;
+            referencedRelation: "contract_templates";
+            referencedColumns: ["id"];
+          },
         ];
       };
       photos: {
@@ -819,6 +1425,9 @@ export type Database = {
           taken_at: string | null;
           body_region: string;
           capture_angle: string | null;
+          purchase_id: string | null;
+          comparison_role: string | null;
+          evolution_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -831,6 +1440,9 @@ export type Database = {
           taken_at?: string | null;
           body_region?: string;
           capture_angle?: string | null;
+          purchase_id?: string | null;
+          comparison_role?: string | null;
+          evolution_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -843,6 +1455,9 @@ export type Database = {
           taken_at?: string | null;
           body_region?: string;
           capture_angle?: string | null;
+          purchase_id?: string | null;
+          comparison_role?: string | null;
+          evolution_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -859,6 +1474,13 @@ export type Database = {
             columns: ["client_id"];
             isOneToOne: false;
             referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "photos_purchase_id_fkey";
+            columns: ["purchase_id"];
+            isOneToOne: false;
+            referencedRelation: "client_procedure_purchases";
             referencedColumns: ["id"];
           },
         ];
@@ -993,9 +1615,44 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: string | null;
       };
+      appointment_conflict: {
+        Args: {
+          p_tenant_id: string;
+          p_starts_at: string;
+          p_ends_at: string;
+          p_ignore_id?: string | null;
+        };
+        Returns: Array<{
+          id: string;
+          client_id: string;
+          starts_at: string;
+          ends_at: string;
+          title: string | null;
+          client_name: string | null;
+        }>;
+      };
+      apply_inventory_movement: {
+        Args: {
+          p_tenant_id: string;
+          p_product_id: string;
+          p_delta: number;
+          p_reason: Database["clinic"]["Enums"]["inventory_movement_reason"];
+          p_note: string | null;
+          p_ref_table: string | null;
+          p_ref_id: string | null;
+          p_profile_id: string | null;
+        };
+        Returns: Database["clinic"]["Tables"]["inventory_movements"]["Row"];
+      };
     };
     Enums: {
-      [_ in never]: never;
+      inventory_movement_reason:
+        | "purchase"
+        | "manual_adjustment"
+        | "consumption"
+        | "sale"
+        | "loss"
+        | "return";
     };
     CompositeTypes: {
       [_ in never]: never;

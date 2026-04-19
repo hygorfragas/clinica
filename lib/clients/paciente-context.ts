@@ -12,6 +12,8 @@ export type PacienteClinicContext = {
     full_name: string;
     email: string | null;
     phone: string | null;
+    cpf: string | null;
+    address: string | null;
     birth_date: string | null;
     notes: string | null;
     created_at: string;
@@ -39,10 +41,11 @@ export async function loadPacienteClinicContext(
     .schema("clinic")
     .from("clients")
     .select(
-      "id, full_name, email, phone, birth_date, notes, created_at",
+      "id, full_name, email, phone, cpf, address, birth_date, notes, created_at",
     )
     .eq("id", clientId)
     .eq("tenant_id", profile.tenant_id)
+    .is("hidden_from_ui_at", null)
     .maybeSingle();
 
   if (error || !client) {

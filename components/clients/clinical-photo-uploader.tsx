@@ -21,6 +21,13 @@ type Row = {
   angle: string;
   caption: string;
   taken_at: string;
+  comparisonRole: "" | "before" | "after";
+};
+
+export type PurchaseOption = {
+  id: string;
+  title: string;
+  purchased_at: string;
 };
 
 function newKey() {
@@ -31,14 +38,18 @@ export function ClinicalPhotoUploader({
   clientId,
   compact,
   onBatchComplete,
+  purchaseOptions = [],
 }: {
   clientId: string;
   compact?: boolean;
   onBatchComplete?: () => void;
+  /** Procedimentos/compras da paciente para vínculo antes/depois */
+  purchaseOptions?: PurchaseOption[];
 }) {
   const router = useRouter();
   const baseId = useId();
   const [region, setRegion] = useState<BodyRegion>(BODY_REGIONS.face);
+  const [purchaseId, setPurchaseId] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +74,7 @@ export function ClinicalPhotoUploader({
         angle: region === BODY_REGIONS.face ? "" : "__other__",
         caption: "",
         taken_at: "",
+        comparisonRole: "",
       })),
     );
     setError(null);
@@ -99,11 +111,18 @@ export function ClinicalPhotoUploader({
         r.taken_at.trim() && /^\d{4}-\d{2}-\d{2}$/.test(r.taken_at.trim())
           ? r.taken_at.trim()
           : null,
+      comparison_role:
+        purchaseId && r.comparisonRole
+          ? r.comparisonRole
+          : null,
     }));
 
     const fd = new FormData();
     fd.set("body_region", region);
     fd.set("meta", JSON.stringify(meta));
+    if (purchaseId) {
+      fd.set("purchase_id", purchaseId);
+    }
     for (const r of rows) {
       fd.append("files", r.file);
     }
@@ -192,6 +211,38 @@ export function ClinicalPhotoUploader({
         </p>
       )}
 
+      {purchaseOptions.length > 0 ? (
+        <div className="space-y-2 rounded-2xl bg-muted/40 p-4 ring-1 ring-line/60">
+          <Label htmlFor={`${baseId}-purchase`}>
+            Vincular a um procedimento (comparativo antes/depois)
+          </Label>
+          <select
+            id={`${baseId}-purchase`}
+            className={selectCls}
+            value={purchaseId}
+            onChange={(e) => {
+              setPurchaseId(e.target.value);
+              setRows((prev) =>
+                prev.map((r) => ({ ...r, comparisonRole: "" })),
+              );
+            }}
+          >
+            <option value="">Nenhum — fotos gerais do prontuário</option>
+            {purchaseOptions.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title} ·{" "}
+                {new Date(p.purchased_at).toLocaleDateString("pt-BR")}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-ink-muted">
+            Com um procedimento selecionado, marque cada foto como{" "}
+            <strong className="text-ink">Antes</strong> ou{" "}
+            <strong className="text-ink">Depois</strong> abaixo.
+          </p>
+        </div>
+      ) : null}
+
       <div className="space-y-2">
         <Label htmlFor={`${baseId}-files`}>Imagens</Label>
         <Input
@@ -254,6 +305,35 @@ export function ClinicalPhotoUploader({
                   </select>
                 </div>
               )}
+              {purchaseId ? (
+                <div className="mt-3 space-y-2">
+                  <Label htmlFor={`${baseId}-cmp-${r.key}`}>Comparativo</Label>
+                  <select
+                    id={`${baseId}-cmp-${r.key}`}
+                    className={selectCls}
+                    value={r.comparisonRole}
+                    onChange={(e) =>
+                      setRows((prev) =>
+                        prev.map((x) =>
+                          x.key === r.key
+                            ? {
+                                ...x,
+                                comparisonRole: e.target.value as
+                                  | ""
+                                  | "before"
+                                  | "after",
+                              }
+                            : x,
+                        ),
+                      )
+                    }
+                  >
+                    <option value="">Sem marcação</option>
+                    <option value="before">Antes</option>
+                    <option value="after">Depois</option>
+                  </select>
+                </div>
+              ) : null}
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor={`${baseId}-cap-${r.key}`}>Legenda (opcional)</Label>

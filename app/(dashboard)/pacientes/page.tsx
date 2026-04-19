@@ -42,6 +42,7 @@ export default async function PacientesPage() {
     .from("clients")
     .select("id, full_name, phone, email, created_at")
     .eq("tenant_id", tenantId)
+    .is("hidden_from_ui_at", null)
     .order("full_name", { ascending: true });
 
   const clients = (raw ?? []) as ClientRow[];
