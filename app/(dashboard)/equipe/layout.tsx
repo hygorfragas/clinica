@@ -1,12 +1,7 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import {
-  fetchClinicProfile,
-  isPlatformSuperAdmin,
-  isTenantManager,
-} from "@/lib/auth/clinic-profile";
-import { isSupabasePublicEnvConfigured } from "@/lib/supabase/env";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentUserFromServerCookies } from "@/lib/auth/local-auth";
+import { postLoginPathForClinicProfile } from "@/lib/auth/post-login-path";
 
 /** Equipe (profissionais): apenas owner ou clinic_admin do tenant. */
 export default async function EquipeLayout({
@@ -14,21 +9,21 @@ export default async function EquipeLayout({
 }: {
   children: ReactNode;
 }) {
-  if (!isSupabasePublicEnvConfigured()) {
-    redirect("/");
-  }
-
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUserFromServerCookies();
   if (!user) {
     redirect("/login");
   }
 
-  const profile = await fetchClinicProfile(supabase, user.id);
-  if (!isTenantManager(profile)) {
-    if (isPlatformSuperAdmin(profile)) {
+  const landing = postLoginPathForClinicProfile({
+    role: user.role,
+    tenant_id: user.tenantId,
+  });
+  const isTenantManager = Boolean(
+    user.tenantId && (user.role === "owner" || user.role === "clinic_admin"),
+  );
+
+  if (!isTenantManager) {
+    if (landing === "/plataforma") {
       redirect("/plataforma");
     }
     redirect("/inicio");
