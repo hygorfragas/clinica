@@ -1,11 +1,17 @@
 "use client";
-
-import type { EmailOtpType } from "@supabase/supabase-js";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
-const OTP_TYPES: EmailOtpType[] = [
+type AuthOtpType =
+  | "signup"
+  | "invite"
+  | "magiclink"
+  | "recovery"
+  | "email_change"
+  | "email";
+
+const OTP_TYPES: AuthOtpType[] = [
   "signup",
   "invite",
   "magiclink",
@@ -80,11 +86,11 @@ function CallbackContent() {
       if (
         tokenHash &&
         typeParam &&
-        OTP_TYPES.includes(typeParam as EmailOtpType)
+        OTP_TYPES.includes(typeParam as AuthOtpType)
       ) {
         const { error } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,
-          type: typeParam as EmailOtpType,
+          type: typeParam as AuthOtpType,
         });
         if (cancelled) return;
         if (error) {

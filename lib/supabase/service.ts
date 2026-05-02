@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import type { Database } from "./database.types";
 
 /** Apenas rotas/API server-side com variável de ambiente segura. */
@@ -10,7 +10,15 @@ export function createServiceRoleClient() {
       "Defina SUPABASE_SERVICE_ROLE_KEY no servidor para convites com service role.",
     );
   }
-  return createClient<Database>(url, key, {
+  return createServerClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    cookies: {
+      getAll() {
+        return [];
+      },
+      setAll() {
+        // Service-role client em rotas server-side não persiste sessão/cookies.
+      },
+    },
   });
 }
