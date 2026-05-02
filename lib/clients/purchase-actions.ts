@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClientPurchaseSchema } from "@/lib/validations/client-purchase";
 import type { ClinicSupabaseClient } from "@/lib/clients/clinical-tenant-context";
 import { requireClinicalTenantContext } from "@/lib/clients/clinical-tenant-context";
+import { dispatchProcedurePurchaseCreated } from "@/lib/financial/dispatcher";
 
 type ActionError = { ok: false; error: string };
 type ActionOk = { ok: true };
@@ -76,7 +77,7 @@ export async function createClientPurchase(
     }
   }
 
-  const { error } = await ctx.supabase
+  const { data: inserted, error } = await ctx.supabase
     .schema("clinic")
     .from("client_procedure_purchases")
     .insert({
@@ -90,12 +91,24 @@ export async function createClientPurchase(
       procedure_id: d.procedureId ?? null,
       responsible_profile_id: ctx.userId,
       notes: d.notes?.trim() ? d.notes.trim().slice(0, 2000) : null,
-    });
+    })
+    .select("id, purchased_at")
+    .single();
 
-  if (error) {
+  if (error || !inserted) {
     return { ok: false, error: error.message ?? "Erro ao registrar a compra." };
   }
 
+  await dispatchProcedurePurchaseCreated(ctx.supabase, ctx.tenantId, {
+    id: inserted.id,
+    title: d.title,
+    total_cents: d.totalCents,
+    client_id: d.clientId,
+    occurred_on: inserted.purchased_at?.slice(0, 10),
+    responsible_profile_id: ctx.userId,
+  });
+
+  revalidatePath("/financeiro");
   revalidatePath(`/pacientes/${d.clientId}`, "layout");
   return { ok: true };
 }
