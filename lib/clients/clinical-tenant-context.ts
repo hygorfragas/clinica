@@ -1,11 +1,11 @@
 import {
   canAccessAgenda,
-  fetchClinicProfile,
 } from "@/lib/auth/clinic-profile";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentUserFromServerCookies } from "@/lib/auth/local-auth";
+import { createServiceRoleClient } from "@/lib/supabase/service";
 
 export type ClinicSupabaseClient = Awaited<
-  ReturnType<typeof createServerSupabaseClient>
+  ReturnType<typeof createServiceRoleClient>
 >;
 
 export type ClinicalTenantContext = {
@@ -20,14 +20,12 @@ export type ClinicalActionError = { ok: false; error: string };
 export async function requireClinicalTenantContext(): Promise<
   ({ ok: true } & ClinicalTenantContext) | ClinicalActionError
 > {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user?.id) {
+  const supabase = createServiceRoleClient();
+  const user = await getCurrentUserFromServerCookies();
+  if (!user?.userId) {
     return { ok: false, error: "Sessão expirada. Entre novamente." };
   }
-  const profile = await fetchClinicProfile(supabase, user.id);
+  const profile = { role: user.role, tenant_id: user.tenantId };
   if (!profile?.tenant_id || !canAccessAgenda(profile)) {
     return { ok: false, error: "Sem permissão para esta ação." };
   }
@@ -35,6 +33,6 @@ export async function requireClinicalTenantContext(): Promise<
     ok: true,
     supabase,
     tenantId: profile.tenant_id,
-    userId: user.id,
+    userId: user.userId,
   };
 }

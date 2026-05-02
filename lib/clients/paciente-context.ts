@@ -1,11 +1,11 @@
 import {
   canAccessAgenda,
-  fetchClinicProfile,
 } from "@/lib/auth/clinic-profile";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentUserFromServerCookies } from "@/lib/auth/local-auth";
+import { createServiceRoleClient } from "@/lib/supabase/service";
 
 export type PacienteClinicContext = {
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
+  supabase: Awaited<ReturnType<typeof createServiceRoleClient>>;
   tenantId: string;
   client: {
     id: string;
@@ -24,15 +24,13 @@ export type PacienteClinicContext = {
 export async function loadPacienteClinicContext(
   clientId: string,
 ): Promise<PacienteClinicContext | null> {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = createServiceRoleClient();
+  const user = await getCurrentUserFromServerCookies();
   if (!user) {
     return null;
   }
 
-  const profile = await fetchClinicProfile(supabase, user.id);
+  const profile = { role: user.role, tenant_id: user.tenantId };
   if (!profile?.tenant_id || !canAccessAgenda(profile)) {
     return null;
   }

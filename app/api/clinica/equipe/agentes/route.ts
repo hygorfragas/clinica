@@ -1,33 +1,22 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import {
   assertSignatureMime,
   buildProfileAssetStoragePath,
   CLINICAL_BUCKET,
   MAX_SIGNATURE_BYTES,
 } from "@/lib/clinical/storage";
-import {
-  fetchClinicProfile,
-  isTenantManager,
-} from "@/lib/auth/clinic-profile";
+import { createLocalUser, getCurrentUserFromRequest } from "@/lib/auth/local-auth";
 import { createProfessionalFieldsSchema } from "@/lib/validations/equipe";
-import { isSupabasePublicEnvConfigured } from "@/lib/supabase/env";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 
 function optionalFile(fd: FormData, name: string): File | null {
   const v = fd.get(name);
-  if (v instanceof File && v.size > 0) return v;
+  if (v instanceof Blob && v.size > 0) return v as File;
   return null;
 }
 
-export async function POST(request: Request) {
-  if (!isSupabasePublicEnvConfigured()) {
-    return NextResponse.json(
-      { error: "Supabase não configurado (variáveis de ambiente)." },
-      { status: 503 },
-    );
-  }
-
+export async function POST(request: NextRequest) {
   const contentType = request.headers.get("content-type") ?? "";
   let fields: Record<string, string>;
   let multipartFd: FormData | null = null;
@@ -73,24 +62,19 @@ export async function POST(request: Request) {
   }
 
   const body = parsed.data;
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUserFromRequest(request);
   if (!user) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
 
-  const profile = await fetchClinicProfile(supabase, user.id);
-  if (
-    !profile ||
-    !isTenantManager(profile) ||
-    profile.tenant_id == null
-  ) {
+  const isTenantManager =
+    Boolean(user.tenantId) &&
+    (user.role === "owner" || user.role === "clinic_admin");
+  if (!isTenantManager || !user.tenantId) {
     return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
   }
 
-  const tenantId = profile.tenant_id;
+  const tenantId = user.tenantId;
 
   const stampFile =
     multipartFd != null ? optionalFile(multipartFd, "stamp") : null;
@@ -123,19 +107,13 @@ export async function POST(request: Request) {
     const signatureMime = assertSignaturePng(signatureFile);
 
     const admin = createServiceRoleClient();
-    const { data: created, error: authErr } =
-      await admin.auth.admin.createUser({
-        email: body.email,
-        password: body.password,
-        email_confirm: true,
-        user_metadata: { full_name: body.fullName },
-      });
-
-    if (authErr || !created.user) {
-      throw new Error(authErr?.message ?? "Falha ao criar usuário");
-    }
-
-    const newId = created.user.id;
+    const { userId: newId } = await createLocalUser({
+      email: body.email,
+      password: body.password,
+      fullName: body.fullName,
+      role: "agent",
+      tenantId,
+    });
 
     const updatePayload: Record<string, string | null | undefined> = {
       tenant_id: tenantId,
@@ -159,7 +137,6 @@ export async function POST(request: Request) {
         .from(CLINICAL_BUCKET)
         .upload(path, buf, { contentType: stampMime, upsert: false });
       if (upErr) {
-        await admin.auth.admin.deleteUser(newId);
         throw new Error(upErr.message ?? "Falha ao enviar carimbo.");
       }
       updatePayload.stamp_storage_key = path;
@@ -182,7 +159,6 @@ export async function POST(request: Request) {
             .from(CLINICAL_BUCKET)
             .remove([updatePayload.stamp_storage_key]);
         }
-        await admin.auth.admin.deleteUser(newId);
         throw new Error(upErr.message ?? "Falha ao enviar assinatura.");
       }
       updatePayload.signature_storage_key = path;
@@ -205,7 +181,6 @@ export async function POST(request: Request) {
       if (keys.length > 0) {
         await admin.storage.from(CLINICAL_BUCKET).remove(keys);
       }
-      await admin.auth.admin.deleteUser(newId);
       throw new Error(profileErr.message);
     }
 

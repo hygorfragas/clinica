@@ -3,30 +3,28 @@ import { CalendarDays, ClipboardList, Package, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatCard } from "@/components/clinic/stat-card";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  canAccessAgenda,
-  fetchClinicProfile,
-} from "@/lib/auth/clinic-profile";
+import { getCurrentUserFromServerCookies } from "@/lib/auth/local-auth";
+import { postLoginPathForClinicProfile } from "@/lib/auth/post-login-path";
 import { firstNameFromFullName, greetingForHour } from "@/lib/greeting";
 import { getDayBoundsUtcIso } from "@/lib/dates";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service";
 import { redirect } from "next/navigation";
 
 export default async function InicioPage() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUserFromServerCookies();
   if (!user) {
     redirect("/login");
   }
 
-  const profile = await fetchClinicProfile(supabase, user.id);
-  if (!profile || !canAccessAgenda(profile)) {
+  const landing = postLoginPathForClinicProfile({
+    role: user.role,
+    tenant_id: user.tenantId,
+  });
+  if (landing !== "/inicio") {
     redirect("/aguardando-acesso");
   }
 
-  const tenantId = profile.tenant_id;
+  const tenantId = user.tenantId;
   if (!tenantId) {
     redirect("/aguardando-acesso");
   }
@@ -34,26 +32,53 @@ export default async function InicioPage() {
   const { startIso, endIso } = getDayBoundsUtcIso(new Date());
   const hour = new Date().getHours();
   const greet = greetingForHour(hour);
-  const first = firstNameFromFullName(profile.full_name);
+  const supabase = createServiceRoleClient();
+  const { data: profileName } = await supabase
+    .schema("clinic")
+    .from("profiles")
+    .select("full_name")
+    .eq("id", user.userId)
+    .maybeSingle();
+  const first = firstNameFromFullName(profileName?.full_name ?? user.email);
 
-  const [apptRes, clientsRes] = await Promise.all([
-    supabase
-      .schema("clinic")
-      .from("appointments")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .gte("starts_at", startIso)
-      .lte("starts_at", endIso),
-    supabase
-      .schema("clinic")
-      .from("clients")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .is("hidden_from_ui_at", null),
-  ]);
+  const [apptRes, clientsRes, draftBudgetsRes, sentBudgetsRes] =
+    await Promise.all([
+      supabase
+        .schema("clinic")
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .gte("starts_at", startIso)
+        .lte("starts_at", endIso),
+      supabase
+        .schema("clinic")
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .is("hidden_from_ui_at", null),
+      supabase
+        .schema("clinic")
+        .from("budgets")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .eq("status", "draft"),
+      supabase
+        .schema("clinic")
+        .from("budgets")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .eq("status", "sent"),
+    ]);
 
   const todayCount = apptRes.count ?? 0;
   const clientsCount = clientsRes.count ?? 0;
+  const draftBudgetsCount = draftBudgetsRes.count ?? 0;
+  const sentBudgetsCount = sentBudgetsRes.count ?? 0;
+  const openBudgetsCount = draftBudgetsCount + sentBudgetsCount;
+  const budgetsHint =
+    openBudgetsCount > 0
+      ? `${draftBudgetsCount} rascunho${draftBudgetsCount === 1 ? "" : "s"} · ${sentBudgetsCount} enviado${sentBudgetsCount === 1 ? "" : "s"}`
+      : "Nenhum em aberto";
 
   return (
     <div className="mx-auto max-w-6xl space-y-12">
@@ -85,13 +110,19 @@ export default async function InicioPage() {
           value={clientsCount}
           label="Pacientes cadastrados"
         />
-        <StatCard
-          tone="neutral"
-          icon={ClipboardList}
-          value="—"
-          label="Orçamentos em aberto"
-          hint="Em breve"
-        />
+        <Link
+          href="/orcamentos"
+          aria-label="Ver orçamentos em aberto"
+          className="rounded-[2rem] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+        >
+          <StatCard
+            tone="neutral"
+            icon={ClipboardList}
+            value={openBudgetsCount}
+            label="Orçamentos em aberto"
+            hint={budgetsHint}
+          />
+        </Link>
       </section>
 
       <section className="rounded-[2rem] border border-white/60 bg-surface/90 p-7 shadow-panel ring-1 ring-[rgba(42,68,59,0.06)] backdrop-blur-sm md:p-9">

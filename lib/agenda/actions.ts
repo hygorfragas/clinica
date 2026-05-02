@@ -1,8 +1,16 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { canAccessAgenda, fetchClinicProfile } from "@/lib/auth/clinic-profile";
+import { revalidatePath } from "next/cache";
+import { canAccessAgenda } from "@/lib/auth/clinic-profile";
 import { CLINIC_TIMEZONE } from "@/lib/dates";
 import { pushSystemChange } from "@/lib/google/sync";
+import { getCurrentUserFromServerCookies } from "@/lib/auth/local-auth";
+import { createServiceRoleClient } from "@/lib/supabase/service";
 import { APPOINTMENT_SELECT, mapAppointmentRow } from "./mapper";
+type ClinicDbClient = ReturnType<typeof createServiceRoleClient>;
+
+function invalidateAgendaCaches() {
+  revalidatePath("/agenda");
+  revalidatePath("/inicio");
+}
 import {
   createAppointmentSchema,
   updateAppointmentSchema,
@@ -24,27 +32,25 @@ export type ConflictInfo = {
 };
 
 async function getAuthContext() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUserFromServerCookies();
   if (!user) {
     return { ok: false as const, error: "Sessão expirada." };
   }
-  const profile = await fetchClinicProfile(supabase, user.id);
+  const profile = { id: user.userId, role: user.role, tenant_id: user.tenantId };
   if (!profile || !canAccessAgenda(profile) || !profile.tenant_id) {
     return { ok: false as const, error: "Sem permissão para a agenda." };
   }
+  const supabase = createServiceRoleClient();
   return {
     ok: true as const,
     supabase,
     tenantId: profile.tenant_id,
-    profileId: profile.id,
+    profileId: user.userId,
   };
 }
 
 async function findConflict(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  supabase: ClinicDbClient,
   tenantId: string,
   startsAt: string,
   endsAt: string,
@@ -84,7 +90,7 @@ async function findConflict(
 }
 
 async function fetchTimezone(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  supabase: ClinicDbClient,
   tenantId: string,
 ): Promise<string> {
   const { data } = await supabase
@@ -97,7 +103,7 @@ async function fetchTimezone(
 }
 
 async function fetchClientTitleSummary(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  supabase: ClinicDbClient,
   tenantId: string,
   clientId: string | null | undefined,
   procedureId: string | null | undefined,
@@ -258,6 +264,7 @@ export async function createAppointment(
     appointment.googleSyncStatus = "queued";
   }
 
+  invalidateAgendaCaches();
   return { ok: true, data: appointment };
 }
 
@@ -386,6 +393,7 @@ export async function updateAppointment(
     next.googleSyncStatus = "queued";
   }
 
+  invalidateAgendaCaches();
   return { ok: true, data: next };
 }
 
@@ -419,5 +427,6 @@ export async function deleteAppointment(
     .eq("tenant_id", auth.tenantId);
 
   if (error) return { ok: false, error: error.message };
+  invalidateAgendaCaches();
   return { ok: true, data: { id } };
 }

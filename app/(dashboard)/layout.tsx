@@ -1,50 +1,53 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/layout/app-shell";
-import {
-  canAccessAgenda,
-  fetchClinicProfile,
-  isPlatformSuperAdmin,
-  isTenantManager,
-} from "@/lib/auth/clinic-profile";
-import { isSupabasePublicEnvConfigured } from "@/lib/supabase/env";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { ThemeProvider } from "@/components/theme/theme-provider";
+import { getCurrentUserFromServerCookies } from "@/lib/auth/local-auth";
+import { postLoginPathForClinicProfile } from "@/lib/auth/post-login-path";
+import { resolveThemeForRequest } from "@/lib/theme/server";
+
+function isTenantManagerRole(role: string, tenantId: string | null) {
+  return Boolean(tenantId && (role === "owner" || role === "clinic_admin"));
+}
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  if (!isSupabasePublicEnvConfigured()) {
-    redirect("/");
-  }
-
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUserFromServerCookies();
   if (!user?.email) {
     redirect("/login");
   }
 
-  const profile = await fetchClinicProfile(supabase, user.id);
-  if (!profile) {
-    redirect("/login");
-  }
-
-  const variant = isPlatformSuperAdmin(profile)
-    ? "platform"
-    : canAccessAgenda(profile)
-      ? "clinic"
-      : null;
+  const landing = postLoginPathForClinicProfile({
+    role: user.role,
+    tenant_id: user.tenantId,
+  });
+  const variant =
+    landing === "/plataforma" ? "platform" : landing === "/inicio" ? "clinic" : null;
 
   if (!variant) {
     redirect("/aguardando-acesso");
   }
 
+  const theme = await resolveThemeForRequest();
+  const showEquipe = isTenantManagerRole(user.role, user.tenantId);
+  const showFinanceiro = showEquipe;
+
   return (
-    <AppShell
-      variant={variant}
-      userEmail={user.email}
-      showEquipe={isTenantManager(profile)}
+    <ThemeProvider
+      initialAccent={theme.accent}
+      initialMode={theme.mode}
+      userOverride={theme.userOverride}
+      clinicDefault={theme.clinicDefault}
+      canEditClinicDefault={showEquipe}
     >
-      {children}
-    </AppShell>
+      <AppShell
+        variant={variant}
+        userEmail={user.email}
+        showEquipe={showEquipe}
+        showFinanceiro={showFinanceiro}
+        tenantId={variant === "clinic" ? user.tenantId : null}
+      >
+        {children}
+      </AppShell>
+    </ThemeProvider>
   );
 }
