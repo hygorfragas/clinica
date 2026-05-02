@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -11,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 import { cn } from "@/lib/utils";
 
 type Settings = {
@@ -93,6 +95,7 @@ export function AgendaConfigPanel({
         ? `Falha ao vincular Google: ${callbackParams.error}`
         : null,
   );
+  const { confirm, element: confirmDialog } = useConfirmDialog();
 
   function toggleDay(day: number) {
     setSettings((s) => {
@@ -120,32 +123,47 @@ export function AgendaConfigPanel({
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setFeedback(body?.error ?? "Falha ao salvar configurações.");
+        const msg = body?.error ?? "Falha ao salvar configurações.";
+        setFeedback(msg);
+        notifyError(null, msg);
       } else {
         setFeedback("Configurações salvas.");
+        notifySuccess("Configurações salvas.");
       }
     } finally {
       setSaving(false);
     }
   }
 
-  async function disconnect() {
-    if (!confirm("Desvincular conta Google? Os eventos existentes permanecem no sistema.")) return;
-    setDisconnecting(true);
-    setFeedback(null);
-    try {
-      const res = await fetch("/api/agenda/google/disconnect", {
-        method: "POST",
-      });
-      if (res.ok) {
-        location.reload();
-      } else {
-        const body = await res.json().catch(() => ({}));
-        setFeedback(body?.error ?? "Falha ao desconectar.");
-      }
-    } finally {
-      setDisconnecting(false);
-    }
+  function disconnect() {
+    confirm({
+      title: "Desvincular Google Agenda",
+      description:
+        "Os eventos já criados permanecem no sistema, mas novos agendamentos deixarão de sincronizar até reconectar.",
+      confirmLabel: "Desvincular",
+      destructive: true,
+      onConfirm: async () => {
+        setDisconnecting(true);
+        setFeedback(null);
+        try {
+          const res = await fetch("/api/agenda/google/disconnect", {
+            method: "POST",
+          });
+          if (res.ok) {
+            notifySuccess("Google Agenda desvinculado.");
+            location.reload();
+            return;
+          }
+          const body = await res.json().catch(() => ({}));
+          const msg = body?.error ?? "Falha ao desconectar.";
+          setFeedback(msg);
+          notifyError(null, msg);
+          throw new Error(msg);
+        } finally {
+          setDisconnecting(false);
+        }
+      },
+    });
   }
 
   async function runSync() {
@@ -155,11 +173,13 @@ export function AgendaConfigPanel({
       const res = await fetch("/api/agenda/google/sync", { method: "POST" });
       const body = await res.json().catch(() => ({}));
       if (res.ok && body.ok) {
-        setFeedback(
-          `Sync concluído. ${body.upserted ?? 0} itens atualizados, ${body.deleted ?? 0} removidos.`,
-        );
+        const msg = `Sync concluído. ${body.upserted ?? 0} itens atualizados, ${body.deleted ?? 0} removidos.`;
+        setFeedback(msg);
+        notifySuccess(msg);
       } else {
-        setFeedback(body?.error ?? "Falha ao sincronizar.");
+        const msg = body?.error ?? "Falha ao sincronizar.";
+        setFeedback(msg);
+        notifyError(null, msg);
       }
     } finally {
       setSyncing(false);
@@ -200,6 +220,7 @@ export function AgendaConfigPanel({
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      {confirmDialog}
       <header className="space-y-1">
         <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-4xl">
           Google Agenda

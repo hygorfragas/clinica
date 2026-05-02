@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClientPurchase } from "@/lib/clients/purchase-actions";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 export type HistoricoCompraRow = {
   id: string;
@@ -64,10 +65,13 @@ export function PacienteHistoricoComprasPanel({
     const notes = String(fd.get("notes") ?? "").trim();
 
     if (Number.isNaN(total) || total < 0) {
-      setError("Informe um valor válido (ex.: 1500 ou 1500,50).");
+      const msg = "Informe um valor válido (ex.: 1500 ou 1500,50).";
+      setError(msg);
+      notifyError(null, msg);
       return;
     }
 
+    const formEl = e.currentTarget;
     startTransition(async () => {
       const result = await createClientPurchase({
         clientId,
@@ -80,9 +84,11 @@ export function PacienteHistoricoComprasPanel({
       });
       if (!result.ok) {
         setError(result.error);
+        notifyError(null, result.error);
         return;
       }
-      e.currentTarget.reset();
+      notifySuccess("Lançamento registrado.");
+      formEl.reset();
       setOpenForm(false);
       router.refresh();
     });
@@ -209,8 +215,8 @@ export function PacienteHistoricoComprasPanel({
           ) : null}
 
           <div className="mt-4">
-            <Button type="submit" disabled={pending}>
-              {pending ? "Salvando..." : "Salvar lançamento"}
+            <Button type="submit" loading={pending} loadingLabel="Salvando...">
+              Salvar lançamento
             </Button>
           </div>
         </form>

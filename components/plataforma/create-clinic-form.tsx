@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { slugifyName } from "@/lib/strings";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 export function CreateClinicForm({ onCreated }: { onCreated?: () => void }) {
   const router = useRouter();
@@ -50,9 +51,9 @@ export function CreateClinicForm({ onCreated }: { onCreated?: () => void }) {
         try {
           body = JSON.parse(raw) as typeof body;
         } catch {
-          setError(
-            `Resposta inválida (${res.status}). Verifique o terminal do servidor ou se SUPABASE_SERVICE_ROLE_KEY está definida.`,
-          );
+          const msg = `Resposta inválida (${res.status}). Verifique o terminal do servidor ou se SUPABASE_SERVICE_ROLE_KEY está definida.`;
+          setError(msg);
+          notifyError(null, msg);
           return;
         }
       }
@@ -64,13 +65,15 @@ export function CreateClinicForm({ onCreated }: { onCreated?: () => void }) {
           .join(" ");
         const fromForm = (body.issues?.formErrors ?? []).filter(Boolean).join(" ");
         const detail = [fromFields, fromForm].filter(Boolean).join(" ");
-        setError(
+        const msg =
           detail ||
-            body.error ||
-            `Falha (${res.status} ${res.statusText || ""}).`.trim(),
-        );
+          body.error ||
+          `Falha (${res.status} ${res.statusText || ""}).`.trim();
+        setError(msg);
+        notifyError(null, msg);
         return;
       }
+      notifySuccess("Clínica criada.");
       form.reset();
       onCreated?.();
       router.refresh();
@@ -145,8 +148,8 @@ export function CreateClinicForm({ onCreated }: { onCreated?: () => void }) {
               {error}
             </p>
           )}
-          <Button type="submit" disabled={loading}>
-            {loading ? "Salvando…" : "Criar clínica"}
+          <Button type="submit" loading={loading} loadingLabel="Salvando...">
+            Criar clínica
           </Button>
         </form>
       </CardContent>

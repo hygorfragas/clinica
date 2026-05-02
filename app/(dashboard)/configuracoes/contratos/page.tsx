@@ -2,26 +2,12 @@ import {
   ContractTemplatesManager,
   type ContractTemplateListItem,
 } from "@/components/configuracoes/contract-templates-manager";
-import {
-  canAccessAgenda,
-  fetchClinicProfile,
-} from "@/lib/auth/clinic-profile";
+import { requireClinicAdminPage } from "@/lib/auth/page-guards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 
 export default async function ConfiguracoesContratosPage() {
+  const profile = await requireClinicAdminPage();
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const profile = await fetchClinicProfile(supabase, user.id);
-  if (!profile?.tenant_id || !canAccessAgenda(profile)) {
-    redirect("/aguardando-acesso");
-  }
 
   const { data: rows, error } = await supabase
     .schema("clinic")
@@ -65,21 +51,6 @@ export default async function ConfiguracoesContratosPage() {
         <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-4xl">
           Modelos de contrato
         </h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-ink-muted">
-          Centralize os contratos da clínica: redija no editor (formatação próxima à ABNT) ou envie
-          PDF/imagem. No cadastro de nova paciente, ao escolher tipo <strong className="text-ink">Contrato</strong>,
-          a paciente vê o modelo e você anexa a cópia à ficha com um clique.
-        </p>
-        <p className="max-w-2xl text-sm leading-relaxed text-ink-muted">
-          Em HTML, use os placeholders{" "}
-          <code className="rounded bg-muted px-1 text-xs">{"{{client.full_name}}"}</code>,{" "}
-          <code className="rounded bg-muted px-1 text-xs">{"{{client.cpf}}"}</code>,{" "}
-          <code className="rounded bg-muted px-1 text-xs">{"{{client.phone}}"}</code>,{" "}
-          <code className="rounded bg-muted px-1 text-xs">{"{{client.address}}"}</code>,{" "}
-          <code className="rounded bg-muted px-1 text-xs">{"{{professional.signature}}"}</code>,{" "}
-          <code className="rounded bg-muted px-1 text-xs">{"{{professional.stamp}}"}</code>{" "}
-          (carimbo e assinatura cadastrados em Configurações › Profissional).
-        </p>
       </header>
       <ContractTemplatesManager initialTemplates={initialTemplates} />
     </div>

@@ -113,7 +113,7 @@ export async function uploadEvolutionPhoto(
   }
 
   const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
+  if (!(file instanceof Blob) || file.size === 0) {
     return { ok: false, error: "Selecione uma imagem." };
   }
   if (file.size > MAX_PHOTO_BYTES) {
@@ -132,7 +132,7 @@ export async function uploadEvolutionPhoto(
     tenantId: ctx.tenantId,
     clientId: cid.data,
     category: "photos",
-    originalFileName: file.name,
+    originalFileName: (file as File).name ?? "arquivo",
   });
 
   const buffer = Buffer.from(await file.arrayBuffer());

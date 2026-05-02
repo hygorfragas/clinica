@@ -27,6 +27,17 @@ export function isTenantManager(profile: ProfileAccessShape): boolean {
   return TENANT_MANAGER_ROLES.has(profile.role);
 }
 
+/**
+ * Administrador específico da clínica (NÃO confundir com "owner": owner é
+ * super admin global da plataforma neste sistema). Apenas `clinic_admin` com
+ * tenant vinculado tem acesso pleno aos módulos administrativos (Financeiro,
+ * Equipe, Configurações completas).
+ */
+export function isClinicAdmin(profile: ProfileAccessShape): boolean {
+  if (!profile?.tenant_id) return false;
+  return profile.role === "clinic_admin";
+}
+
 export function isPlatformSuperAdmin(
   profile: ProfileAccessShape,
 ): boolean {

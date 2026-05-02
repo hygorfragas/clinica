@@ -1,37 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CreateClinicForm } from "@/components/plataforma/create-clinic-form";
+import { notifyError } from "@/lib/ui/notify";
+import { queryKeys } from "@/lib/query/keys";
 
 type Tenant = { id: string; name: string; slug: string | null; created_at: string };
 
-export function PlatformClinicsPanel() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+type TenantsResponse = { tenants?: Tenant[]; error?: string };
 
-  async function refresh() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/plataforma/clinicas");
-      const body = (await res.json().catch(() => ({}))) as {
-        error?: string;
-        tenants?: Tenant[];
-      };
-      if (!res.ok) {
-        setError(body.error ?? "Falha ao carregar clínicas.");
-        return;
-      }
-      setTenants(body.tenants ?? []);
-    } finally {
-      setLoading(false);
-    }
+async function fetchClinics(): Promise<Tenant[]> {
+  const res = await fetch("/api/plataforma/clinicas", { cache: "no-store" });
+  const body = (await res.json().catch(() => ({}))) as TenantsResponse;
+  if (!res.ok) {
+    throw new Error(body.error ?? "Falha ao carregar clínicas.");
+  }
+  return body.tenants ?? [];
+}
+
+export function PlatformClinicsPanel() {
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: queryKeys.platform.clinics(),
+    queryFn: fetchClinics,
+  });
+
+  const loading = query.isLoading || query.isFetching;
+  const tenants = query.data ?? [];
+
+  async function handleCreated() {
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.platform.clinics(),
+    });
   }
 
-  useEffect(() => {
-    void refresh();
-  }, []);
+  async function refresh() {
+    const result = await query.refetch();
+    if (result.error instanceof Error) {
+      notifyError(result.error, result.error.message);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -49,7 +57,7 @@ export function PlatformClinicsPanel() {
         </p>
       </header>
 
-      <CreateClinicForm onCreated={() => void refresh()} />
+      <CreateClinicForm onCreated={() => void handleCreated()} />
 
       <section className="rounded-[1.75rem] bg-surface p-6 shadow-lift ring-1 ring-line md:p-8">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -59,20 +67,20 @@ export function PlatformClinicsPanel() {
           <button
             type="button"
             className="text-xs font-medium text-ink-muted underline-offset-4 hover:underline"
-            onClick={refresh}
+            onClick={() => void refresh()}
             disabled={loading}
           >
             {loading ? "Atualizando…" : "Atualizar"}
           </button>
         </div>
 
-        {error && (
+        {query.isError && query.error instanceof Error ? (
           <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">
-            {error}
+            {query.error.message}
           </p>
-        )}
+        ) : null}
 
-        {loading ? (
+        {loading && tenants.length === 0 ? (
           <p className="mt-4 text-sm text-ink-muted">Carregando…</p>
         ) : tenants.length > 0 ? (
           <ul className="mt-6 space-y-3">
@@ -105,4 +113,3 @@ export function PlatformClinicsPanel() {
     </div>
   );
 }
-

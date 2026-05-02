@@ -16,6 +16,14 @@ import {
   saveAnamnesisSubmission,
   submitAnamnesis,
 } from "@/lib/anamnesis/submission-actions";
+import {
+  saveContractSubmission,
+  submitContract,
+} from "@/lib/contracts/submission-actions";
+import {
+  saveEvolutionSubmission,
+  submitEvolution,
+} from "@/lib/evolutions/submission-actions";
 import type { AnamnesisStroke } from "@/lib/anamnesis/template-schema";
 import { cn } from "@/lib/utils";
 import { PdfPageCanvas } from "./pdf-page-canvas";
@@ -54,6 +62,8 @@ type Props = {
   initialStatus: "draft" | "submitted" | "signed";
   patientLabel?: string;
   templateLabel?: string;
+  /** Define qual tabela de submissions é gravada. */
+  entityKind?: "anamnesis" | "evolution" | "contract";
 };
 
 export function InteractiveAnamnesisEditor({
@@ -66,8 +76,27 @@ export function InteractiveAnamnesisEditor({
   initialStatus,
   patientLabel,
   templateLabel,
+  entityKind = "anamnesis",
 }: Props) {
   const router = useRouter();
+  const saveAction =
+    entityKind === "evolution"
+      ? saveEvolutionSubmission
+      : entityKind === "contract"
+        ? saveContractSubmission
+        : saveAnamnesisSubmission;
+  const submitAction =
+    entityKind === "evolution"
+      ? submitEvolution
+      : entityKind === "contract"
+        ? submitContract
+        : submitAnamnesis;
+  const backHref =
+    entityKind === "evolution"
+      ? `/pacientes/${clientId}/evolucao`
+      : entityKind === "contract"
+        ? `/pacientes/${clientId}/contratos`
+        : `/pacientes/${clientId}/anamnese`;
 
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [pageSizes, setPageSizes] = useState<Record<number, PageSize>>({});
@@ -291,7 +320,7 @@ export function InteractiveAnamnesisEditor({
     try {
       setError(null);
       if (!opts?.silent) setInfo(null);
-      const result = await saveAnamnesisSubmission(clientId, {
+      const result = await saveAction(clientId, {
         submissionId,
         templateId: templateId ?? undefined,
         mode: "interactive",
@@ -325,7 +354,7 @@ export function InteractiveAnamnesisEditor({
       setFinalizing(true);
       try {
         await doSave({ silent: true });
-        const result = await submitAnamnesis(clientId, submissionId, {
+        const result = await submitAction(clientId, submissionId, {
           signerName: signerName || null,
         });
         if (!result.ok) {
@@ -335,7 +364,7 @@ export function InteractiveAnamnesisEditor({
         setStatus(signerName ? "signed" : "submitted");
         setInfo("Anamnese finalizada e PDF gerado.");
         setTimeout(() => {
-          router.push(`/pacientes/${clientId}/anamnese`);
+          router.push(backHref);
           router.refresh();
         }, 600);
       } finally {
@@ -382,7 +411,7 @@ export function InteractiveAnamnesisEditor({
         onRedo={handleRedo}
         onClearPage={handleClearPage}
         onClearAll={handleClearAll}
-        onBack={() => router.push(`/pacientes/${clientId}/anamnese`)}
+        onBack={() => router.push(backHref)}
         onFinalize={onFinalize}
         finalizing={finalizing || pending}
         title={patientLabel}
@@ -486,6 +515,8 @@ export function InteractiveAnamnesisEditor({
                     userSelect: "none",
                     WebkitUserSelect: "none",
                     WebkitTouchCallout: "none",
+                    // iPadOS: reivindica o gesto na área do PDF/tinta; scroll vertical fica no container externo.
+                    touchAction: canInteract ? "none" : undefined,
                   }}
                 >
                   <PdfPageCanvas

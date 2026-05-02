@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { BudgetsManager } from "@/components/budgets/budgets-manager";
 import { fetchClinicProfile } from "@/lib/auth/clinic-profile";
+import { listBrandingProfiles } from "@/lib/branding/actions";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export default async function OrcamentosPage() {
@@ -40,7 +41,7 @@ export default async function OrcamentosPage() {
     supabase
       .schema("clinic")
       .from("budgets")
-      .select("id, title, status, subtotal_cents, discount_cents, total_cents, valid_until, created_at, client_id")
+      .select("id, title, status, subtotal_cents, discount_cents, total_cents, valid_until, created_at, client_id, cancelled_at, cancellation_reason")
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false })
       .limit(50),
@@ -57,6 +58,15 @@ export default async function OrcamentosPage() {
   const products = productsRes.data ?? [];
   const budgets = budgetsRes.data ?? [];
   const budgetItems = budgetItemsRes.data ?? [];
+
+  const profilesResult = await listBrandingProfiles();
+  const brandingProfiles = profilesResult.ok
+    ? profilesResult.profiles.map((profile) => ({
+        id: profile.id,
+        name: profile.name,
+        is_default: profile.is_default,
+      }))
+    : [];
   const clientNameById = new Map(clients.map((client) => [client.id, client.full_name]));
   const itemsByBudget = new Map<string, typeof budgetItems>();
 
@@ -89,6 +99,7 @@ export default async function OrcamentosPage() {
         procedures={procedures}
         products={products}
         budgets={enrichedBudgets}
+        brandingProfiles={brandingProfiles}
       />
     </div>
   );

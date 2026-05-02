@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MessageCircle, Plus, Share2 } from "lucide-react";
 import { PatientSearchDialog } from "@/components/clients/patient-search-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 import {
   changeBudgetStatus,
   convertBudgetToPurchase,
@@ -17,6 +18,7 @@ import {
 type ClientOption = { id: string; full_name: string; cpf: string | null };
 type ProcedureOption = { id: string; name: string; price_cents: number };
 type ProductOption = { id: string; name: string; price_cents: number };
+type BrandingProfileOption = { id: string; name: string; is_default: boolean };
 type BudgetItemView = {
   id: string;
   description: string;
@@ -35,6 +37,8 @@ type BudgetView = {
   created_at: string;
   client_id: string;
   client_name: string;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
   items: BudgetItemView[];
 };
 
@@ -76,9 +80,9 @@ function centsToInput(cents: number): string {
   return (cents / 100).toFixed(2).replace(".", ",");
 }
 
-function makeItem(): DraftItem {
+function makeItem(localId?: string): DraftItem {
   return {
-    localId: crypto.randomUUID(),
+    localId: localId ?? crypto.randomUUID(),
     procedureId: null,
     description: "",
     quantity: 1,
@@ -91,20 +95,29 @@ export function BudgetsManager({
   procedures,
   products,
   budgets,
+  brandingProfiles = [],
 }: {
   clients: ClientOption[];
   procedures: ProcedureOption[];
   products: ProductOption[];
   budgets: BudgetView[];
+  brandingProfiles?: BrandingProfileOption[];
 }) {
   const router = useRouter();
+  const draftNs = useId().replace(/:/g, "");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [clientId, setClientId] = useState("");
   const [title, setTitle] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [discount, setDiscount] = useState("0,00");
-  const [items, setItems] = useState<DraftItem[]>([makeItem()]);
+  /** `useId` evita mismatch de hidratação (Safari/iPad) com `crypto.randomUUID` no primeiro render. */
+  const [items, setItems] = useState<DraftItem[]>(() => [makeItem(`${draftNs}-0`)]);
+  const defaultBrandingId =
+    brandingProfiles.find((profile) => profile.is_default)?.id ?? "";
+  const [selectedBrandingByBudget, setSelectedBrandingByBudget] = useState<
+    Record<string, string>
+  >({});
 
   function updateItem(localId: string, patch: Partial<DraftItem>) {
     setItems((prev) =>
@@ -171,7 +184,9 @@ export function BudgetsManager({
     e.preventDefault();
     setError(null);
     if (!clientId) {
-      setError("Selecione a paciente do orçamento.");
+      const msg = "Selecione a paciente do orçamento.";
+      setError(msg);
+      notifyError(null, msg);
       return;
     }
 
@@ -185,7 +200,9 @@ export function BudgetsManager({
       .filter((item) => item.description.length > 0);
 
     if (payloadItems.length === 0) {
-      setError("Adicione pelo menos um item com descrição.");
+      const msg = "Adicione pelo menos um item com descrição.";
+      setError(msg);
+      notifyError(null, msg);
       return;
     }
 
@@ -201,12 +218,14 @@ export function BudgetsManager({
       });
       if (!result.ok) {
         setError(result.error);
+        notifyError(null, result.error);
         return;
       }
       setTitle("");
       setValidUntil("");
       setDiscount("0,00");
       setItems([makeItem()]);
+      notifySuccess("Orçamento criado.");
       router.refresh();
     });
   }
@@ -217,8 +236,10 @@ export function BudgetsManager({
       const result = await changeBudgetStatus(budgetId, status);
       if (!result.ok) {
         setError(result.error);
+        notifyError(null, result.error);
         return;
       }
+      notifySuccess("Status do orçamento atualizado.");
       router.refresh();
     });
   }
@@ -229,18 +250,23 @@ export function BudgetsManager({
       const result = await convertBudgetToPurchase(budgetId);
       if (!result.ok) {
         setError(result.error);
+        notifyError(null, result.error);
         return;
       }
+      notifySuccess("Orçamento enviado para financeiro.");
       router.refresh();
     });
   }
 
   function exportPdf(budgetId: string) {
     setError(null);
+    const selected = selectedBrandingByBudget[budgetId] ?? defaultBrandingId;
+    const brandingProfileId = selected ? selected : null;
     startTransition(async () => {
-      const result = await generateBudgetPdf(budgetId);
+      const result = await generateBudgetPdf({ budgetId, brandingProfileId });
       if (!result.ok) {
         setError(result.error);
+        notifyError(null, result.error);
         return;
       }
       window.open(result.url, "_blank", "noopener,noreferrer");
@@ -262,8 +288,8 @@ export function BudgetsManager({
               quando necessário.
             </p>
           </div>
-          <Button type="submit" disabled={pending}>
-            {pending ? "Salvando..." : "Gerar orçamento"}
+          <Button type="submit" loading={pending} loadingLabel="Salvando...">
+            Gerar orçamento
           </Button>
         </div>
 
@@ -455,8 +481,22 @@ export function BudgetsManager({
                       className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${statusClasses(
                         budget.status,
                       )}`}
+                      title={
+                        budget.status === "cancelled" &&
+                        budget.cancellation_reason === "auto_expired"
+                          ? `Cancelado automaticamente por vencimento${
+                              budget.valid_until
+                                ? ` (${new Date(budget.valid_until).toLocaleDateString("pt-BR")})`
+                                : ""
+                            }`
+                          : undefined
+                      }
                     >
                       {statusLabel(budget.status)}
+                      {budget.status === "cancelled" &&
+                      budget.cancellation_reason === "auto_expired"
+                        ? " · vencido"
+                        : ""}
                     </span>
                     <select
                       className="h-8 rounded-md border border-line bg-[#f3f1ee] px-2 text-xs"
@@ -509,7 +549,32 @@ export function BudgetsManager({
                   </p>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {brandingProfiles.length > 0 ? (
+                    <label className="flex items-center gap-1.5 text-xs text-ink-muted">
+                      Layout:
+                      <select
+                        className="h-8 rounded-md border border-line bg-[#f3f1ee] px-2 text-xs"
+                        value={
+                          selectedBrandingByBudget[budget.id] ?? defaultBrandingId
+                        }
+                        onChange={(e) =>
+                          setSelectedBrandingByBudget((prev) => ({
+                            ...prev,
+                            [budget.id]: e.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">Sem branding</option>
+                        {brandingProfiles.map((profile) => (
+                          <option key={profile.id} value={profile.id}>
+                            {profile.name}
+                            {profile.is_default ? " (padrão)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
                   <Button
                     type="button"
                     size="sm"

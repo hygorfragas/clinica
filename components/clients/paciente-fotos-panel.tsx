@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   BODY_REGION_LABELS,
   CAPTURE_ANGLE_LABELS,
@@ -15,6 +16,7 @@ import {
 } from "@/components/clients/clinical-photo-uploader";
 import { FacePuppetGuide } from "@/components/clients/face-puppet-guide";
 import { deleteClinicalPhoto } from "@/lib/clients/record-actions";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 import { cn } from "@/lib/utils";
 
 export type FotoComUrl = {
@@ -79,6 +81,7 @@ export function PacienteFotosPanel({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const { confirm, element: confirmDialog } = useConfirmDialog();
 
   const linked = useMemo(
     () => fotos.filter((f) => f.purchase_id),
@@ -116,10 +119,26 @@ export function PacienteFotosPanel({
   const otherFotos = unlinked.filter((f) => f.body_region !== "face");
 
   function remove(id: string) {
-    if (!confirm("Remover esta foto do prontuário?")) return;
-    startTransition(async () => {
-      const result = await deleteClinicalPhoto(clientId, id);
-      if (result.ok) router.refresh();
+    confirm({
+      title: "Remover foto",
+      description:
+        "A foto será apagada do prontuário e do armazenamento.",
+      confirmLabel: "Remover",
+      destructive: true,
+      onConfirm: () =>
+        new Promise<void>((resolve, reject) => {
+          startTransition(async () => {
+            const result = await deleteClinicalPhoto(clientId, id);
+            if (result.ok) {
+              notifySuccess("Foto removida.");
+              router.refresh();
+              resolve();
+              return;
+            }
+            notifyError(null, result.error);
+            reject(new Error(result.error));
+          });
+        }),
     });
   }
 
@@ -193,6 +212,7 @@ export function PacienteFotosPanel({
 
   return (
     <div className="space-y-12">
+      {confirmDialog}
       <FacePuppetGuide missingAngles={missingFaceBonecoAngles} />
 
       <ClinicalPhotoUploader

@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
+import { queryKeys } from "@/lib/query/keys";
 
 type Tenant = { id: string; name: string | null; slug: string | null };
 
@@ -22,39 +26,50 @@ type ApiUser = {
   };
 };
 
+type PlatformUsersResponse = {
+  users: ApiUser[];
+  tenants: Tenant[];
+};
+
+async function fetchPlatformUsers(): Promise<PlatformUsersResponse> {
+  const res = await fetch("/api/plataforma/usuarios", { cache: "no-store" });
+  const body = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    users?: ApiUser[];
+    tenants?: Tenant[];
+  };
+  if (!res.ok) {
+    throw new Error(body.error ?? "Falha ao carregar usuários.");
+  }
+  return {
+    users: body.users ?? [],
+    tenants: body.tenants ?? [],
+  };
+}
+
 export function PlatformUsersPanel() {
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: queryKeys.platform.users(),
+    queryFn: fetchPlatformUsers,
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [users, setUsers] = useState<ApiUser[]>([]);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [recoveryLink, setRecoveryLink] = useState<string | null>(null);
+  const { confirm, element: confirmDialog } = useConfirmDialog();
+
+  const users = query.data?.users ?? [];
+  const tenants = query.data?.tenants ?? [];
+  const loading = query.isLoading || query.isFetching;
 
   async function refresh() {
-    setLoading(true);
     setError(null);
     setRecoveryLink(null);
-    try {
-      const res = await fetch("/api/plataforma/usuarios");
-      const body = (await res.json().catch(() => ({}))) as {
-        error?: string;
-        users?: ApiUser[];
-        tenants?: Tenant[];
-      };
-      if (!res.ok) {
-        setError(body.error ?? "Falha ao carregar usuários.");
-        return;
-      }
-      setUsers(body.users ?? []);
-      setTenants(body.tenants ?? []);
-    } finally {
-      setLoading(false);
-    }
+    const result = await queryClient.invalidateQueries({
+      queryKey: queryKeys.platform.users(),
+    });
+    return result;
   }
-
-  useEffect(() => {
-    void refresh();
-  }, []);
 
   const tenantOptions = useMemo(() => {
     return [{ id: "", label: "Sem clínica (global)" }].concat(
@@ -86,9 +101,12 @@ export function PlatformUsersPanel() {
       });
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(body.error ?? "Não foi possível criar o usuário.");
+        const msg = body.error ?? "Não foi possível criar o usuário.";
+        setError(msg);
+        notifyError(null, msg);
         return;
       }
+      notifySuccess("Usuário criado.");
       e.currentTarget.reset();
       await refresh();
     } finally {
@@ -108,49 +126,57 @@ export function PlatformUsersPanel() {
       });
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(body.error ?? "Falha ao atualizar usuário.");
+        const msg = body.error ?? "Falha ao atualizar usuário.";
+        setError(msg);
+        notifyError(null, msg);
         return;
       }
+      notifySuccess("Perfil atualizado.");
       await refresh();
     } finally {
       setSaving(false);
     }
   }
 
-  async function loginAs(userId: string) {
-    if (
-      !window.confirm(
-        "Você será desconectado como superadmin neste navegador e entrará na sessão do usuário escolhido. Continuar?",
-      )
-    ) {
-      return;
-    }
-    setError(null);
-    setRecoveryLink(null);
-    setSaving(true);
-    try {
-      const res = await fetch("/api/plataforma/entrar-como", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
-      });
-      const body = (await res.json().catch(() => ({}))) as {
-        error?: string;
-        actionLink?: string | null;
-      };
-      if (!res.ok) {
-        setError(body.error ?? "Falha ao gerar acesso.");
-        return;
-      }
-      const href = body.actionLink;
-      if (!href) {
-        setError("Link de acesso não retornado.");
-        return;
-      }
-      window.location.assign(href);
-    } finally {
-      setSaving(false);
-    }
+  function loginAs(userId: string) {
+    confirm({
+      title: "Entrar como usuário",
+      description:
+        "Você será desconectado como superadmin neste navegador e entrará na sessão do usuário escolhido.",
+      confirmLabel: "Continuar",
+      onConfirm: async () => {
+        setError(null);
+        setRecoveryLink(null);
+        setSaving(true);
+        try {
+          const res = await fetch("/api/plataforma/entrar-como", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId }),
+          });
+          const body = (await res.json().catch(() => ({}))) as {
+            error?: string;
+            actionLink?: string | null;
+          };
+          if (!res.ok) {
+            const msg = body.error ?? "Falha ao gerar acesso.";
+            setError(msg);
+            notifyError(null, msg);
+            throw new Error(msg);
+          }
+          const href = body.actionLink;
+          if (!href) {
+            const msg = "Link de acesso não retornado.";
+            setError(msg);
+            notifyError(null, msg);
+            throw new Error(msg);
+          }
+          window.location.assign(href);
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
   }
 
   async function generateRecovery(userId: string) {
@@ -179,6 +205,7 @@ export function PlatformUsersPanel() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
+      {confirmDialog}
       <header className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-subtle">
           Administração global
@@ -245,9 +272,10 @@ export function PlatformUsersPanel() {
               </select>
             </div>
 
-            {error && (
+            {(error || (query.isError && query.error instanceof Error)) && (
               <p className="md:col-span-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">
-                {error}
+                {error ??
+                  (query.error instanceof Error ? query.error.message : null)}
               </p>
             )}
 

@@ -11,6 +11,7 @@ import {
   updateProcedure,
 } from "@/lib/stock/actions";
 import { computePriceCents } from "@/lib/stock/schemas";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 const BRL = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -99,10 +100,12 @@ export function ProceduresPanel({
       });
       if (!res.ok) {
         setError(res.error);
+        notifyError(null, res.error);
         return;
       }
       setForm(emptyForm);
       setOpen(false);
+      notifySuccess("Procedimento criado.");
       router.refresh();
     });
   }
@@ -224,8 +227,8 @@ export function ProceduresPanel({
             <p className="md:col-span-4 text-sm text-danger">{error}</p>
           ) : null}
           <div className="md:col-span-4 flex justify-end">
-            <Button type="submit" disabled={pending}>
-              {pending ? "Salvando…" : "Salvar procedimento"}
+            <Button type="submit" loading={pending} loadingLabel="Salvando...">
+              Salvar procedimento
             </Button>
           </div>
         </form>
@@ -294,9 +297,10 @@ function ProcedureRowItem({
         requires_signed_contract: form.requires,
       });
       if (!res.ok) {
-        alert(res.error);
+        notifyError(null, res.error);
         return;
       }
+      notifySuccess("Procedimento atualizado.");
       setEditing(false);
       router.refresh();
     });
@@ -304,7 +308,14 @@ function ProcedureRowItem({
 
   async function toggleArchive() {
     startTransition(async () => {
-      await setProcedureArchived(row.id, !row.is_archived);
+      const result = await setProcedureArchived(row.id, !row.is_archived);
+      if (!result.ok) {
+        notifyError(null, result.error);
+        return;
+      }
+      notifySuccess(
+        row.is_archived ? "Procedimento reativado." : "Procedimento arquivado.",
+      );
       router.refresh();
     });
   }
@@ -370,8 +381,8 @@ function ProcedureRowItem({
             >
               Cancelar
             </Button>
-            <Button size="sm" onClick={save} disabled={pending}>
-              {pending ? "Salvando…" : "Salvar"}
+            <Button size="sm" onClick={save} loading={pending} loadingLabel="Salvando...">
+              Salvar
             </Button>
           </div>
         </td>

@@ -26,6 +26,11 @@ export function PacienteFichaNav({ clientId }: { clientId: string }) {
         match: (p) => p.startsWith(`${base}/evolucao`),
       },
       {
+        href: `${base}/contratos`,
+        label: "Contratos",
+        match: (p) => p.startsWith(`${base}/contratos`),
+      },
+      {
         href: `${base}/financeiro`,
         label: "Financeiro",
         match: (p) =>
@@ -36,6 +41,11 @@ export function PacienteFichaNav({ clientId }: { clientId: string }) {
         href: `${base}/anexos`,
         label: "Anexos",
         match: (p) => p.startsWith(`${base}/anexos`),
+      },
+      {
+        href: `${base}/historico`,
+        label: "Histórico",
+        match: (p) => p.startsWith(`${base}/historico`),
       },
     ];
 

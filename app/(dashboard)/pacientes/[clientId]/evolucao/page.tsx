@@ -1,104 +1,168 @@
 import { notFound } from "next/navigation";
-import { PacienteEvolucaoPanel } from "@/components/clients/paciente-evolucao-panel";
+import Link from "next/link";
+import { AnamnesisSubmissionsPanel } from "@/components/anamnesis/anamnesis-submissions-panel";
 import { CLINICAL_BUCKET } from "@/lib/clinical/storage";
 import { loadPacienteClinicContext } from "@/lib/clients/paciente-context";
+import {
+  anamnesisFieldsSchema,
+  anamnesisFormValuesSchema,
+  anamnesisStrokesSchema,
+  type AnamnesisField,
+  type AnamnesisFormValues,
+  type AnamnesisStroke,
+  type AnamnesisSubmissionMode,
+  type AnamnesisSubmissionStatus,
+} from "@/lib/anamnesis/template-schema";
+import { createServiceRoleClient } from "@/lib/supabase/service";
 
 type PageProps = { params: Promise<{ clientId: string }> };
+
+type TemplateLite = {
+  id: string;
+  name: string;
+  description: string | null;
+  is_default: boolean;
+  page_count: number;
+  pdf_url: string | null;
+  form_schema: AnamnesisField[];
+};
+
+type SubmissionListItem = {
+  id: string;
+  template_id: string | null;
+  template_name: string | null;
+  mode: AnamnesisSubmissionMode;
+  status: AnamnesisSubmissionStatus;
+  updated_at: string;
+  signer_name: string | null;
+  submitted_at: string | null;
+  signed_at: string | null;
+  flattened_pdf_url: string | null;
+  form_values: AnamnesisFormValues;
+  ink_strokes: AnamnesisStroke[];
+};
 
 export default async function PacienteEvolucaoPage({ params }: PageProps) {
   const { clientId } = await params;
   const ctx = await loadPacienteClinicContext(clientId);
   if (!ctx) notFound();
 
-  const [evosRes, procRes, purchaseRes, photoRes] = await Promise.all([
+  const storageClient = createServiceRoleClient();
+
+  const [{ data: templatesRows }, { data: submissionRows }] = await Promise.all([
     ctx.supabase
       .schema("clinic")
-      .from("evolutions")
+      .from("evolution_templates")
       .select(
-        "id, body, created_at, procedure_id, purchase_id, session_number, appointment_id",
+        "id, name, description, pdf_storage_path, page_count, form_schema, is_default",
       )
-      .eq("client_id", clientId)
       .eq("tenant_id", ctx.tenantId)
-      .order("created_at", { ascending: false }),
+      .eq("is_archived", false)
+      .order("is_default", { ascending: false })
+      .order("updated_at", { ascending: false }),
     ctx.supabase
       .schema("clinic")
-      .from("procedures")
-      .select("id, name")
+      .from("evolution_submissions")
+      .select(
+        "id, template_id, mode, status, updated_at, signer_name, submitted_at, signed_at, flattened_pdf_path, form_values, ink_strokes",
+      )
       .eq("tenant_id", ctx.tenantId)
-      .order("name", { ascending: true }),
-    ctx.supabase
-      .schema("clinic")
-      .from("client_procedure_purchases")
-      .select("id, title, purchased_at, procedure_id")
       .eq("client_id", clientId)
-      .eq("tenant_id", ctx.tenantId)
-      .order("purchased_at", { ascending: false }),
-    ctx.supabase
-      .schema("clinic")
-      .from("photos")
-      .select("id, storage_key, caption, taken_at, evolution_id")
-      .eq("client_id", clientId)
-      .eq("tenant_id", ctx.tenantId)
-      .not("evolution_id", "is", null),
+      .order("updated_at", { ascending: false }),
   ]);
 
-  if (evosRes.error || procRes.error || purchaseRes.error || photoRes.error) {
-    return (
-      <p className="text-sm text-danger">
-        Não foi possível carregar a evolução clínica.
-      </p>
-    );
-  }
-
-  const photosByEvolution = new Map<
-    string,
-    { id: string; url: string | null; caption: string | null; taken_at: string | null }[]
-  >();
-
-  for (const p of photoRes.data ?? []) {
-    if (!p.evolution_id) continue;
-    const { data: signed } = await ctx.supabase.storage
-      .from(CLINICAL_BUCKET)
-      .createSignedUrl(p.storage_key, 3600);
-    const arr = photosByEvolution.get(p.evolution_id) ?? [];
-    arr.push({
-      id: p.id,
-      url: signed?.signedUrl ?? null,
-      caption: p.caption,
-      taken_at: p.taken_at,
+  const templateMap = new Map<string, string>();
+  const templates: TemplateLite[] = [];
+  for (const row of templatesRows ?? []) {
+    templateMap.set(row.id, row.name);
+    let signedUrl: string | null = null;
+    if (row.pdf_storage_path) {
+      const { data: s, error: signErr } = await storageClient.storage
+        .from(CLINICAL_BUCKET)
+        .createSignedUrl(row.pdf_storage_path, 60 * 30);
+      if (signErr) {
+        console.error(
+          "[evolucao] Falha ao gerar signed URL da ficha:",
+          row.id,
+          signErr.message,
+        );
+      }
+      signedUrl = s?.signedUrl ?? null;
+    }
+    const parsedFields = anamnesisFieldsSchema.safeParse(row.form_schema ?? []);
+    templates.push({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      is_default: row.is_default,
+      page_count: row.page_count,
+      pdf_url: signedUrl,
+      form_schema: parsedFields.success ? parsedFields.data : [],
     });
-    photosByEvolution.set(p.evolution_id, arr);
   }
 
-  const procNameById = new Map((procRes.data ?? []).map((p) => [p.id, p.name]));
-
-  const entries = (evosRes.data ?? []).map((e) => ({
-    id: e.id,
-    body: e.body,
-    created_at: e.created_at,
-    procedure_id: e.procedure_id,
-    procedure_name: e.procedure_id ? procNameById.get(e.procedure_id) ?? null : null,
-    purchase_id: e.purchase_id,
-    session_number: e.session_number,
-    photos: photosByEvolution.get(e.id) ?? [],
-  }));
+  const submissions: SubmissionListItem[] = [];
+  for (const s of submissionRows ?? []) {
+    let flattenedUrl: string | null = null;
+    if (s.flattened_pdf_path) {
+      const { data: signed, error: signErr } = await storageClient.storage
+        .from(CLINICAL_BUCKET)
+        .createSignedUrl(s.flattened_pdf_path, 60 * 30);
+      if (signErr) {
+        console.error(
+          "[evolucao] Falha ao gerar signed URL da evolução:",
+          s.id,
+          signErr.message,
+        );
+      }
+      flattenedUrl = signed?.signedUrl ?? null;
+    }
+    const parsedValues = anamnesisFormValuesSchema.safeParse(s.form_values ?? {});
+    const parsedStrokes = anamnesisStrokesSchema.safeParse(s.ink_strokes ?? []);
+    submissions.push({
+      id: s.id,
+      template_id: s.template_id,
+      template_name: s.template_id ? templateMap.get(s.template_id) ?? null : null,
+      mode: s.mode,
+      status: s.status,
+      updated_at: s.updated_at,
+      signer_name: s.signer_name,
+      submitted_at: s.submitted_at,
+      signed_at: s.signed_at,
+      flattened_pdf_url: flattenedUrl,
+      form_values: parsedValues.success ? parsedValues.data : {},
+      ink_strokes: parsedStrokes.success ? parsedStrokes.data : [],
+    });
+  }
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-ink-muted">
-        Registro cronológico de sessões, com vínculo a procedimentos e anexos de
-        fotos.
-      </p>
-      <PacienteEvolucaoPanel
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-xl font-semibold text-ink">
+            Evolução clínica
+          </h2>
+          <p className="text-sm text-ink-muted">
+            Cada novo registro é preenchido sobre uma ficha (PDF) escolhida
+            pela usuária. A ficha contém todos os campos necessários — sem
+            formulário extra.
+          </p>
+        </div>
+        {templates.length === 0 && (
+          <Link
+            href="/configuracoes/evolucao"
+            className="rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white"
+          >
+            Cadastrar ficha
+          </Link>
+        )}
+      </header>
+
+      <AnamnesisSubmissionsPanel
         clientId={clientId}
-        entries={entries}
-        procedures={procRes.data ?? []}
-        purchases={(purchaseRes.data ?? []).map((p) => ({
-          id: p.id,
-          title: p.title,
-          purchased_at: p.purchased_at,
-          procedure_id: p.procedure_id,
-        }))}
+        templates={templates}
+        submissions={submissions}
+        entityKind="evolution"
       />
     </div>
   );

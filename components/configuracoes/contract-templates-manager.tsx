@@ -12,10 +12,21 @@ import {
 } from "@/lib/contracts/template-actions";
 import { ContractRichEditor } from "@/components/contracts/contract-rich-editor";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 import { cn } from "@/lib/utils";
-import { FileText, Pencil, Plus, Sparkles, Star, Trash2, X } from "lucide-react";
+import {
+  FileText,
+  Pencil,
+  Plus,
+  Signature,
+  Sparkles,
+  Star,
+  Trash2,
+  X,
+} from "lucide-react";
 
 export type ContractTemplateListItem = {
   id: string;
@@ -40,6 +51,7 @@ export function ContractTemplatesManager({
   const [createOpen, setCreateOpen] = useState(false);
   const [createTab, setCreateTab] = useState<Tab>("editor");
   const [editId, setEditId] = useState<string | null>(null);
+  const { confirm, element: confirmDialog } = useConfirmDialog();
 
   const [titleNew, setTitleNew] = useState("");
   const [htmlNew, setHtmlNew] = useState("<p></p>");
@@ -80,6 +92,7 @@ export function ContractTemplatesManager({
 
   return (
     <div className="space-y-8">
+      {confirmDialog}
       {error && (
         <p className="text-sm text-danger" role="alert">
           {error}
@@ -176,8 +189,10 @@ export function ContractTemplatesManager({
                         const r = await setDefaultContractTemplate(t.id);
                         if (!r.ok) {
                           setError(r.error);
+                          notifyError(null, r.error);
                           return;
                         }
+                        notifySuccess("Modelo marcado como padrão.");
                         router.refresh();
                       });
                     }}
@@ -198,6 +213,15 @@ export function ContractTemplatesManager({
                     Editar
                   </Button>
                 ) : null}
+                {!isHtmlTemplate(t) && t.mime_type === "application/pdf" ? (
+                  <Link
+                    href={`/configuracoes/contratos/${t.id}/campos`}
+                    className="inline-flex h-9 items-center gap-1 rounded-lg bg-secondary-container/90 px-3 text-xs font-medium text-on-secondary-container shadow-sm transition hover:bg-secondary-container"
+                  >
+                    <Signature className="h-3.5 w-3.5" aria-hidden />
+                    Marcar campos
+                  </Link>
+                ) : null}
                 <Button
                   type="button"
                   size="sm"
@@ -205,17 +229,28 @@ export function ContractTemplatesManager({
                   className="text-danger hover:text-danger"
                   disabled={pending}
                   onClick={() => {
-                    if (!confirm("Excluir este modelo? Não afeta fichas que já anexaram cópia.")) {
-                      return;
-                    }
-                    setError(null);
-                    startTransition(async () => {
-                      const r = await deleteContractTemplate(t.id);
-                      if (!r.ok) {
-                        setError(r.error);
-                        return;
-                      }
-                      router.refresh();
+                    confirm({
+                      title: "Excluir modelo",
+                      description:
+                        "O modelo será removido. Contratos já anexados a prontuários permanecem intactos.",
+                      confirmLabel: "Excluir",
+                      destructive: true,
+                      onConfirm: () =>
+                        new Promise<void>((resolve, reject) => {
+                          setError(null);
+                          startTransition(async () => {
+                            const r = await deleteContractTemplate(t.id);
+                            if (!r.ok) {
+                              setError(r.error);
+                              notifyError(null, r.error);
+                              reject(new Error(r.error));
+                              return;
+                            }
+                            notifySuccess("Modelo excluído.");
+                            router.refresh();
+                            resolve();
+                          });
+                        }),
                     });
                   }}
                 >
@@ -311,7 +346,8 @@ export function ContractTemplatesManager({
                   <Button
                     type="button"
                     variant="primary"
-                    disabled={pending}
+                    loading={pending}
+                    loadingLabel="Salvando..."
                     onClick={() => {
                       setError(null);
                       startTransition(async () => {
@@ -322,14 +358,16 @@ export function ContractTemplatesManager({
                         });
                         if (!r.ok) {
                           setError(r.error);
+                          notifyError(null, r.error);
                           return;
                         }
+                        notifySuccess("Modelo criado.");
                         closeModals();
                         router.refresh();
                       });
                     }}
                   >
-                    {pending ? "Salvando…" : "Salvar modelo"}
+                    Salvar modelo
                   </Button>
                   <Button type="button" variant="secondary" onClick={closeModals}>
                     Cancelar
@@ -351,10 +389,12 @@ export function ContractTemplatesManager({
                   <Button
                     type="button"
                     variant="primary"
-                    disabled={pending}
+                    loading={pending}
+                    loadingLabel="Enviando..."
                     onClick={() => {
                       if (!fileNew) {
                         setError("Selecione um arquivo.");
+                        notifyError(null, "Selecione um arquivo.");
                         return;
                       }
                       setError(null);
@@ -366,14 +406,16 @@ export function ContractTemplatesManager({
                         const r = await createContractTemplateFromFile(fd);
                         if (!r.ok) {
                           setError(r.error);
+                          notifyError(null, r.error);
                           return;
                         }
+                        notifySuccess("Modelo criado.");
                         closeModals();
                         router.refresh();
                       });
                     }}
                   >
-                    {pending ? "Enviando…" : "Salvar modelo"}
+                    Salvar modelo
                   </Button>
                   <Button type="button" variant="secondary" onClick={closeModals}>
                     Cancelar
@@ -439,7 +481,8 @@ export function ContractTemplatesManager({
               <Button
                 type="button"
                 variant="primary"
-                disabled={pending}
+                loading={pending}
+                loadingLabel="Salvando..."
                 onClick={() => {
                   setError(null);
                   startTransition(async () => {
@@ -451,14 +494,16 @@ export function ContractTemplatesManager({
                     });
                     if (!r.ok) {
                       setError(r.error);
+                      notifyError(null, r.error);
                       return;
                     }
+                    notifySuccess("Alterações salvas.");
                     setEditId(null);
                     router.refresh();
                   });
                 }}
               >
-                {pending ? "Salvando…" : "Salvar alterações"}
+                Salvar alterações
               </Button>
               <Button type="button" variant="secondary" onClick={() => setEditId(null)}>
                 Cancelar

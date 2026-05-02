@@ -1,4 +1,8 @@
-import { getCurrentUserFromServerCookies } from "@/lib/auth/local-auth";
+import {
+  fetchClinicProfile,
+  type ClinicProfileRow,
+} from "@/lib/auth/clinic-profile";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 
 type LocalUser = {
@@ -17,6 +21,30 @@ export type LocalRouteContextError =
   | { ok: false; status: 403; error: "Sem permissão." }
   | { ok: false; status: 400; error: "Tenant inválido." }
   | { ok: false; status: 503; error: string };
+
+/**
+ * Resolve o usuário logado via Supabase Auth (cookies sb-*) e seu profile em
+ * `clinic.profiles`. Substitui a leitura via cookie `clinic_session` (sistema
+ * local-auth incompleto).
+ */
+async function getCurrentSupabaseUser(): Promise<LocalUser | null> {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) return null;
+  const profile: ClinicProfileRow | null = await fetchClinicProfile(
+    supabase,
+    user.id,
+  );
+  if (!profile) return null;
+  return {
+    userId: user.id,
+    email: user.email,
+    role: profile.role,
+    tenantId: profile.tenant_id,
+  };
+}
 
 function createLocalServiceClient() {
   try {
@@ -44,7 +72,7 @@ export async function requireLocalAgendaContext(input?: {
     }
   | LocalRouteContextError
 > {
-  const user = await getCurrentUserFromServerCookies();
+  const user = await getCurrentSupabaseUser();
   if (!user) return { ok: false, status: 401, error: "Sessão expirada." };
   if (!AGENDA_ROLES.has(user.role)) {
     return { ok: false, status: 403, error: "Sem permissão." };
@@ -77,7 +105,7 @@ export async function requireLocalPlatformAdminContext(): Promise<
     }
   | LocalRouteContextError
 > {
-  const user = await getCurrentUserFromServerCookies();
+  const user = await getCurrentSupabaseUser();
   if (!user) return { ok: false, status: 401, error: "Sessão expirada." };
   if (user.tenantId !== null || !PLATFORM_ADMIN_ROLES.has(user.role)) {
     return { ok: false, status: 403, error: "Sem permissão." };

@@ -87,7 +87,7 @@ export function PacientesLista({ clients }: { clients: PacienteListaItem[] }) {
                   afterSuccess="refresh"
                   compact
                   variant="ghost"
-                  label="Ocultar da lista"
+                  label="Excluir"
                 />
               </div>
             </li>

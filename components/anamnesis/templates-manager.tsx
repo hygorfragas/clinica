@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -11,6 +12,7 @@ import {
   deleteAnamnesisTemplate,
   updateAnamnesisTemplate,
 } from "@/lib/anamnesis/template-actions";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 export type TemplateRow = {
   id: string;
@@ -32,6 +34,7 @@ export function TemplatesManager({ templates }: { templates: TemplateRow[] }) {
   const [isDefault, setIsDefault] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const { confirm, element: confirmDialog } = useConfirmDialog();
 
   function handleCreate() {
     setError(null);
@@ -56,6 +59,7 @@ export function TemplatesManager({ templates }: { templates: TemplateRow[] }) {
       const result = await createAnamnesisTemplate(fd);
       if (!result.ok) {
         setError(result.error);
+        notifyError(null, result.error);
         return;
       }
       setInfo("Template criado. Clique em “Editar campos” para configurar.");
@@ -63,6 +67,7 @@ export function TemplatesManager({ templates }: { templates: TemplateRow[] }) {
       setDescription("");
       setIsDefault(false);
       if (fileRef.current) fileRef.current.value = "";
+      notifySuccess("Template criado.");
       router.refresh();
     });
   }
@@ -70,17 +75,38 @@ export function TemplatesManager({ templates }: { templates: TemplateRow[] }) {
   function setDefault(id: string) {
     startTransition(async () => {
       const result = await updateAnamnesisTemplate({ id, isDefault: true });
-      if (!result.ok) setError(result.error);
-      else router.refresh();
+      if (!result.ok) {
+        setError(result.error);
+        notifyError(null, result.error);
+      } else {
+        notifySuccess("Template marcado como padrão.");
+        router.refresh();
+      }
     });
   }
 
   function remove(id: string) {
-    if (!confirm("Excluir este template? As submissões antigas continuam salvas.")) return;
-    startTransition(async () => {
-      const result = await deleteAnamnesisTemplate(id);
-      if (!result.ok) setError(result.error);
-      else router.refresh();
+    confirm({
+      title: "Excluir template",
+      description:
+        "O template será removido. Submissões antigas ligadas a ele permanecem salvas.",
+      confirmLabel: "Excluir",
+      destructive: true,
+      onConfirm: () =>
+        new Promise<void>((resolve, reject) => {
+          startTransition(async () => {
+            const result = await deleteAnamnesisTemplate(id);
+            if (!result.ok) {
+              setError(result.error);
+              notifyError(null, result.error);
+              reject(new Error(result.error));
+              return;
+            }
+            notifySuccess("Template excluído.");
+            router.refresh();
+            resolve();
+          });
+        }),
     });
   }
 
@@ -133,10 +159,17 @@ export function TemplatesManager({ templates }: { templates: TemplateRow[] }) {
         </div>
         {error && <p className="mt-4 text-sm text-danger">{error}</p>}
         {info && !error && <p className="mt-4 text-sm text-brand">{info}</p>}
-        <Button type="button" className="mt-6" disabled={pending} onClick={handleCreate}>
-          {pending ? "Enviando…" : "Criar template"}
+        <Button
+          type="button"
+          className="mt-6"
+          loading={pending}
+          loadingLabel="Enviando..."
+          onClick={handleCreate}
+        >
+          Criar template
         </Button>
       </section>
+      {confirmDialog}
 
       <section>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-subtle">

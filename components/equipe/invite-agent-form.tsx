@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/digital-signature-pad";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 export function InviteAgentForm() {
   const router = useRouter();
@@ -47,9 +48,12 @@ export function InviteAgentForm() {
         error?: string;
       };
       if (!res.ok) {
-        setError(body.error ?? "Não foi possível criar o acesso.");
+        const msg = body.error ?? "Não foi possível criar o acesso.";
+        setError(msg);
+        notifyError(null, msg);
         return;
       }
+      notifySuccess("Profissional cadastrado.");
       form.reset();
       sigRef.current?.clear();
       router.refresh();
@@ -165,8 +169,8 @@ export function InviteAgentForm() {
               {error}
             </p>
           ) : null}
-          <Button type="submit" disabled={loading}>
-            {loading ? "Criando…" : "Criar profissional"}
+          <Button type="submit" loading={loading} loadingLabel="Criando...">
+            Criar profissional
           </Button>
         </form>
       </CardContent>

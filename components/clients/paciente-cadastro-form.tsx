@@ -19,6 +19,7 @@ import {
   type CreatePatientFormValues,
   type CreatePatientParsed,
 } from "@/lib/clients/schemas";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -57,10 +58,12 @@ export function PacienteCadastroForm({
     startTransition(async () => {
       const result = await createPatient(values);
       if (result.ok) {
+        notifySuccess("Paciente cadastrada.");
         onCreated(result.id);
         return;
       }
       setServerError(result.error);
+      notifyError(null, result.error);
     });
   }
 
@@ -183,8 +186,8 @@ export function PacienteCadastroForm({
           )}
 
           <div className="flex flex-wrap gap-3 pt-2">
-            <Button type="submit" disabled={pending}>
-              {pending ? "Salvando…" : submitLabel}
+            <Button type="submit" loading={pending} loadingLabel="Salvando...">
+              {submitLabel}
             </Button>
             <Link
               href={cancelHref}

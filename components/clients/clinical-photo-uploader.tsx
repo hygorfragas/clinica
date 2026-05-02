@@ -14,6 +14,7 @@ import {
   type BodyRegion,
 } from "@/lib/clinical/body-regions";
 import { uploadClinicalPhotosBatch } from "@/lib/clients/record-actions";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 type Row = {
   key: string;
@@ -88,18 +89,24 @@ export function ClinicalPhotoUploader({
   function submit() {
     setError(null);
     if (rows.length === 0) {
-      setError("Selecione ao menos uma foto.");
+      const msg = "Selecione ao menos uma foto.";
+      setError(msg);
+      notifyError(null, msg);
       return;
     }
     if (rows.length > MAX_PHOTOS_PER_BATCH) {
-      setError(`Limite de ${MAX_PHOTOS_PER_BATCH} fotos por envio.`);
+      const msg = `Limite de ${MAX_PHOTOS_PER_BATCH} fotos por envio.`;
+      setError(msg);
+      notifyError(null, msg);
       return;
     }
 
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       if (region === BODY_REGIONS.face && !r.angle) {
-        setError(`Defina o ângulo da foto ${i + 1} (obrigatório para rosto).`);
+        const msg = `Defina o ângulo da foto ${i + 1} (obrigatório para rosto).`;
+        setError(msg);
+        notifyError(null, msg);
         return;
       }
     }
@@ -130,12 +137,14 @@ export function ClinicalPhotoUploader({
     startTransition(async () => {
       const result = await uploadClinicalPhotosBatch(clientId, fd);
       if (result.ok) {
+        notifySuccess("Fotos enviadas.");
         clearRows();
         router.refresh();
         onBatchComplete?.();
         return;
       }
       setError(result.error);
+      notifyError(null, result.error);
     });
   }
 
@@ -378,8 +387,14 @@ export function ClinicalPhotoUploader({
       )}
 
       <div className="flex flex-wrap gap-3">
-        <Button type="button" disabled={pending || rows.length === 0} onClick={submit}>
-          {pending ? "Enviando…" : "Enviar fotos"}
+        <Button
+          type="button"
+          loading={pending}
+          loadingLabel="Enviando..."
+          disabled={rows.length === 0}
+          onClick={submit}
+        >
+          Enviar fotos
         </Button>
         {rows.length > 0 && (
           <Button type="button" variant="ghost" disabled={pending} onClick={clearRows}>

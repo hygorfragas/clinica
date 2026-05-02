@@ -1,0 +1,56 @@
+# Build artefatos / pastas pesadas que não precisam entrar no contexto.
+.next
+.turbo
+node_modules
+out
+build
+dist
+
+# Git e CI
+.git
+.gitignore
+.github
+
+# Editor / OS
+.vscode
+.cursor
+.idea
+.DS_Store
+Thumbs.db
+
+# Logs e cache
+*.log
+.cache
+
+# Local envs (NUNCA copiar pra imagem)
+.env
+.env.local
+.env.development
+.env.production
+.env*.local
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Documentação interna
+.interface-design
+documentacao
+historico.md
+AGENTS.md
+README.md
+*.md
+
+# Tests / coverage (se houver no futuro)
+coverage
+__tests__
+**/*.test.ts
+**/*.test.tsx
+
+# TS build info
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Supabase migrations não vão pro container (são aplicadas no Supabase Cloud).
+supabase

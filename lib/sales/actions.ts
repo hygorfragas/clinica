@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireClinicalTenantContext } from "@/lib/clients/clinical-tenant-context";
+import { dispatchSaleCreated } from "@/lib/financial/dispatcher";
 import { computeSaleFeasibility } from "./completeness";
 
 type Ok<T = unknown> = { ok: true } & T;
@@ -91,7 +92,16 @@ export async function createSale(
     return { ok: false, error: error?.message ?? "Falha ao registrar venda." };
   }
 
+  await dispatchSaleCreated(ctx.supabase, ctx.tenantId, {
+    id: row.id,
+    title: data.title?.trim() || proc.name,
+    total_cents: data.totalCents,
+    client_id: data.clientId,
+    responsible_profile_id: ctx.userId,
+  });
+
   revalidatePath("/vendas");
+  revalidatePath("/financeiro");
   revalidatePath(`/pacientes/${data.clientId}`, "layout");
   return { ok: true, id: row.id };
 }

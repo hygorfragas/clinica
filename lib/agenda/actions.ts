@@ -1,8 +1,11 @@
 import { revalidatePath } from "next/cache";
-import { canAccessAgenda } from "@/lib/auth/clinic-profile";
+import {
+  canAccessAgenda,
+  fetchClinicProfile,
+} from "@/lib/auth/clinic-profile";
 import { CLINIC_TIMEZONE } from "@/lib/dates";
 import { pushSystemChange } from "@/lib/google/sync";
-import { getCurrentUserFromServerCookies } from "@/lib/auth/local-auth";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { APPOINTMENT_SELECT, mapAppointmentRow } from "./mapper";
 type ClinicDbClient = ReturnType<typeof createServiceRoleClient>;
@@ -32,11 +35,14 @@ export type ConflictInfo = {
 };
 
 async function getAuthContext() {
-  const user = await getCurrentUserFromServerCookies();
-  if (!user) {
+  const ssr = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await ssr.auth.getUser();
+  if (!user?.id) {
     return { ok: false as const, error: "Sessão expirada." };
   }
-  const profile = { id: user.userId, role: user.role, tenant_id: user.tenantId };
+  const profile = await fetchClinicProfile(ssr, user.id);
   if (!profile || !canAccessAgenda(profile) || !profile.tenant_id) {
     return { ok: false as const, error: "Sem permissão para a agenda." };
   }
@@ -45,7 +51,7 @@ async function getAuthContext() {
     ok: true as const,
     supabase,
     tenantId: profile.tenant_id,
-    profileId: user.userId,
+    profileId: user.id,
   };
 }
 

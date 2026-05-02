@@ -13,6 +13,7 @@ import {
   type CreatePatientFormValues,
   type CreatePatientParsed,
 } from "@/lib/clients/schemas";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 const textareaClass =
   "min-h-[5rem] w-full resize-y rounded-md border border-line bg-[#f3f1ee] px-3 py-2 text-sm text-ink shadow-none transition-colors placeholder:text-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -40,10 +41,12 @@ export function PacienteDadosEditor({ clientId, initial }: Props) {
       const result = await updatePatient(clientId, values);
       if (result.ok) {
         setSaved(true);
+        notifySuccess("Dados salvos.");
         router.refresh();
         return;
       }
       setServerError(result.error);
+      notifyError(null, result.error);
     });
   }
 
@@ -123,8 +126,8 @@ export function PacienteDadosEditor({ clientId, initial }: Props) {
         </p>
       )}
 
-      <Button type="submit" disabled={pending}>
-        {pending ? "Salvando…" : "Salvar alterações"}
+      <Button type="submit" loading={pending} loadingLabel="Salvando...">
+        Salvar alterações
       </Button>
     </form>
   );

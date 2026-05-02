@@ -3,11 +3,17 @@
 @tailwind utilities;
 
 /*
-  Calma clínica / estética: papel quente, verde-sálvia (confiança), baixo contraste.
+  Calma clínica / estética: papel quente, acento configurável, baixo contraste.
   Profundidade por sombra suave + bordas quase invisíveis (skill interface-design).
+
+  Tokens neutros (canvas/surface/foreground/border/shadow) vivem em :root
+  (light) e html.dark (escuro). Tokens de acento (--brand*, --ring) vivem
+  em blocos [data-accent="<preset>"], combinados com o modo em
+  html.dark[data-accent] quando precisamos ajustar contraste no dark.
 */
+
+/* -------- Neutros e radius/font ------------------------------------------ */
 :root {
-  /* Alinhado ao Stitch “Curated Clinic”: papel #fbf9f6, sálvia #4a655a, sombras em tom de primário */
   --canvas: #fbf9f6;
   --surface: #fffefb;
   --muted: #f5f3f0;
@@ -15,14 +21,7 @@
   --foreground-muted: #5e5f5c;
   --foreground-subtle: #78716c;
   --border: rgba(28, 25, 23, 0.07);
-  --brand: #4a655a;
-  --brand-hover: #3d564c;
-  --brand-soft: rgba(74, 101, 90, 0.09);
-  --brand-container: #cbe9db;
-  --secondary-container: #e7deff;
-  --on-secondary-container: #544e69;
   --destructive: #b91c1c;
-  --ring: rgba(74, 101, 90, 0.28);
   --shadow-lift: 0 1px 2px rgba(42, 68, 59, 0.05),
     0 12px 32px rgba(42, 68, 59, 0.07);
   --shadow-sidebar: 20px 0 40px rgba(42, 68, 59, 0.04);
@@ -32,6 +31,186 @@
   --radius-md: 0.625rem;
   --radius-sm: 0.375rem;
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+html.dark {
+  --canvas: #0f1412;
+  --surface: #151b19;
+  --muted: #1c2320;
+  --foreground: #ecefec;
+  --foreground-muted: #b7beba;
+  --foreground-subtle: #8a918d;
+  --border: rgba(236, 239, 236, 0.08);
+  --destructive: #f87171;
+  --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-sidebar: 20px 0 40px rgba(0, 0, 0, 0.3);
+  --shadow-card-bento: 0 4px 24px -4px rgba(0, 0, 0, 0.45);
+  --shadow-panel: 0 20px 50px -12px rgba(0, 0, 0, 0.55);
+}
+
+/* -------- Presets de acento (light por padrão) --------------------------- */
+:root,
+[data-accent="salvia"] {
+  --brand: #4a655a;
+  --brand-hover: #3d564c;
+  --brand-soft: rgba(74, 101, 90, 0.09);
+  --brand-container: #cbe9db;
+  --secondary-container: #e7deff;
+  --on-secondary-container: #544e69;
+  --ring: rgba(74, 101, 90, 0.28);
+}
+
+[data-accent="indigo"] {
+  --brand: #4f46e5;
+  --brand-hover: #4338ca;
+  --brand-soft: rgba(79, 70, 229, 0.1);
+  --brand-container: #e0e7ff;
+  --secondary-container: #ede9fe;
+  --on-secondary-container: #4c1d95;
+  --ring: rgba(79, 70, 229, 0.3);
+}
+
+[data-accent="azul"] {
+  --brand: #2563eb;
+  --brand-hover: #1d4ed8;
+  --brand-soft: rgba(37, 99, 235, 0.1);
+  --brand-container: #dbeafe;
+  --secondary-container: #e0f2fe;
+  --on-secondary-container: #1e3a8a;
+  --ring: rgba(37, 99, 235, 0.3);
+}
+
+[data-accent="roxo"] {
+  --brand: #7c3aed;
+  --brand-hover: #6d28d9;
+  --brand-soft: rgba(124, 58, 237, 0.1);
+  --brand-container: #ede9fe;
+  --secondary-container: #f5d0fe;
+  --on-secondary-container: #4c1d95;
+  --ring: rgba(124, 58, 237, 0.3);
+}
+
+[data-accent="rosa"] {
+  --brand: #db2777;
+  --brand-hover: #be185d;
+  --brand-soft: rgba(219, 39, 119, 0.1);
+  --brand-container: #fce7f3;
+  --secondary-container: #fbcfe8;
+  --on-secondary-container: #831843;
+  --ring: rgba(219, 39, 119, 0.3);
+}
+
+[data-accent="laranja"] {
+  --brand: #ea580c;
+  --brand-hover: #c2410c;
+  --brand-soft: rgba(234, 88, 12, 0.1);
+  --brand-container: #ffedd5;
+  --secondary-container: #fed7aa;
+  --on-secondary-container: #7c2d12;
+  --ring: rgba(234, 88, 12, 0.3);
+}
+
+[data-accent="verde-agua"] {
+  --brand: #0d9488;
+  --brand-hover: #0f766e;
+  --brand-soft: rgba(13, 148, 136, 0.1);
+  --brand-container: #ccfbf1;
+  --secondary-container: #cffafe;
+  --on-secondary-container: #134e4a;
+  --ring: rgba(13, 148, 136, 0.3);
+}
+
+[data-accent="grafite"] {
+  --brand: #334155;
+  --brand-hover: #1f2937;
+  --brand-soft: rgba(51, 65, 85, 0.09);
+  --brand-container: #e2e8f0;
+  --secondary-container: #e4e4e7;
+  --on-secondary-container: #1f2937;
+  --ring: rgba(51, 65, 85, 0.28);
+}
+
+/* Ajustes para dark mode: clareamos o brand e containers ficam em tom
+   escuro translúcido para contraste acessível sobre --surface. */
+html.dark[data-accent="salvia"] {
+  --brand: #7fb39d;
+  --brand-hover: #93c3af;
+  --brand-soft: rgba(127, 179, 157, 0.14);
+  --brand-container: #1e2f29;
+  --secondary-container: #2a2535;
+  --on-secondary-container: #cdc6e0;
+  --ring: rgba(127, 179, 157, 0.45);
+}
+
+html.dark[data-accent="indigo"] {
+  --brand: #a5b4fc;
+  --brand-hover: #c7d2fe;
+  --brand-soft: rgba(165, 180, 252, 0.14);
+  --brand-container: #1e1b4b;
+  --secondary-container: #312e81;
+  --on-secondary-container: #e0e7ff;
+  --ring: rgba(165, 180, 252, 0.45);
+}
+
+html.dark[data-accent="azul"] {
+  --brand: #93c5fd;
+  --brand-hover: #bfdbfe;
+  --brand-soft: rgba(147, 197, 253, 0.14);
+  --brand-container: #172554;
+  --secondary-container: #1e3a8a;
+  --on-secondary-container: #dbeafe;
+  --ring: rgba(147, 197, 253, 0.45);
+}
+
+html.dark[data-accent="roxo"] {
+  --brand: #c4b5fd;
+  --brand-hover: #ddd6fe;
+  --brand-soft: rgba(196, 181, 253, 0.14);
+  --brand-container: #2e1065;
+  --secondary-container: #4c1d95;
+  --on-secondary-container: #ede9fe;
+  --ring: rgba(196, 181, 253, 0.45);
+}
+
+html.dark[data-accent="rosa"] {
+  --brand: #f9a8d4;
+  --brand-hover: #fbcfe8;
+  --brand-soft: rgba(249, 168, 212, 0.14);
+  --brand-container: #500724;
+  --secondary-container: #831843;
+  --on-secondary-container: #fce7f3;
+  --ring: rgba(249, 168, 212, 0.45);
+}
+
+html.dark[data-accent="laranja"] {
+  --brand: #fdba74;
+  --brand-hover: #fed7aa;
+  --brand-soft: rgba(253, 186, 116, 0.14);
+  --brand-container: #431407;
+  --secondary-container: #7c2d12;
+  --on-secondary-container: #ffedd5;
+  --ring: rgba(253, 186, 116, 0.45);
+}
+
+html.dark[data-accent="verde-agua"] {
+  --brand: #5eead4;
+  --brand-hover: #99f6e4;
+  --brand-soft: rgba(94, 234, 212, 0.14);
+  --brand-container: #042f2e;
+  --secondary-container: #134e4a;
+  --on-secondary-container: #ccfbf1;
+  --ring: rgba(94, 234, 212, 0.45);
+}
+
+html.dark[data-accent="grafite"] {
+  --brand: #cbd5e1;
+  --brand-hover: #e2e8f0;
+  --brand-soft: rgba(203, 213, 225, 0.1);
+  --brand-container: #1f2937;
+  --secondary-container: #27272a;
+  --on-secondary-container: #e4e4e7;
+  --ring: rgba(203, 213, 225, 0.38);
 }
 
 @layer base {

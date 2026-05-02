@@ -375,7 +375,7 @@ export async function uploadClinicalPhoto(
   }
 
   const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
+  if (!(file instanceof Blob) || file.size === 0) {
     return { ok: false, error: "Selecione uma imagem." };
   }
   if (file.size > MAX_PHOTO_BYTES) {
@@ -415,7 +415,7 @@ export async function uploadClinicalPhoto(
     tenantId: ctx.tenantId,
     clientId,
     category: "photos",
-    originalFileName: file.name,
+    originalFileName: (file as File).name ?? "arquivo",
   });
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -522,7 +522,7 @@ export async function uploadClinicalPhotosBatch(
 
   const files = formData
     .getAll("files")
-    .filter((x): x is File => x instanceof File && x.size > 0);
+    .filter((x): x is File => x instanceof Blob && x.size > 0);
 
   if (files.length === 0) {
     return { ok: false, error: "Selecione ao menos uma imagem." };
@@ -670,7 +670,7 @@ export async function uploadClinicalDocument(
   }
 
   const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
+  if (!(file instanceof Blob) || file.size === 0) {
     return { ok: false, error: "Selecione um arquivo." };
   }
   if (file.size > MAX_DOCUMENT_BYTES) {
@@ -696,7 +696,7 @@ export async function uploadClinicalDocument(
     tenantId: ctx.tenantId,
     clientId,
     category: "documents",
-    originalFileName: file.name,
+    originalFileName: (file as File).name ?? "arquivo",
   });
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -923,7 +923,7 @@ export async function registerSignature(
   }
 
   const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
+  if (!(file instanceof Blob) || file.size === 0) {
     return { ok: false, error: "Anexe a imagem da assinatura." };
   }
   if (file.size > MAX_SIGNATURE_BYTES) {
@@ -936,7 +936,7 @@ export async function registerSignature(
     tenantId: ctx.tenantId,
     clientId,
     category: "signatures",
-    originalFileName: file.name,
+    originalFileName: (file as File).name ?? "arquivo",
   });
 
   const buffer = Buffer.from(await file.arrayBuffer());

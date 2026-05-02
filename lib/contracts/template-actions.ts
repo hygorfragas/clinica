@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
+  anamnesisFieldsSchema,
+  type AnamnesisField,
+} from "@/lib/anamnesis/template-schema";
+import {
   requireClinicalTenantContext,
   type ClinicSupabaseClient,
 } from "@/lib/clients/clinical-tenant-context";
@@ -75,7 +79,7 @@ export async function createContractTemplateFromFile(formData: FormData): Promis
   if (!t.success) return { ok: false, error: t.error.errors[0]?.message ?? "Título inválido" };
 
   const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
+  if (!(file instanceof Blob) || file.size === 0) {
     return { ok: false, error: "Selecione um PDF ou imagem." };
   }
   if (file.size > MAX_DOCUMENT_BYTES) {
@@ -92,7 +96,7 @@ export async function createContractTemplateFromFile(formData: FormData): Promis
 
   const path = buildContractTemplateStoragePath({
     tenantId: ctx.tenantId,
-    originalFileName: file.name,
+    originalFileName: (file as File).name ?? "arquivo",
   });
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -217,6 +221,100 @@ export async function setDefaultContractTemplate(templateId: string): Promise<Ac
 
   revalidatePath("/configuracoes/contratos");
   return { ok: true };
+}
+
+export async function updateContractTemplateFields(input: {
+  id: string;
+  formSchema: AnamnesisField[];
+  pageCount?: number;
+}): Promise<ActionOk | ActionError> {
+  const ctx = await requireClinicalTenantContext();
+  if (!ctx.ok) return ctx;
+
+  const id = idSchema.safeParse(input.id);
+  if (!id.success) {
+    return { ok: false, error: id.error.errors[0]?.message ?? "Id inválido" };
+  }
+
+  const fields = anamnesisFieldsSchema.safeParse(input.formSchema);
+  if (!fields.success) {
+    return { ok: false, error: "Estrutura de campos inválida." };
+  }
+
+  const payload: {
+    form_schema: AnamnesisField[];
+    page_count?: number;
+  } = { form_schema: fields.data };
+  if (input.pageCount !== undefined && input.pageCount > 0) {
+    payload.page_count = Math.max(1, Math.floor(input.pageCount));
+  }
+
+  const { data: existing } = await ctx.supabase
+    .schema("clinic")
+    .from("contract_templates")
+    .select("id, mime_type, storage_key")
+    .eq("id", id.data)
+    .eq("tenant_id", ctx.tenantId)
+    .maybeSingle();
+
+  if (!existing) {
+    return { ok: false, error: "Modelo não encontrado." };
+  }
+  if (existing.mime_type !== "application/pdf" || !existing.storage_key) {
+    return {
+      ok: false,
+      error: "Só é possível marcar campos em modelos baseados em PDF.",
+    };
+  }
+
+  const { error } = await ctx.supabase
+    .schema("clinic")
+    .from("contract_templates")
+    .update(payload)
+    .eq("id", id.data)
+    .eq("tenant_id", ctx.tenantId);
+
+  if (error) {
+    return {
+      ok: false,
+      error: error.message ?? "Não foi possível atualizar campos.",
+    };
+  }
+
+  revalidatePath("/configuracoes/contratos");
+  revalidatePath(`/configuracoes/contratos/${id.data}/campos`);
+  return { ok: true };
+}
+
+export async function getContractTemplateSignedUrl(
+  templateId: string,
+): Promise<{ ok: true; url: string } | ActionError> {
+  const ctx = await requireClinicalTenantContext();
+  if (!ctx.ok) return ctx;
+
+  const id = idSchema.safeParse(templateId);
+  if (!id.success) {
+    return { ok: false, error: id.error.errors[0]?.message ?? "Id inválido" };
+  }
+
+  const { data: row } = await ctx.supabase
+    .schema("clinic")
+    .from("contract_templates")
+    .select("storage_key")
+    .eq("id", id.data)
+    .eq("tenant_id", ctx.tenantId)
+    .maybeSingle();
+  if (!row?.storage_key) {
+    return { ok: false, error: "Arquivo não encontrado." };
+  }
+
+  const { data: signed, error } = await ctx.supabase.storage
+    .from(CLINICAL_BUCKET)
+    .createSignedUrl(row.storage_key, 60 * 30);
+  if (error || !signed?.signedUrl) {
+    return { ok: false, error: error?.message ?? "Falha ao gerar link." };
+  }
+  return { ok: true, url: signed.signedUrl };
 }
 
 export async function deleteContractTemplate(templateId: string): Promise<ActionOk | ActionError> {

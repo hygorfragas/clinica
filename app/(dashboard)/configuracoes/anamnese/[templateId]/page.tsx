@@ -1,14 +1,11 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { TemplateFieldDesigner } from "@/components/anamnesis/template-field-designer";
-import {
-  canAccessAgenda,
-  fetchClinicProfile,
-} from "@/lib/auth/clinic-profile";
 import {
   anamnesisFieldsSchema,
   type AnamnesisField,
 } from "@/lib/anamnesis/template-schema";
+import { requireClinicAdminPage } from "@/lib/auth/page-guards";
 import { CLINICAL_BUCKET } from "@/lib/clinical/storage";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -16,16 +13,8 @@ type PageProps = { params: Promise<{ templateId: string }> };
 
 export default async function EditAnamnesisTemplatePage({ params }: PageProps) {
   const { templateId } = await params;
+  const profile = await requireClinicAdminPage();
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const profile = await fetchClinicProfile(supabase, user.id);
-  if (!profile?.tenant_id || !canAccessAgenda(profile)) {
-    redirect("/aguardando-acesso");
-  }
 
   const { data: template } = await supabase
     .schema("clinic")

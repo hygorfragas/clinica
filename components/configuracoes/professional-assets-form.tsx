@@ -13,6 +13,7 @@ import {
   uploadMyProfileSignature,
   uploadMyProfileStamp,
 } from "@/lib/profiles/professional-asset-actions";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 type Props = {
   hasStamp: boolean;
@@ -31,15 +32,18 @@ export function ProfessionalAssetsForm({ hasStamp, hasSignature }: Props) {
     setError(null);
     setOkMsg(null);
     const fd = new FormData(e.currentTarget);
+    const formEl = e.currentTarget;
     startTransition(async () => {
       const r = await uploadMyProfileStamp(fd);
       if (r.ok) {
         setOkMsg("Carimbo atualizado.");
-        e.currentTarget.reset();
+        notifySuccess("Carimbo atualizado.");
+        formEl.reset();
         router.refresh();
         return;
       }
       setError(r.error);
+      notifyError(null, r.error);
     });
   }
 
@@ -49,7 +53,9 @@ export function ProfessionalAssetsForm({ hasStamp, hasSignature }: Props) {
     startTransition(async () => {
       const blob = await sigRef.current?.toPngBlob();
       if (!blob) {
-        setError("Desenhe sua assinatura na área antes de salvar.");
+        const msg = "Desenhe sua assinatura na área antes de salvar.";
+        setError(msg);
+        notifyError(null, msg);
         return;
       }
       const fd = new FormData();
@@ -60,11 +66,13 @@ export function ProfessionalAssetsForm({ hasStamp, hasSignature }: Props) {
       const r = await uploadMyProfileSignature(fd);
       if (r.ok) {
         setOkMsg("Assinatura digital salva.");
+        notifySuccess("Assinatura digital salva.");
         sigRef.current?.clear();
         router.refresh();
         return;
       }
       setError(r.error);
+      notifyError(null, r.error);
     });
   }
 
@@ -106,7 +114,7 @@ export function ProfessionalAssetsForm({ hasStamp, hasSignature }: Props) {
               disabled={pending}
             />
           </div>
-          <Button type="submit" disabled={pending} variant="secondary">
+          <Button type="submit" loading={pending} variant="secondary">
             {hasStamp ? "Substituir carimbo" : "Salvar carimbo"}
           </Button>
         </div>
@@ -119,7 +127,7 @@ export function ProfessionalAssetsForm({ hasStamp, hasSignature }: Props) {
         />
         <Button
           type="button"
-          disabled={pending}
+          loading={pending}
           variant="secondary"
           onClick={saveSignature}
         >

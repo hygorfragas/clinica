@@ -11,6 +11,7 @@ import {
   type AnamnesisPayload,
 } from "@/lib/anamnesis/schema";
 import { saveAnamnesis } from "@/lib/clients/record-actions";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 const textareaClass =
   "min-h-[4rem] w-full resize-y rounded-md border border-line bg-[#f3f1ee] px-3 py-2 text-sm text-ink shadow-none transition-colors placeholder:text-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
@@ -87,10 +88,12 @@ export function PacienteAnamneseForm({
       });
       if (result.ok) {
         setSaved(true);
+        notifySuccess("Anamnese salva.");
         router.refresh();
         return;
       }
       setServerError(result.error);
+      notifyError(null, result.error);
     });
   }
 
@@ -287,8 +290,8 @@ export function PacienteAnamneseForm({
         </p>
       )}
 
-      <Button type="submit" disabled={pending}>
-        {pending ? "Salvando…" : "Salvar anamnese"}
+      <Button type="submit" loading={pending} loadingLabel="Salvando...">
+        Salvar anamnese
       </Button>
     </form>
   );

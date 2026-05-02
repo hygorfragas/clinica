@@ -12,6 +12,10 @@ export type CreatePatientResult =
   | { ok: true; id: string }
   | { ok: false; error: string };
 
+function digitsOnly(value: string | null | undefined): string {
+  return (value ?? "").replace(/\D/g, "");
+}
+
 export async function createPatient(
   raw: unknown,
 ): Promise<CreatePatientResult> {
@@ -32,6 +36,30 @@ export async function createPatient(
   const profile = await fetchClinicProfile(supabase, user.id);
   if (!profile?.tenant_id || !canAccessAgenda(profile)) {
     return { ok: false, error: "Sem permissão para cadastrar pacientes." };
+  }
+
+  // Bloqueia cadastro duplicado APENAS contra pacientes visíveis (não-ocultos).
+  // Pacientes em soft-delete (hidden_from_ui_at != null) podem coexistir com
+  // novos cadastros de mesmo nome+CPF — preserva histórico sem travar a UX.
+  const cpfDigits = digitsOnly(parsed.data.cpf);
+  if (cpfDigits.length > 0 && parsed.data.full_name) {
+    const { data: candidates } = await supabase
+      .schema("clinic")
+      .from("clients")
+      .select("id, full_name, cpf")
+      .eq("tenant_id", profile.tenant_id)
+      .is("hidden_from_ui_at", null)
+      .ilike("full_name", parsed.data.full_name);
+    const conflict = (candidates ?? []).find(
+      (c) => digitsOnly(c.cpf) === cpfDigits,
+    );
+    if (conflict) {
+      return {
+        ok: false,
+        error:
+          "Já existe uma paciente ativa com este nome e CPF nesta clínica.",
+      };
+    }
   }
 
   const row = {

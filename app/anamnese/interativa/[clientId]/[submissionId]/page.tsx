@@ -6,6 +6,7 @@ import {
   anamnesisStrokesSchema,
   type AnamnesisStroke,
 } from "@/lib/anamnesis/template-schema";
+import { createServiceRoleClient } from "@/lib/supabase/service";
 
 type PageProps = {
   params: Promise<{ clientId: string; submissionId: string }>;
@@ -45,9 +46,16 @@ export default async function AnamneseInterativaPage({ params }: PageProps) {
       .eq("tenant_id", ctx.tenantId)
       .maybeSingle();
     if (template?.pdf_storage_path) {
-      const { data: signed } = await ctx.supabase.storage
+      const storageClient = createServiceRoleClient();
+      const { data: signed, error: signErr } = await storageClient.storage
         .from(CLINICAL_BUCKET)
         .createSignedUrl(template.pdf_storage_path, 60 * 60);
+      if (signErr) {
+        console.error(
+          "[anamnese.interativa] Falha ao gerar signed URL:",
+          signErr.message,
+        );
+      }
       templatePdfUrl = signed?.signedUrl ?? null;
     }
     templateLabel = template?.name ?? null;

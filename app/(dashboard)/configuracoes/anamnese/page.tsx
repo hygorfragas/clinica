@@ -1,27 +1,13 @@
-import { redirect } from "next/navigation";
 import {
   TemplatesManager,
   type TemplateRow,
 } from "@/components/anamnesis/templates-manager";
-import {
-  canAccessAgenda,
-  fetchClinicProfile,
-} from "@/lib/auth/clinic-profile";
+import { requireClinicAdminPage } from "@/lib/auth/page-guards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export default async function ConfiguracoesAnamnesePage() {
+  const profile = await requireClinicAdminPage();
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const profile = await fetchClinicProfile(supabase, user.id);
-  if (!profile?.tenant_id || !canAccessAgenda(profile)) {
-    redirect("/aguardando-acesso");
-  }
 
   const { data: rows, error } = await supabase
     .schema("clinic")

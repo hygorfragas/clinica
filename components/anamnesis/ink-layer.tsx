@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Stage, Layer, Line } from "react-konva";
+import { Stage, Layer, Line, Rect } from "react-konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import type { AnamnesisStroke, AnamnesisStrokePoint, AnamnesisStrokeTool } from "@/lib/anamnesis/template-schema";
 import {
@@ -11,6 +11,29 @@ import {
 } from "@/lib/anamnesis/stroke-geometry";
 
 export type InkTool = AnamnesisStrokeTool | "eraser";
+
+/** Safari/iPadOS às vezes trata Apple Pencil como `touch` ou expõe `touchType: "stylus"`. */
+function isLikelyStylusPointer(evt: PointerEvent): boolean {
+  if (evt.pointerType === "pen") return true;
+  const ext = evt as PointerEvent & { touchType?: string };
+  if (ext.touchType === "stylus") return true;
+  if (evt.pointerType === "touch") {
+    const tilted =
+      (typeof evt.tiltX === "number" && evt.tiltX !== 0) ||
+      (typeof evt.tiltY === "number" && evt.tiltY !== 0);
+    const twisted = typeof evt.twist === "number" && evt.twist !== 0;
+    if (tilted || twisted) return true;
+    const alt = evt as PointerEvent & { altitudeAngle?: number };
+    if (
+      typeof alt.altitudeAngle === "number" &&
+      alt.altitudeAngle > 0 &&
+      alt.altitudeAngle < Math.PI / 2 - 0.05
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 type Props = {
   width: number;
@@ -70,7 +93,7 @@ export function InkLayer({
   const shouldHandlePointer = (evt: PointerEvent) => {
     if (!pointerInteractive) return false;
     if (allowNonPen) return true;
-    return evt.pointerType === "pen";
+    return isLikelyStylusPointer(evt);
   };
 
   const getRelativePoint = (
@@ -200,8 +223,17 @@ export function InkLayer({
         onPointerMove={handleMove}
         onPointerUp={handleUp}
         onPointerLeave={handleUp}
+        onPointerCancel={handleUp}
       >
-        <Layer listening={false}>
+        <Layer>
+          <Rect
+            x={0}
+            y={0}
+            width={width}
+            height={height}
+            fill="rgba(0,0,0,0.001)"
+            listening
+          />
           {pageStrokes.map(({ index, stroke }) => (
             <StrokeShape key={index} stroke={stroke} width={width} height={height} />
           ))}

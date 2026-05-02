@@ -4,12 +4,24 @@ export const ANAMNESIS_FIELD_TYPES = [
   "text",
   "textarea",
   "checkbox",
+  "yesno",
   "signature",
+  "initials",
   "date",
   "select",
 ] as const;
 
 export type AnamnesisFieldType = (typeof ANAMNESIS_FIELD_TYPES)[number];
+
+export const ANAMNESIS_SIGNATURE_FIELD_TYPES = ["signature", "initials"] as const;
+export type AnamnesisSignatureFieldType =
+  (typeof ANAMNESIS_SIGNATURE_FIELD_TYPES)[number];
+
+export function isSignatureFieldType(
+  type: AnamnesisFieldType,
+): type is AnamnesisSignatureFieldType {
+  return type === "signature" || type === "initials";
+}
 
 export const anamnesisFieldSchema = z.object({
   id: z.string().min(1).max(64),
@@ -24,6 +36,11 @@ export const anamnesisFieldSchema = z.object({
   options: z.array(z.string().trim().min(1).max(120)).optional(),
   bindPath: z.string().trim().min(1).max(120).optional(),
   placeholder: z.string().trim().max(120).optional(),
+  /** Tamanho de fonte em pontos PDF (1pt = 1/72 inch). Detectado
+   * automaticamente do texto adjacente quando o campo é criado/redimensionado
+   * no designer; usado no flatten para casar a fonte do preenchimento com a
+   * do PDF original. Se ausente, derivamos da altura do retângulo. */
+  fontSize: z.number().positive().max(96).optional(),
 });
 
 export type AnamnesisField = z.infer<typeof anamnesisFieldSchema>;

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -11,6 +12,7 @@ import {
   deleteEvolution,
   uploadEvolutionPhoto,
 } from "@/lib/clients/evolution-actions";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 const textareaClass =
   "min-h-[7rem] w-full resize-y rounded-md border border-line bg-[#f3f1ee] px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35";
@@ -62,6 +64,7 @@ export function PacienteEvolucaoPanel({
   const [procedureId, setProcedureId] = useState<string>("");
   const [purchaseId, setPurchaseId] = useState<string>("");
   const [sessionNumber, setSessionNumber] = useState<string>("");
+  const { confirm, element: confirmDialog } = useConfirmDialog();
 
   const purchasesForProcedure = purchaseId
     ? purchases.filter((p) => p.id === purchaseId)
@@ -85,23 +88,38 @@ export function PacienteEvolucaoPanel({
       });
       if (!result.ok) {
         setError(result.error);
+        notifyError(null, result.error);
         return;
       }
       setBody("");
       setSessionNumber("");
+      notifySuccess("Evolução registrada.");
       router.refresh();
     });
   }
 
   function onRemove(id: string) {
-    if (!confirm("Excluir esta entrada de evolução?")) return;
-    startTransition(async () => {
-      const result = await deleteEvolution(clientId, id);
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      router.refresh();
+    confirm({
+      title: "Excluir evolução",
+      description:
+        "Esta entrada de evolução será removida do prontuário. As fotos associadas também serão descartadas.",
+      confirmLabel: "Excluir",
+      destructive: true,
+      onConfirm: () =>
+        new Promise<void>((resolve, reject) => {
+          startTransition(async () => {
+            const result = await deleteEvolution(clientId, id);
+            if (!result.ok) {
+              setError(result.error);
+              notifyError(null, result.error);
+              reject(new Error(result.error));
+              return;
+            }
+            notifySuccess("Evolução excluída.");
+            router.refresh();
+            resolve();
+          });
+        }),
     });
   }
 
@@ -175,11 +193,12 @@ export function PacienteEvolucaoPanel({
               {error}
             </p>
           )}
-          <Button type="submit" disabled={pending}>
-            {pending ? "Registrando…" : "Registrar evolução"}
+          <Button type="submit" loading={pending} loadingLabel="Registrando...">
+            Registrar evolução
           </Button>
         </form>
       </section>
+      {confirmDialog}
 
       <section className="space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-subtle">
@@ -238,10 +257,12 @@ function EvolutionItem({
       const result = await uploadEvolutionPhoto(clientId, entry.id, fd);
       if (!result.ok) {
         setError(result.error);
+        notifyError(null, result.error);
         return;
       }
       setCaption("");
       if (fileRef.current) fileRef.current.value = "";
+      notifySuccess("Foto adicionada.");
       router.refresh();
     });
   }
@@ -331,9 +352,10 @@ function EvolutionItem({
             type="button"
             size="sm"
             onClick={onAttachPhoto}
-            disabled={pending}
+            loading={pending}
+            loadingLabel="Enviando..."
           >
-            {pending ? "Enviando…" : "Adicionar foto"}
+            Adicionar foto
           </Button>
         </div>
       </details>

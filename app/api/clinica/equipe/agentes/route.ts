@@ -6,8 +6,13 @@ import {
   CLINICAL_BUCKET,
   MAX_SIGNATURE_BYTES,
 } from "@/lib/clinical/storage";
-import { createLocalUser, getCurrentUserFromRequest } from "@/lib/auth/local-auth";
+import {
+  fetchClinicProfile,
+  isTenantManager,
+} from "@/lib/auth/clinic-profile";
+import { createLocalUser } from "@/lib/auth/local-auth";
 import { createProfessionalFieldsSchema } from "@/lib/validations/equipe";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 
 function optionalFile(fd: FormData, name: string): File | null {
@@ -62,19 +67,20 @@ export async function POST(request: NextRequest) {
   }
 
   const body = parsed.data;
-  const user = await getCurrentUserFromRequest(request);
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
 
-  const isTenantManager =
-    Boolean(user.tenantId) &&
-    (user.role === "owner" || user.role === "clinic_admin");
-  if (!isTenantManager || !user.tenantId) {
+  const profile = await fetchClinicProfile(supabase, user.id);
+  if (!isTenantManager(profile) || !profile?.tenant_id) {
     return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
   }
 
-  const tenantId = user.tenantId;
+  const tenantId = profile.tenant_id;
 
   const stampFile =
     multipartFd != null ? optionalFile(multipartFd, "stamp") : null;

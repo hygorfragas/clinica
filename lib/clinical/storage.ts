@@ -74,6 +74,34 @@ export function buildAnamnesisSubmissionStoragePath(params: {
   return `${params.tenantId}/${params.clientId}/anamnesis/${params.submissionId}.pdf`;
 }
 
+/** PDF original de uma ficha de evolução (template) — caminho no bucket clinical. */
+export function buildEvolutionTemplateStoragePath(params: {
+  tenantId: string;
+  templateId: string;
+  originalFileName: string;
+}): string {
+  const safe = safeStorageFileName(params.originalFileName);
+  return `${params.tenantId}/evolution-templates/${params.templateId}-${safe}`;
+}
+
+/** PDF achatado final de um registro de evolução por paciente. */
+export function buildEvolutionSubmissionStoragePath(params: {
+  tenantId: string;
+  clientId: string;
+  submissionId: string;
+}): string {
+  return `${params.tenantId}/${params.clientId}/evolution/${params.submissionId}.pdf`;
+}
+
+/** PDF achatado final de uma submissão de contrato por paciente. */
+export function buildContractSubmissionStoragePath(params: {
+  tenantId: string;
+  clientId: string;
+  submissionId: string;
+}): string {
+  return `${params.tenantId}/${params.clientId}/contracts/${params.submissionId}.pdf`;
+}
+
 /** Assinatura/carimbo da profissional: primeiro segmento = tenant (RLS do bucket clinical). */
 export function buildProfileAssetStoragePath(params: {
   tenantId: string;

@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { PatientSearchDialog } from "@/components/clients/patient-search-dialog";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { AppointmentDto } from "@/lib/agenda/types";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 import type { CreateAppointmentPayload } from "./agenda-calendar";
 
 type DialogState =
@@ -78,13 +80,16 @@ export function AppointmentDialog({
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.clientId) {
-      setError("Selecione a paciente para salvar o agendamento.");
+      const msg = "Selecione a paciente para salvar o agendamento.";
+      setError(msg);
+      notifyError(null, msg);
       return;
     }
     setSubmitting(true);
@@ -105,22 +110,31 @@ export function AppointmentDialog({
         : await onUpdate(state.appointment.id, payload);
     setSubmitting(false);
     if (!result.ok) {
-      setError(result.error ?? "Erro ao salvar.");
+      const msg = result.error ?? "Erro ao salvar.";
+      setError(msg);
+      notifyError(null, msg);
       return;
     }
+    notifySuccess(
+      state.mode === "create"
+        ? "Agendamento criado."
+        : "Agendamento atualizado.",
+    );
     onClose();
   }
 
-  async function handleDelete() {
+  async function handleDeleteConfirmed() {
     if (state.mode !== "edit") return;
-    if (!confirm("Excluir este agendamento?")) return;
     setSubmitting(true);
     const result = await onDelete(state.appointment.id);
     setSubmitting(false);
     if (!result.ok) {
-      setError(result.error ?? "Erro ao excluir.");
-      return;
+      const msg = result.error ?? "Erro ao excluir.";
+      setError(msg);
+      notifyError(null, msg);
+      throw new Error(msg);
     }
+    notifySuccess("Agendamento excluído.");
     onClose();
   }
 
@@ -295,7 +309,7 @@ export function AppointmentDialog({
             <Button
               type="button"
               variant="ghost"
-              onClick={handleDelete}
+              onClick={() => setConfirmDeleteOpen(true)}
               disabled={submitting}
               className="text-destructive hover:text-destructive"
             >
@@ -313,12 +327,21 @@ export function AppointmentDialog({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? "Salvando…" : "Salvar"}
+            <Button type="submit" loading={submitting} loadingLabel="Salvando...">
+              Salvar
             </Button>
           </div>
         </footer>
       </form>
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="Excluir agendamento"
+        description="Esta ação não pode ser desfeita. O evento também será removido do Google Agenda, se estiver conectado."
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={handleDeleteConfirmed}
+      />
     </div>,
     document.body,
   );

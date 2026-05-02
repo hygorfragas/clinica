@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getCurrentUserFromServerCookies } from "@/lib/auth/local-auth";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import {
   DEFAULT_ACCENT,
@@ -24,10 +24,13 @@ export async function resolveThemeForRequest(): Promise<ResolvedTheme> {
   const cookieRaw = cookieStore.get(THEME_COOKIE_NAME)?.value;
   const cookiePrefs = parseThemeCookie(cookieRaw);
 
-  const user = await getCurrentUserFromServerCookies();
+  const ssr = await createServerSupabaseClient();
+  const {
+    data: { user: authUser },
+  } = await ssr.auth.getUser();
   const supabase = createServiceRoleClient();
 
-  if (!user) {
+  if (!authUser?.id) {
     if (cookiePrefs) {
       return {
         accent: cookiePrefs.accent,
@@ -50,7 +53,7 @@ export async function resolveThemeForRequest(): Promise<ResolvedTheme> {
     .schema("clinic")
     .from("profiles")
     .select("tenant_id, theme_accent_preset, theme_mode")
-    .eq("id", user.userId)
+    .eq("id", authUser.id)
     .maybeSingle();
 
   const userOverride: ThemePrefs | null = profile

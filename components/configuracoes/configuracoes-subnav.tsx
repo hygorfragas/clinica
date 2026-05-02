@@ -4,15 +4,28 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-const links = [
+const adminLinks = [
   { href: "/configuracoes/agenda", label: "Agenda" },
   { href: "/configuracoes/anamnese", label: "Anamnese" },
+  { href: "/configuracoes/evolucao", label: "Evolução" },
   { href: "/configuracoes/contratos", label: "Contratos" },
-  { href: "/configuracoes/profissional", label: "Profissional" },
+  { href: "/configuracoes/documentos", label: "Documentos" },
+  { href: "/configuracoes/aparencia", label: "Aparência da clínica" },
 ] as const;
 
-export function ConfiguracoesSubnav() {
+const universalLinks = [
+  { href: "/configuracoes/perfil", label: "Meu perfil" },
+] as const;
+
+export function ConfiguracoesSubnav({
+  isClinicAdmin,
+}: {
+  isClinicAdmin: boolean;
+}) {
   const pathname = usePathname();
+  const links = isClinicAdmin
+    ? [...adminLinks, ...universalLinks]
+    : universalLinks;
 
   return (
     <nav

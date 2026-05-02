@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { AppointmentDto } from "@/lib/agenda/types";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 type AppointmentQuickStatus =
   | "confirmed"
@@ -98,9 +99,18 @@ export function AppointmentQuickActions({
     const result = await onApplyStatus(appointment.id, payload);
     setSubmitting(false);
     if (!result.ok) {
-      setError(result.error ?? "Não foi possível atualizar o status.");
+      const msg = result.error ?? "Não foi possível atualizar o status.";
+      setError(msg);
+      notifyError(null, msg);
       return;
     }
+    const statusLabels: Record<AppointmentQuickStatus, string> = {
+      confirmed: "Agendamento confirmado.",
+      rescheduled: "Agendamento reagendado.",
+      canceled: "Agendamento cancelado.",
+      no_show: "Marcado como não compareceu.",
+    };
+    notifySuccess(statusLabels[status]);
     onClose();
   }
 
@@ -159,10 +169,11 @@ export function AppointmentQuickActions({
             <div className="flex justify-end">
               <Button
                 type="button"
-                disabled={submitting}
+                loading={submitting}
+                loadingLabel="Salvando..."
                 onClick={() => void applyStatus("rescheduled")}
               >
-                {submitting ? "Salvando..." : "Salvar reagendamento"}
+                Salvar reagendamento
               </Button>
             </div>
           </div>

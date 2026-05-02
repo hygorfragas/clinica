@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "postinstall": "node scripts/copy-pdf-worker.mjs",
+    "pdf:copy-worker": "node scripts/copy-pdf-worker.mjs",
     "db:apply-clinical-bucket": "node scripts/apply-clinical-storage-bucket.mjs"
   },
   "dependencies": {
@@ -21,6 +23,7 @@
     "@schedule-x/resize": "^3.7.3",
     "@schedule-x/theme-default": "^4.5.0",
     "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "2.49.8",
     "@tanstack/react-query": "^5.94.5",
     "@tiptap/extension-link": "^2.27.2",
     "@tiptap/extension-placeholder": "^2.27.2",

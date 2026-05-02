@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 const cadastroSchema = z
   .object({
@@ -63,20 +64,25 @@ export function CadastroSuperAdminForm() {
       });
       if (signError) {
         setError(signError.message);
+        notifyError(signError, signError.message);
         return;
       }
 
       if (data.user && !data.session) {
         setRegisteredEmail(values.email);
         setAwaitingEmailConfirm(true);
+        notifySuccess("Conta criada. Confirme seu e-mail.");
         return;
       }
 
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
-        setError("Conta criada, mas a sessão não iniciou. Tente entrar pelo login.");
+        const msg = "Conta criada, mas a sessão não iniciou. Tente entrar pelo login.";
+        setError(msg);
+        notifyError(null, msg);
         return;
       }
+      notifySuccess("Super administrador criado.");
       window.location.assign("/plataforma");
     } finally {
       setLoading(false);
@@ -186,8 +192,13 @@ export function CadastroSuperAdminForm() {
               {error}
             </p>
           )}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Criando conta…" : "Criar super administrador"}
+          <Button
+            type="submit"
+            className="w-full"
+            loading={loading}
+            loadingLabel="Criando conta..."
+          >
+            Criar super administrador
           </Button>
         </form>
         <p className="mt-4 text-center text-sm text-ink-muted">

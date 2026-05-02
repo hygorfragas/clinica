@@ -3,11 +3,21 @@
 import { revalidatePath } from "next/cache";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { z } from "zod";
+import {
+  computeContentBox,
+  drawBrandingOnPage,
+  resolveBrandingForPdf,
+} from "@/lib/branding/apply-to-pdf";
 import { buildClinicalStoragePath, CLINICAL_BUCKET } from "@/lib/clinical/storage";
 import {
   requireClinicalTenantContext,
   type ClinicSupabaseClient,
 } from "@/lib/clients/clinical-tenant-context";
+import {
+  dispatchBudgetApproved,
+  dispatchBudgetCancelled,
+  dispatchSaleCreated,
+} from "@/lib/financial/dispatcher";
 
 type Ok<T = unknown> = { ok: true } & T;
 type Err = { ok: false; error: string };
@@ -169,20 +179,50 @@ export async function changeBudgetStatus(
   const parsed = budgetIdSchema.safeParse(budgetId);
   if (!parsed.success) return { ok: false, error: "Orçamento inválido." };
 
+  const updatePayload: {
+    status: typeof status;
+    cancelled_at?: string | null;
+    cancellation_reason?: string | null;
+  } = { status };
+  if (status === "cancelled") {
+    updatePayload.cancelled_at = new Date().toISOString();
+    updatePayload.cancellation_reason = "manual";
+  } else {
+    updatePayload.cancelled_at = null;
+    updatePayload.cancellation_reason = null;
+  }
+
   const { data: budget, error } = await ctx.supabase
     .schema("clinic")
     .from("budgets")
-    .update({ status })
+    .update(updatePayload)
     .eq("id", parsed.data)
     .eq("tenant_id", ctx.tenantId)
-    .select("id, client_id")
+    .select("id, client_id, title, total_cents")
     .single();
 
   if (error || !budget) {
     return { ok: false, error: error?.message ?? "Falha ao atualizar status." };
   }
 
+  if (status === "approved") {
+    await dispatchBudgetApproved(ctx.supabase, ctx.tenantId, {
+      id: budget.id,
+      title: budget.title,
+      total_cents: budget.total_cents ?? 0,
+      client_id: budget.client_id,
+    });
+  } else if (status === "cancelled") {
+    await dispatchBudgetCancelled(
+      ctx.supabase,
+      ctx.tenantId,
+      budget.id,
+      "Orçamento cancelado",
+    );
+  }
+
   revalidatePath("/orcamentos");
+  revalidatePath("/financeiro");
   revalidatePath(`/pacientes/${budget.client_id}`, "layout");
   return { ok: true };
 }
@@ -216,24 +256,27 @@ export async function convertBudgetToPurchase(budgetId: string): Promise<Ok | Er
     return { ok: false, error: "Este orçamento já está lançado no financeiro." };
   }
 
-  const { error: purchaseError } = await ctx.supabase
+  const purchaseTitle = budget.title?.trim() || "Orçamento convertido";
+  const { data: purchaseRow, error: purchaseError } = await ctx.supabase
     .schema("clinic")
     .from("client_procedure_purchases")
     .insert({
       tenant_id: ctx.tenantId,
       client_id: budget.client_id,
-      title: budget.title?.trim() || "Orçamento convertido",
+      title: purchaseTitle,
       budget_id: budget.id,
       total_cents: budget.total_cents ?? 0,
       currency: "BRL",
       notes: "Lançamento automático a partir de orçamento.",
       responsible_profile_id: ctx.userId,
-    });
+    })
+    .select("id")
+    .single();
 
-  if (purchaseError) {
+  if (purchaseError || !purchaseRow) {
     return {
       ok: false,
-      error: purchaseError.message ?? "Não foi possível lançar no financeiro.",
+      error: purchaseError?.message ?? "Não foi possível lançar no financeiro.",
     };
   }
 
@@ -244,18 +287,48 @@ export async function convertBudgetToPurchase(budgetId: string): Promise<Ok | Er
     .eq("id", budget.id)
     .eq("tenant_id", ctx.tenantId);
 
+  // Cancela o pendente do orçamento (se existir) e registra a venda paga.
+  await dispatchBudgetCancelled(
+    ctx.supabase,
+    ctx.tenantId,
+    budget.id,
+    "Convertido em venda",
+  );
+  await dispatchSaleCreated(ctx.supabase, ctx.tenantId, {
+    id: purchaseRow.id,
+    title: purchaseTitle,
+    total_cents: budget.total_cents ?? 0,
+    client_id: budget.client_id,
+    responsible_profile_id: ctx.userId,
+  });
+
   revalidatePath("/orcamentos");
+  revalidatePath("/financeiro");
   revalidatePath(`/pacientes/${budget.client_id}`, "layout");
   return { ok: true };
 }
 
+const generateBudgetPdfSchema = z.object({
+  budgetId: z.string().uuid(),
+  brandingProfileId: z.string().uuid().nullable().optional(),
+});
+
 export async function generateBudgetPdf(
-  budgetId: string,
+  input:
+    | string
+    | {
+        budgetId: string;
+        brandingProfileId?: string | null;
+      },
 ): Promise<Ok<{ url: string; documentId: string }> | Err> {
   const ctx = await requireClinicalTenantContext();
   if (!ctx.ok) return ctx;
 
-  const parsed = budgetIdSchema.safeParse(budgetId);
+  const normalized =
+    typeof input === "string"
+      ? { budgetId: input, brandingProfileId: null }
+      : input;
+  const parsed = generateBudgetPdfSchema.safeParse(normalized);
   if (!parsed.success) return { ok: false, error: "Orçamento inválido." };
 
   const [{ data: budget }, { data: items }, { data: clinicProfile }] = await Promise.all([
@@ -263,14 +336,14 @@ export async function generateBudgetPdf(
       .schema("clinic")
       .from("budgets")
       .select("id, client_id, title, status, subtotal_cents, discount_cents, total_cents, created_at, valid_until")
-      .eq("id", parsed.data)
+      .eq("id", parsed.data.budgetId)
       .eq("tenant_id", ctx.tenantId)
       .maybeSingle(),
     ctx.supabase
       .schema("clinic")
       .from("budget_items")
       .select("description, quantity, unit_price_cents, line_total_cents")
-      .eq("budget_id", parsed.data)
+      .eq("budget_id", parsed.data.budgetId)
       .eq("tenant_id", ctx.tenantId)
       .order("display_order", { ascending: true }),
     ctx.supabase
@@ -296,21 +369,47 @@ export async function generateBudgetPdf(
     .maybeSingle();
 
   const doc = await PDFDocument.create();
-  const page = doc.addPage([595.28, 841.89]);
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
 
-  let y = 800;
+  const branding = await resolveBrandingForPdf({
+    supabase: ctx.supabase,
+    tenantId: ctx.tenantId,
+    pdfDoc: doc,
+    profileId: parsed.data.brandingProfileId ?? null,
+  });
+
+  const addPageWithBranding = () => {
+    const newPage = doc.addPage([595.28, 841.89]);
+    if (branding) drawBrandingOnPage(newPage, branding);
+    return newPage;
+  };
+
+  let page = addPageWithBranding();
+  let box = computeContentBox({ page, applied: branding });
+  let y = box.y + box.height;
+  const leftX = box.x;
+  const rightX = box.x + box.width;
+  const minY = box.y + 12;
+
+  const ensureSpace = (needed: number) => {
+    if (y - needed < minY) {
+      page = addPageWithBranding();
+      box = computeContentBox({ page, applied: branding });
+      y = box.y + box.height;
+    }
+  };
+
   page.drawText("Orçamento de Procedimentos", {
-    x: 40,
-    y,
+    x: leftX,
+    y: y - 14,
     size: 18,
     font: bold,
     color: rgb(0.12, 0.2, 0.18),
   });
-  y -= 26;
+  y -= 40;
   page.drawText(`Paciente: ${client?.full_name ?? "Paciente"}`, {
-    x: 40,
+    x: leftX,
     y,
     size: 11,
     font,
@@ -318,7 +417,7 @@ export async function generateBudgetPdf(
   });
   y -= 16;
   page.drawText(`Responsável: ${clinicProfile?.full_name ?? "Profissional"}`, {
-    x: 40,
+    x: leftX,
     y,
     size: 10,
     font,
@@ -326,7 +425,7 @@ export async function generateBudgetPdf(
   });
   y -= 16;
   page.drawText(`Status: ${budgetStatusLabel(budget.status)}`, {
-    x: 40,
+    x: leftX,
     y,
     size: 10,
     font,
@@ -340,7 +439,7 @@ export async function generateBudgetPdf(
         : "não informado"
     }`,
     {
-      x: 40,
+      x: leftX,
       y,
       size: 9,
       font,
@@ -349,34 +448,42 @@ export async function generateBudgetPdf(
   );
 
   y -= 28;
-  page.drawText("Itens", { x: 40, y, size: 12, font: bold });
+  page.drawText("Itens", { x: leftX, y, size: 12, font: bold });
   y -= 16;
   for (const item of items) {
-    if (y < 80) break;
+    ensureSpace(16);
     const line = `${item.quantity}x ${item.description}`;
     const value = formatCurrency(item.line_total_cents ?? item.quantity * item.unit_price_cents);
-    page.drawText(line.slice(0, 68), { x: 40, y, size: 10, font });
-    page.drawText(value, { x: 470, y, size: 10, font: bold });
+    const valueWidth = bold.widthOfTextAtSize(value, 10);
+    page.drawText(line.slice(0, 68), { x: leftX, y, size: 10, font });
+    page.drawText(value, {
+      x: rightX - valueWidth,
+      y,
+      size: 10,
+      font: bold,
+    });
     y -= 14;
   }
 
+  ensureSpace(60);
   y -= 12;
+  const totalsX = Math.max(leftX, rightX - 220);
   page.drawText(`Subtotal: ${formatCurrency(budget.subtotal_cents ?? 0)}`, {
-    x: 360,
+    x: totalsX,
     y,
     size: 10,
     font,
   });
   y -= 14;
   page.drawText(`Desconto: ${formatCurrency(budget.discount_cents ?? 0)}`, {
-    x: 360,
+    x: totalsX,
     y,
     size: 10,
     font,
   });
   y -= 16;
   page.drawText(`Total final: ${formatCurrency(budget.total_cents ?? 0)}`, {
-    x: 360,
+    x: totalsX,
     y,
     size: 12,
     font: bold,

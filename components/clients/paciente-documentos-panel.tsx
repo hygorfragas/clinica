@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -15,6 +16,7 @@ import {
 } from "@/lib/clients/record-actions";
 import type { DocumentKind } from "@/lib/clinical/document-kinds";
 import { ContractHtmlPreview } from "@/components/contracts/contract-html-preview";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 export type DocComUrl = {
   id: string;
@@ -50,6 +52,7 @@ export function PacienteDocumentosPanel({
   const [kind, setKind] = useState<DocumentKind>("procedure");
   const [title, setTitle] = useState("");
   const [htmlPreview, setHtmlPreview] = useState<string | null>(null);
+  const { confirm, element: confirmDialog } = useConfirmDialog();
 
   function uploadDoc() {
     const file = docInputRef.current?.files?.[0];
@@ -68,10 +71,12 @@ export function PacienteDocumentosPanel({
       if (result.ok) {
         setTitle("");
         if (docInputRef.current) docInputRef.current.value = "";
+        notifySuccess("Documento enviado.");
         router.refresh();
         return;
       }
       setError(result.error);
+      notifyError(null, result.error);
     });
   }
 
@@ -82,21 +87,36 @@ export function PacienteDocumentosPanel({
       return;
     }
     if (!d.url) {
-      setError("Link do arquivo indisponível.");
+      const msg = "Link do arquivo indisponível.";
+      setError(msg);
+      notifyError(null, msg);
       return;
     }
     window.open(d.url, "_blank", "noopener,noreferrer");
   }
 
   function removeDoc(id: string) {
-    if (!confirm("Excluir este documento?")) return;
-    startTransition(async () => {
-      const result = await deleteClinicalDocument(clientId, id);
-      if (result.ok) {
-        router.refresh();
-        return;
-      }
-      setError(result.error);
+    confirm({
+      title: "Excluir documento",
+      description:
+        "O arquivo será removido do prontuário e não poderá ser recuperado.",
+      confirmLabel: "Excluir",
+      destructive: true,
+      onConfirm: () =>
+        new Promise<void>((resolve, reject) => {
+          startTransition(async () => {
+            const result = await deleteClinicalDocument(clientId, id);
+            if (result.ok) {
+              notifySuccess("Documento excluído.");
+              router.refresh();
+              resolve();
+              return;
+            }
+            setError(result.error);
+            notifyError(null, result.error);
+            reject(new Error(result.error));
+          });
+        }),
     });
   }
 
@@ -153,10 +173,11 @@ export function PacienteDocumentosPanel({
         <Button
           type="button"
           className="mt-6"
-          disabled={pending}
+          loading={pending}
+          loadingLabel="Enviando..."
           onClick={uploadDoc}
         >
-          {pending ? "Enviando…" : "Enviar documento"}
+          Enviar documento
         </Button>
       </section>
 
@@ -264,6 +285,7 @@ export function PacienteDocumentosPanel({
         )}
       </section>
 
+      {confirmDialog}
       {htmlPreview ? (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4 sm:items-center"

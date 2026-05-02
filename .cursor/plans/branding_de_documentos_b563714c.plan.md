@@ -4,22 +4,21 @@ overview: Adicionar uma seção "Documentos" em Configurações onde cada clíni
 todos:
   - id: db-migration
     content: Criar migration com clinic.branding_assets e clinic.document_branding_profiles + RLS; regenerar database.types.ts
-    status: pending
+    status: completed
   - id: lib-branding
     content: Criar lib/branding com schemas Zod, server actions (upload/delete assets, CRUD de perfis, set default) e helper apply-to-pdf
-    status: pending
+    status: completed
   - id: ui-config-documentos
     content: Adicionar aba Documentos no subnav e criar rota/gerenciador com uploads, perfis e preview A4 ao vivo
-    status: pending
+    status: completed
   - id: budget-integration
     content: Estender generateBudgetPdf para aplicar o perfil escolhido (ou padrao) e trocar o botao Exportar PDF por seletor de perfis
-    status: pending
+    status: completed
   - id: qa
     content: Rodar npm run typecheck e validar fluxo end-to-end (upload -> perfil padrao -> PDF de orcamento com branding)
-    status: pending
+    status: completed
 isProject: false
 ---
-
 
 ## Contexto atual
 

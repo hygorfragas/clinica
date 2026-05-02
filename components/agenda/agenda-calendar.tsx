@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScheduleXCalendar, useNextCalendarApp } from "@schedule-x/react";
 import {
   createViewDay,
@@ -19,6 +20,7 @@ import "@schedule-x/theme-default/dist/index.css";
 import { ensureTemporalPolyfill, isoToZoned } from "@/lib/agenda/temporal";
 import type { AppointmentDto } from "@/lib/agenda/types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { queryKeys } from "@/lib/query/keys";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
@@ -82,9 +84,30 @@ export function AgendaCalendar({
   defaultSlotMinutes,
   canEdit,
 }: Props) {
-  const [appointments, setAppointments] = useState<AppointmentDto[]>(
-    initialAppointments,
-  );
+  const queryClient = useQueryClient();
+  const appointmentsQuery = useQuery<AppointmentDto[]>({
+    queryKey: queryKeys.agenda.list({
+      from: initialRange.fromIso,
+      to: initialRange.toIso,
+    }),
+    queryFn: async () => {
+      const qs = new URLSearchParams({
+        from: initialRange.fromIso,
+        to: initialRange.toIso,
+      });
+      const res = await fetch(`/api/agenda/appointments?${qs.toString()}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        throw new Error("Não foi possível carregar a agenda.");
+      }
+      const body = (await res.json()) as { data?: AppointmentDto[] };
+      return body.data ?? [];
+    },
+    initialData: initialAppointments,
+    staleTime: 30_000,
+  });
+  const appointments = appointmentsQuery.data ?? initialAppointments;
   const [syncing, setSyncing] = useState(false);
   const [dialogState, setDialogState] = useState<
     | { mode: "create"; startsAt: string; endsAt: string }
@@ -245,8 +268,13 @@ export function AgendaCalendar({
             }
             const next = body?.data as AppointmentDto | undefined;
             if (next) {
-              setAppointments((prev) =>
-                prev.map((a) => (a.id === next.id ? next : a)),
+              queryClient.setQueryData<AppointmentDto[]>(
+                queryKeys.agenda.list({
+                  from: initialRange.fromIso,
+                  to: initialRange.toIso,
+                }),
+                (prev) =>
+                  (prev ?? []).map((a) => (a.id === next.id ? next : a)),
               );
             }
           },
@@ -276,27 +304,23 @@ export function AgendaCalendar({
           table: "appointments",
           filter: `tenant_id=eq.${tenantId}`,
         },
-        async () => {
-          try {
-            const qs = new URLSearchParams({
+        () => {
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.agenda.list({
               from: initialRange.fromIso,
               to: initialRange.toIso,
-            });
-            const res = await fetch(`/api/agenda/appointments?${qs}`);
-            const body = await res.json();
-            if (res.ok && Array.isArray(body.data)) {
-              setAppointments(body.data);
-            }
-          } catch {
-            /* silencia erros pontuais de refresh */
-          }
+            }),
+          });
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.agenda.root,
+          });
         },
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [tenantId, initialRange.fromIso, initialRange.toIso]);
+  }, [tenantId, initialRange.fromIso, initialRange.toIso, queryClient]);
 
   async function triggerGoogleSync() {
     setSyncing(true);
@@ -331,7 +355,13 @@ export function AgendaCalendar({
       return { ok: false, error: body?.error ?? "Falha ao criar." };
     }
     const created = body.data as AppointmentDto;
-    setAppointments((prev) => [...prev, created]);
+    queryClient.setQueryData<AppointmentDto[]>(
+      queryKeys.agenda.list({
+        from: initialRange.fromIso,
+        to: initialRange.toIso,
+      }),
+      (prev) => [...(prev ?? []), created],
+    );
     return { ok: true };
   }
 
@@ -349,8 +379,12 @@ export function AgendaCalendar({
       return { ok: false, error: body?.error ?? "Falha ao atualizar." };
     }
     const next = body.data as AppointmentDto;
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === next.id ? next : a)),
+    queryClient.setQueryData<AppointmentDto[]>(
+      queryKeys.agenda.list({
+        from: initialRange.fromIso,
+        to: initialRange.toIso,
+      }),
+      (prev) => (prev ?? []).map((a) => (a.id === next.id ? next : a)),
     );
     return { ok: true };
   }
@@ -365,7 +399,13 @@ export function AgendaCalendar({
     if (!res.ok) {
       return { ok: false, error: body?.error ?? "Falha ao remover." };
     }
-    setAppointments((prev) => prev.filter((a) => a.id !== id));
+    queryClient.setQueryData<AppointmentDto[]>(
+      queryKeys.agenda.list({
+        from: initialRange.fromIso,
+        to: initialRange.toIso,
+      }),
+      (prev) => (prev ?? []).filter((a) => a.id !== id),
+    );
     return { ok: true };
   }
 

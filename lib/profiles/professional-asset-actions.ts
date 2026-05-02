@@ -20,7 +20,7 @@ async function uploadProfileAsset(
   if (!ctx.ok) return ctx;
 
   const file = formData.get(fieldName);
-  if (!(file instanceof File) || file.size === 0) {
+  if (!(file instanceof Blob) || file.size === 0) {
     return { ok: false, error: "Selecione um arquivo de imagem." };
   }
   if (file.size > MAX_SIGNATURE_BYTES) {
@@ -41,7 +41,7 @@ async function uploadProfileAsset(
     tenantId: ctx.tenantId,
     profileId: ctx.userId,
     kind: fieldName === "stamp" ? "stamp" : "signature",
-    originalFileName: file.name,
+    originalFileName: (file as File).name ?? "arquivo",
   });
 
   const buffer = Buffer.from(await file.arrayBuffer());

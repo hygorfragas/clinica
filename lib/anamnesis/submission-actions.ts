@@ -270,34 +270,62 @@ async function flattenSubmission(params: {
 
     if (field.type === "checkbox") {
       if (value === true) {
-        page.drawRectangle({
-          x,
-          y,
-          width: 10,
-          height: 10,
-          borderColor: rgb(0.1, 0.3, 0.2),
-          borderWidth: 1,
-        });
+        const cx = x + Math.min(8, w * 0.2);
+        const cy = y + Math.min(8, h * 0.2);
         page.drawText("X", {
-          x: x + 2,
-          y: y + 1.5,
-          size: 10,
+          x: cx,
+          y: cy,
+          size: Math.min(14, h * 0.8),
           font: boldFont,
-          color: rgb(0.1, 0.3, 0.2),
+          color: rgb(0.05, 0.2, 0.12),
         });
       }
       continue;
     }
 
+    if (field.type === "yesno") {
+      const choice = value === "yes" ? "yes" : value === "no" ? "no" : null;
+      if (!choice) continue;
+      // Divide o retângulo em duas metades; marca um X na escolhida.
+      const half = w / 2;
+      const fontSize = field.fontSize ?? Math.min(11, h * 0.7);
+      const baselineY = y + (h - fontSize) / 2;
+      const yesText = choice === "yes" ? "[X] Sim" : "[ ] Sim";
+      const noText = choice === "no" ? "[X] Não" : "[ ] Não";
+      page.drawText(yesText, {
+        x: x + 4,
+        y: baselineY,
+        size: fontSize,
+        font: choice === "yes" ? boldFont : font,
+        color: rgb(0.05, 0.05, 0.05),
+      });
+      page.drawText(noText, {
+        x: x + half + 4,
+        y: baselineY,
+        size: fontSize,
+        font: choice === "no" ? boldFont : font,
+        color: rgb(0.05, 0.05, 0.05),
+      });
+      continue;
+    }
+
+    // Assinatura/rubrica: desenhadas como strokes em outro loop, não como texto.
+    if (field.type === "signature" || field.type === "initials") continue;
+
     const text = String(value);
-    const lines = wrapText(text, w, 10, font);
-    const maxLines = Math.max(1, Math.floor(h / 12));
+    const fontSize =
+      field.fontSize && field.fontSize > 0
+        ? field.fontSize
+        : Math.min(11, Math.max(8, h * 0.6));
+    const lineHeight = fontSize * 1.2;
+    const lines = wrapText(text, w - 4, fontSize, font);
+    const maxLines = Math.max(1, Math.floor(h / lineHeight));
     const shown = lines.slice(0, maxLines);
     for (let i = 0; i < shown.length; i += 1) {
       page.drawText(shown[i], {
         x: x + 2,
-        y: y + h - 12 * (i + 1),
-        size: 10,
+        y: y + h - lineHeight * (i + 1) + lineHeight * 0.2,
+        size: fontSize,
         font,
         color: rgb(0.05, 0.05, 0.05),
       });

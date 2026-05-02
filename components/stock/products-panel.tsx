@@ -11,6 +11,7 @@ import {
   setProductArchived,
   updateProduct,
 } from "@/lib/stock/actions";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 const BRL = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -60,7 +61,9 @@ export function ProductsPanel({ products }: { products: ProductRow[] }) {
   function onCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) {
-      setError("Informe o nome do produto.");
+      const msg = "Informe o nome do produto.";
+      setError(msg);
+      notifyError(null, msg);
       return;
     }
     setError(null);
@@ -77,8 +80,10 @@ export function ProductsPanel({ products }: { products: ProductRow[] }) {
       });
       if (!res.ok) {
         setError(res.error);
+        notifyError(null, res.error);
         return;
       }
+      notifySuccess("Produto cadastrado.");
       setForm(initialForm);
       setOpen(false);
       router.refresh();
@@ -167,8 +172,8 @@ export function ProductsPanel({ products }: { products: ProductRow[] }) {
             <p className="md:col-span-4 text-sm text-danger">{error}</p>
           ) : null}
           <div className="md:col-span-4 flex justify-end">
-            <Button type="submit" disabled={pending}>
-              {pending ? "Salvando…" : "Salvar produto"}
+            <Button type="submit" loading={pending} loadingLabel="Salvando...">
+              Salvar produto
             </Button>
           </div>
         </form>
@@ -216,7 +221,9 @@ function ProductRowItem({ product }: { product: ProductRow }) {
   function doAdjust() {
     const delta = Number.parseFloat(adjust.replace(",", "."));
     if (!Number.isFinite(delta) || delta === 0) {
-      setError("Informe ±n");
+      const msg = "Informe ±n";
+      setError(msg);
+      notifyError(null, msg);
       return;
     }
     setError(null);
@@ -224,8 +231,10 @@ function ProductRowItem({ product }: { product: ProductRow }) {
       const res = await adjustProductStock(product.id, delta);
       if (!res.ok) {
         setError(res.error);
+        notifyError(null, res.error);
         return;
       }
+      notifySuccess("Estoque ajustado.");
       setAdjust("");
       router.refresh();
     });
@@ -234,6 +243,7 @@ function ProductRowItem({ product }: { product: ProductRow }) {
   function toggleArchive() {
     startTransition(async () => {
       await setProductArchived(product.id, !product.is_archived);
+      notifySuccess(product.is_archived ? "Produto reativado." : "Produto arquivado.");
       router.refresh();
     });
   }
@@ -269,11 +279,16 @@ function ProductRowItem({ product }: { product: ProductRow }) {
             size="sm"
             variant="secondary"
             onClick={doAdjust}
-            disabled={pending}
+            loading={pending}
           >
             Ajustar
           </Button>
-          <Button size="sm" variant="ghost" onClick={toggleArchive} disabled={pending}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={toggleArchive}
+            loading={pending}
+          >
             {product.is_archived ? "Reativar" : "Arquivar"}
           </Button>
         </div>

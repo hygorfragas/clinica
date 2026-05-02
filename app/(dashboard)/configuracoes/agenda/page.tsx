@@ -1,10 +1,5 @@
-import { redirect } from "next/navigation";
 import { AgendaConfigPanel } from "@/components/configuracoes/agenda-config-panel";
-import {
-  canAccessAgenda,
-  fetchClinicProfile,
-  isTenantManager,
-} from "@/lib/auth/clinic-profile";
+import { requireClinicAdminPage } from "@/lib/auth/page-guards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { CLINIC_TIMEZONE } from "@/lib/dates";
 import { loadGoogleProviderSettings } from "@/lib/google/provider-settings";
@@ -19,19 +14,11 @@ type PageProps = {
 };
 
 export default async function ConfiguracoesAgendaPage({ searchParams }: PageProps) {
+  const profile = await requireClinicAdminPage();
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
 
-  const profile = await fetchClinicProfile(supabase, user.id);
-  if (!profile || !canAccessAgenda(profile) || !profile.tenant_id) {
-    redirect("/aguardando-acesso");
-  }
-
-  const tenantId = profile.tenant_id;
-  const canManage = isTenantManager(profile);
+  const tenantId = profile.tenant_id as string;
+  const canManage = true;
 
   const [settingsRes, connectionRes, syncStateRes, providerRes] = await Promise.all([
     supabase

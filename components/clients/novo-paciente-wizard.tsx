@@ -21,6 +21,7 @@ import {
   attachClientDocumentFromTemplate,
   uploadClinicalDocument,
 } from "@/lib/clients/record-actions";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 import { cn } from "@/lib/utils";
 
 export type WizardContractTemplate = {
@@ -86,10 +87,12 @@ export function NovoPacienteWizard({
         );
         if (result.ok) {
           setDocTitle("");
+          notifySuccess("Contrato anexado ao prontuário.");
           setStep(5);
           return;
         }
         setMsg(result.error);
+        notifyError(null, result.error);
       });
       return;
     }
@@ -107,10 +110,12 @@ export function NovoPacienteWizard({
       if (result.ok) {
         setDocFile(null);
         setDocTitle("");
+        notifySuccess("Documento anexado.");
         setStep(5);
         return;
       }
       setMsg(result.error);
+      notifyError(null, result.error);
     });
   }
 

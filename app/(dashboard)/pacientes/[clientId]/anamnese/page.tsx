@@ -13,6 +13,7 @@ import {
   type AnamnesisSubmissionMode,
   type AnamnesisSubmissionStatus,
 } from "@/lib/anamnesis/template-schema";
+import { createServiceRoleClient } from "@/lib/supabase/service";
 
 type PageProps = { params: Promise<{ clientId: string }> };
 
@@ -46,6 +47,11 @@ export default async function PacienteAnamnesePage({ params }: PageProps) {
   const ctx = await loadPacienteClinicContext(clientId);
   if (!ctx) notFound();
 
+  // Service role para gerar signed URLs do bucket privado: o tenant já foi
+  // validado por loadPacienteClinicContext, e service role evita falhas
+  // intermitentes de RLS na geração de signed URL via SSR client.
+  const storageClient = createServiceRoleClient();
+
   const [{ data: templatesRows }, { data: submissionRows }] = await Promise.all([
     ctx.supabase
       .schema("clinic")
@@ -72,9 +78,16 @@ export default async function PacienteAnamnesePage({ params }: PageProps) {
     templateMap.set(row.id, row.name);
     let signedUrl: string | null = null;
     if (row.pdf_storage_path) {
-      const { data: s } = await ctx.supabase.storage
+      const { data: s, error: signErr } = await storageClient.storage
         .from(CLINICAL_BUCKET)
         .createSignedUrl(row.pdf_storage_path, 60 * 30);
+      if (signErr) {
+        console.error(
+          "[anamnese] Falha ao gerar signed URL do template:",
+          row.id,
+          signErr.message,
+        );
+      }
       signedUrl = s?.signedUrl ?? null;
     }
     const parsedFields = anamnesisFieldsSchema.safeParse(row.form_schema ?? []);
@@ -93,9 +106,16 @@ export default async function PacienteAnamnesePage({ params }: PageProps) {
   for (const s of submissionRows ?? []) {
     let flattenedUrl: string | null = null;
     if (s.flattened_pdf_path) {
-      const { data: signed } = await ctx.supabase.storage
+      const { data: signed, error: signErr } = await storageClient.storage
         .from(CLINICAL_BUCKET)
         .createSignedUrl(s.flattened_pdf_path, 60 * 30);
+      if (signErr) {
+        console.error(
+          "[anamnese] Falha ao gerar signed URL da submissão:",
+          s.id,
+          signErr.message,
+        );
+      }
       flattenedUrl = signed?.signedUrl ?? null;
     }
     const parsedValues = anamnesisFormValuesSchema.safeParse(s.form_values ?? {});

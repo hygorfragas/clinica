@@ -1,0 +1,142 @@
+# =============================================================================
+# Stack do Sistema Agenda Clínicas — pronto pra colar no Portainer.
+#
+# Como usar:
+#   1) Substitua SEU_USUARIO/sistema-agenda-clinicas:latest pela sua imagem
+#      no Docker Hub (após `docker push`).
+#   2) Edite os valores das variáveis na seção `environment:` abaixo.
+#   3) Suba a stack no Portainer (Stacks → Add stack → cole este YAML).
+#
+# Modo HTTP (atual, sem domínio):
+#   - A app fica exposta em http://IP_DA_VPS:3000
+#   - Comente o bloco `traefik` mais abaixo (já vem comentado).
+#
+# Modo HTTPS com Traefik (futuro, quando tiver domínio):
+#   - Descomente o bloco `traefik` no fim deste arquivo.
+#   - Descomente as `labels:` na service `app` que mapeiam o roteamento.
+#   - Remova o `ports:` da service `app` (Traefik vai cuidar da porta 443).
+#   - Ajuste os domínios e e-mail do ACME.
+# =============================================================================
+
+services:
+  app:
+    image: SEU_USUARIO/sistema-agenda-clinicas:latest
+    container_name: clinica-app
+    restart: unless-stopped
+
+    # MODO HTTP DIRETO — comente esta seção quando ativar Traefik.
+    ports:
+      - "3000:3000"
+
+    environment:
+      # ----------------------------------------------------------------------
+      # Supabase — chaves e URL.
+      # Todas as NEXT_PUBLIC_* abaixo são aplicadas em RUNTIME pelo
+      # entrypoint (docker/entrypoint.sh). Edita aqui no Portainer e dá
+      # restart na stack — não precisa rebuildar a imagem.
+      # ----------------------------------------------------------------------
+      NEXT_PUBLIC_SUPABASE_URL: "https://SEU_PROJETO.supabase.co"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "eyJ...sua_anon_key"
+      SUPABASE_SERVICE_ROLE_KEY: "eyJ...sua_service_role_key"
+
+      # ----------------------------------------------------------------------
+      # URL pública do app — usada pra montar callbacks (ex.: "Entrar como").
+      # HTTP no início, HTTPS depois que ativar Traefik + domínio.
+      # Também aplicada em runtime pelo entrypoint.
+      # ----------------------------------------------------------------------
+      NEXT_PUBLIC_APP_URL: "http://SEU_IP:3000"
+
+      # ----------------------------------------------------------------------
+      # Postgres direto (opcional). Só preenche se algum fluxo legado ainda
+      # usar conexão direta — hoje a maioria passa pelo Supabase SDK.
+      # Formato: postgresql://USER:PASS@HOST:5432/DB?sslmode=require
+      # ----------------------------------------------------------------------
+      DATABASE_URL: ""
+
+      # ----------------------------------------------------------------------
+      # Google Calendar — INTENCIONALMENTE FORA DAQUI.
+      # Cada clínica cadastra suas próprias credenciais (Client ID/Secret,
+      # Redirect URI e Sync Secret) em `Configurações › Agenda`. Os valores
+      # ficam em `clinic.calendar_settings`, isolados por tenant_id via RLS.
+      # Definir env vars globais aqui quebraria o multi-tenant.
+      # ----------------------------------------------------------------------
+
+      # ----------------------------------------------------------------------
+      # Operacional
+      # ----------------------------------------------------------------------
+      NODE_ENV: "production"
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    networks:
+      - clinica-net
+
+    # Healthcheck simples — Next responde em / quando estiver up.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q --spider --tries=1 http://localhost:3000/login || exit 1",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    # ------------------------------------------------------------------------
+    # Quando ATIVAR TRAEFIK (já tem domínio + DNS apontado):
+    # 1) Remova o bloco `ports:` acima.
+    # 2) Descomente as `labels:` abaixo.
+    # 3) Descomente o serviço `traefik:` no fim deste arquivo.
+    # 4) Edite os domínios.
+    # ------------------------------------------------------------------------
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.docker.network=clinica-net"
+    #   - "traefik.http.services.clinica-app.loadbalancer.server.port=3000"
+    #   # Roteador HTTP — redireciona pra HTTPS.
+    #   - "traefik.http.routers.clinica-app-http.rule=Host(`app.suaclinica.com`)"
+    #   - "traefik.http.routers.clinica-app-http.entrypoints=web"
+    #   - "traefik.http.routers.clinica-app-http.middlewares=clinica-app-redirect"
+    #   - "traefik.http.middlewares.clinica-app-redirect.redirectscheme.scheme=https"
+    #   # Roteador HTTPS — TLS via Let's Encrypt.
+    #   - "traefik.http.routers.clinica-app.rule=Host(`app.suaclinica.com`)"
+    #   - "traefik.http.routers.clinica-app.entrypoints=websecure"
+    #   - "traefik.http.routers.clinica-app.tls.certresolver=letsencrypt"
+
+  # ==========================================================================
+  # TRAEFIK (mantido comentado até comprar o domínio)
+  # ==========================================================================
+  # traefik:
+  #   image: traefik:v3.1
+  #   container_name: clinica-traefik
+  #   restart: unless-stopped
+  #   command:
+  #     - "--providers.docker=true"
+  #     - "--providers.docker.exposedbydefault=false"
+  #     - "--providers.docker.network=clinica-net"
+  #     - "--entrypoints.web.address=:80"
+  #     - "--entrypoints.websecure.address=:443"
+  #     # ACME (Let's Encrypt) HTTP-01 challenge.
+  #     - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+  #     - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+  #     - "--certificatesresolvers.letsencrypt.acme.email=SEU_EMAIL@dominio.com"
+  #     - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+  #     # Logs (descomente se precisar debugar):
+  #     # - "--log.level=INFO"
+  #     # - "--accesslog=true"
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - traefik-letsencrypt:/letsencrypt
+  #   networks:
+  #     - clinica-net
+
+networks:
+  clinica-net:
+    driver: bridge
+
+# Quando ativar o traefik, descomente este volume:
+# volumes:
+#   traefik-letsencrypt:

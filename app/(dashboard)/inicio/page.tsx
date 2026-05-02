@@ -3,45 +3,45 @@ import { CalendarDays, ClipboardList, Package, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatCard } from "@/components/clinic/stat-card";
 import { buttonVariants } from "@/components/ui/button";
-import { getCurrentUserFromServerCookies } from "@/lib/auth/local-auth";
-import { postLoginPathForClinicProfile } from "@/lib/auth/post-login-path";
+import {
+  canAccessAgenda,
+  fetchClinicProfile,
+  isPlatformSuperAdmin,
+} from "@/lib/auth/clinic-profile";
+import { pickPhraseForMoment } from "@/lib/dashboard/phrases";
 import { firstNameFromFullName, greetingForHour } from "@/lib/greeting";
 import { getDayBoundsUtcIso } from "@/lib/dates";
-import { createServiceRoleClient } from "@/lib/supabase/service";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export default async function InicioPage() {
-  const user = await getCurrentUserFromServerCookies();
-  if (!user) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) {
     redirect("/login");
   }
 
-  const landing = postLoginPathForClinicProfile({
-    role: user.role,
-    tenant_id: user.tenantId,
-  });
-  if (landing !== "/inicio") {
+  const profile = await fetchClinicProfile(supabase, user.id);
+  if (isPlatformSuperAdmin(profile)) {
+    redirect("/plataforma");
+  }
+  if (!canAccessAgenda(profile)) {
     redirect("/aguardando-acesso");
   }
 
-  const tenantId = user.tenantId;
+  const tenantId = profile?.tenant_id;
   if (!tenantId) {
     redirect("/aguardando-acesso");
   }
 
-  const { startIso, endIso } = getDayBoundsUtcIso(new Date());
-  const hour = new Date().getHours();
-  const greet = greetingForHour(hour);
-  const supabase = createServiceRoleClient();
-  const { data: profileName } = await supabase
-    .schema("clinic")
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user.userId)
-    .maybeSingle();
-  const first = firstNameFromFullName(profileName?.full_name ?? user.email);
+  const now = new Date();
+  const { startIso, endIso } = getDayBoundsUtcIso(now);
+  const greet = greetingForHour(now.getHours());
+  const first = firstNameFromFullName(profile?.full_name ?? user.email);
 
-  const [apptRes, clientsRes, draftBudgetsRes, sentBudgetsRes] =
+  const [apptRes, clientsRes, draftBudgetsRes, sentBudgetsRes, phrase] =
     await Promise.all([
       supabase
         .schema("clinic")
@@ -68,6 +68,7 @@ export default async function InicioPage() {
         .select("id", { count: "exact", head: true })
         .eq("tenant_id", tenantId)
         .eq("status", "sent"),
+      pickPhraseForMoment(supabase, now),
     ]);
 
   const todayCount = apptRes.count ?? 0;
@@ -87,10 +88,11 @@ export default async function InicioPage() {
           {greet},{" "}
           <span className="font-bold text-brand">{first}</span>
         </h1>
-        <p className="text-base leading-relaxed text-[#6c5c4d]">
-          Sua rotina de hoje em um só lugar: agenda, pacientes e indicadores
-          essenciais — com o mesmo cuidado visual da interface de referência.
-        </p>
+        {phrase ? (
+          <p className="text-base leading-relaxed text-[#6c5c4d]">
+            {phrase.text}
+          </p>
+        ) : null}
       </header>
 
       <section

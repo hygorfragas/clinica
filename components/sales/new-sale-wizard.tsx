@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createSale } from "@/lib/sales/actions";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 const BRL = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -113,11 +114,15 @@ export function NewSaleWizard({
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!clientId || !procedureId) {
-      setError("Selecione paciente e procedimento.");
+      const msg = "Selecione paciente e procedimento.";
+      setError(msg);
+      notifyError(null, msg);
       return;
     }
     if (!feas?.canSell) {
-      setError("Paciente ainda não está elegível.");
+      const msg = "Paciente ainda não está elegível.";
+      setError(msg);
+      notifyError(null, msg);
       return;
     }
     setError(null);
@@ -131,8 +136,10 @@ export function NewSaleWizard({
       });
       if (!res.ok) {
         setError(res.error);
+        notifyError(null, res.error);
         return;
       }
+      notifySuccess("Venda registrada.");
       router.push("/vendas");
       router.refresh();
     });
@@ -300,9 +307,11 @@ export function NewSaleWizard({
             type="submit"
             size="lg"
             className="w-full md:w-auto"
-            disabled={pending || !feas?.canSell}
+            loading={pending}
+            loadingLabel="Registrando..."
+            disabled={!feas?.canSell}
           >
-            {pending ? "Registrando…" : "Registrar venda"}
+            Registrar venda
           </Button>
         </div>
       </div>

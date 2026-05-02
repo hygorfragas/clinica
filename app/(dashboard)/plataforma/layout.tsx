@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { getCurrentUserFromServerCookies } from "@/lib/auth/local-auth";
-import { postLoginPathForClinicProfile } from "@/lib/auth/post-login-path";
+import {
+  fetchClinicProfile,
+  isPlatformSuperAdmin,
+} from "@/lib/auth/clinic-profile";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 /**
  * Área administrativa da plataforma: apenas super administrador global.
@@ -12,19 +15,14 @@ export default async function PlataformaLayout({
 }: {
   children: ReactNode;
 }) {
-  const user = await getCurrentUserFromServerCookies();
-  if (!user) {
-    redirect("/login");
-  }
-
-  const landing = postLoginPathForClinicProfile({
-    role: user.role,
-    tenant_id: user.tenantId,
-  });
-
-  if (landing !== "/plataforma") {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const profile = await fetchClinicProfile(supabase, user.id);
+  if (!isPlatformSuperAdmin(profile)) {
     redirect("/inicio");
   }
-
   return children;
 }

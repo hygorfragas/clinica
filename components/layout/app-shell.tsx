@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Building2, Users } from "lucide-react";
 import { ClinicNav } from "@/components/layout/clinic-nav";
 import { SignOutButton } from "@/components/layout/sign-out-button";
+import { AgendaNotificationsProvider } from "@/components/agenda/agenda-notifications-provider";
+import { NextAppointmentBanner } from "@/components/agenda/next-appointment-banner";
 import { cn } from "@/lib/utils";
 
 type Variant = "clinic" | "platform";
@@ -9,13 +11,51 @@ type Variant = "clinic" | "platform";
 export function AppShell({
   variant,
   userEmail,
-  showEquipe,
+  isClinicAdmin,
+  tenantId,
   children,
 }: {
   variant: Variant;
   userEmail: string;
-  /** Owner / clinic_admin: gestão de profissionais no tenant */
-  showEquipe?: boolean;
+  /** Admin da clínica: libera Financeiro, Equipe e abas restritas de Configurações */
+  isClinicAdmin?: boolean;
+  /** Tenant ativo (apenas clínicas) para habilitar notificações da agenda */
+  tenantId?: string | null;
+  children: React.ReactNode;
+}) {
+  const shell = (
+    <AppShellBody
+      variant={variant}
+      userEmail={userEmail}
+      isClinicAdmin={isClinicAdmin}
+      showAgendaBanner={variant === "clinic" && !!tenantId}
+    >
+      {children}
+    </AppShellBody>
+  );
+
+  if (variant === "clinic" && tenantId) {
+    return (
+      <AgendaNotificationsProvider tenantId={tenantId}>
+        {shell}
+      </AgendaNotificationsProvider>
+    );
+  }
+
+  return shell;
+}
+
+function AppShellBody({
+  variant,
+  userEmail,
+  isClinicAdmin,
+  showAgendaBanner,
+  children,
+}: {
+  variant: Variant;
+  userEmail: string;
+  isClinicAdmin?: boolean;
+  showAgendaBanner: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -59,7 +99,7 @@ export function AppShell({
               </nav>
             </>
           ) : (
-            <ClinicNav showEquipe={showEquipe} />
+            <ClinicNav isClinicAdmin={isClinicAdmin} />
           )}
           <div className="mt-auto hidden border-t border-line/50 pt-6 md:block">
             <p
@@ -73,6 +113,7 @@ export function AppShell({
         </div>
       </aside>
       <div className="flex min-h-0 flex-1 flex-col bg-canvas">
+        {showAgendaBanner ? <NextAppointmentBanner /> : null}
         <header className="flex h-14 items-center justify-end border-b border-line/60 bg-canvas/95 px-4 backdrop-blur-md md:hidden">
           <span className="sr-only">{userEmail}</span>
           <SignOutButton />

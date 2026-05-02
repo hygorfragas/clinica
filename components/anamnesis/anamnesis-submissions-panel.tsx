@@ -4,11 +4,21 @@ import { Pen, PenTool } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DesktopAnamnesisEditor } from "./desktop-anamnesis-editor";
 import {
   deleteAnamnesisSubmission,
   saveAnamnesisSubmission,
 } from "@/lib/anamnesis/submission-actions";
+import {
+  deleteContractSubmission,
+  saveContractSubmission,
+} from "@/lib/contracts/submission-actions";
+import {
+  deleteEvolutionSubmission,
+  saveEvolutionSubmission,
+} from "@/lib/evolutions/submission-actions";
+import { notifyError, notifySuccess } from "@/lib/ui/notify";
 import type {
   AnamnesisField,
   AnamnesisFormValues,
@@ -47,6 +57,77 @@ type Props = {
   clientId: string;
   templates: TemplateLite[];
   submissions: SubmissionItem[];
+  /** Define qual entidade é alvo (anamnesis, evolution ou contract). */
+  entityKind?: "anamnesis" | "evolution" | "contract";
+};
+
+type EntityCopy = {
+  newCta: string;
+  newSectionTitle: string;
+  emptyHelp: string;
+  submissionsTitle: string;
+  emptyTemplates: string;
+  configHref: string;
+  configLabel: string;
+  removeTitle: string;
+  removeDesc: string;
+  startTitle: (templateName: string) => string;
+  continueTitle: (templateName: string) => string;
+  interactiveBaseHref: string;
+};
+
+const COPY_BY_KIND: Record<
+  "anamnesis" | "evolution" | "contract",
+  EntityCopy
+> = {
+  anamnesis: {
+    newCta: "Iniciar nova anamnese/consentimento",
+    newSectionTitle: "Iniciar nova anamnese/consentimento",
+    emptyHelp:
+      "Você ainda não cadastrou templates — vá em Configurações › Anamnese para enviar o PDF.",
+    submissionsTitle: "Submissões da paciente",
+    emptyTemplates: "Configurações › Anamnese",
+    configHref: "/configuracoes/anamnese",
+    configLabel: "Configurações › Anamnese",
+    removeTitle: "Excluir submissão",
+    removeDesc:
+      "Esta submissão da anamnese será removida permanentemente, incluindo formulário e anotações.",
+    startTitle: (n) => `Iniciar nova anamnese — ${n}`,
+    continueTitle: (n) => `Continuar — ${n}`,
+    interactiveBaseHref: "/anamnese/interativa",
+  },
+  evolution: {
+    newCta: "Registrar nova evolução",
+    newSectionTitle: "Registrar nova evolução",
+    emptyHelp:
+      "Você ainda não cadastrou fichas — vá em Configurações › Evolução para enviar o PDF.",
+    submissionsTitle: "Evoluções registradas",
+    emptyTemplates: "Configurações › Evolução",
+    configHref: "/configuracoes/evolucao",
+    configLabel: "Configurações › Evolução",
+    removeTitle: "Excluir evolução",
+    removeDesc:
+      "Este registro de evolução será removido permanentemente, incluindo formulário e anotações.",
+    startTitle: (n) => `Registrar evolução — ${n}`,
+    continueTitle: (n) => `Continuar — ${n}`,
+    interactiveBaseHref: "/evolucao/interativa",
+  },
+  contract: {
+    newCta: "Iniciar contrato",
+    newSectionTitle: "Iniciar contrato",
+    emptyHelp:
+      "Você ainda não cadastrou contratos em PDF — vá em Configurações › Contratos para enviar o arquivo e marcar os campos.",
+    submissionsTitle: "Contratos da paciente",
+    emptyTemplates: "Configurações › Contratos",
+    configHref: "/configuracoes/contratos",
+    configLabel: "Configurações › Contratos",
+    removeTitle: "Excluir contrato",
+    removeDesc:
+      "Este contrato será removido permanentemente, incluindo preenchimento e assinatura.",
+    startTitle: (n) => `Iniciar contrato — ${n}`,
+    continueTitle: (n) => `Continuar — ${n}`,
+    interactiveBaseHref: "/contratos/interativa",
+  },
 };
 
 type ChooserState =
@@ -57,7 +138,21 @@ export function AnamnesisSubmissionsPanel({
   clientId,
   templates,
   submissions,
+  entityKind = "anamnesis",
 }: Props) {
+  const copy = COPY_BY_KIND[entityKind];
+  const saveAction =
+    entityKind === "evolution"
+      ? saveEvolutionSubmission
+      : entityKind === "contract"
+        ? saveContractSubmission
+        : saveAnamnesisSubmission;
+  const deleteAction =
+    entityKind === "evolution"
+      ? deleteEvolutionSubmission
+      : entityKind === "contract"
+        ? deleteContractSubmission
+        : deleteAnamnesisSubmission;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [openChooser, setOpenChooser] = useState<ChooserState | null>(null);
@@ -67,6 +162,7 @@ export function AnamnesisSubmissionsPanel({
   const [openDesktopTemplate, setOpenDesktopTemplate] =
     useState<TemplateLite | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, element: confirmDialog } = useConfirmDialog();
 
   const templateById = useMemo(
     () => (id: string | null) => templates.find((t) => t.id === id) ?? null,
@@ -79,14 +175,26 @@ export function AnamnesisSubmissionsPanel({
   const activeSubmission = openDesktopSubmission;
 
   function removeSubmission(id: string) {
-    if (!confirm("Excluir esta submissão?")) return;
-    startTransition(async () => {
-      const result = await deleteAnamnesisSubmission(clientId, id);
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      router.refresh();
+    confirm({
+      title: copy.removeTitle,
+      description: copy.removeDesc,
+      confirmLabel: "Excluir",
+      destructive: true,
+      onConfirm: () =>
+        new Promise<void>((resolve, reject) => {
+          startTransition(async () => {
+            const result = await deleteAction(clientId, id);
+            if (!result.ok) {
+              setError(result.error);
+              notifyError(null, result.error);
+              reject(new Error(result.error));
+              return;
+            }
+            notifySuccess("Submissão excluída.");
+            router.refresh();
+            resolve();
+          });
+        }),
     });
   }
 
@@ -116,7 +224,7 @@ export function AnamnesisSubmissionsPanel({
         submissionId = openChooser.submission.id;
       } else {
         // Cria submissão em draft antes de navegar.
-        const result = await saveAnamnesisSubmission(clientId, {
+        const result = await saveAction(clientId, {
           templateId: openChooser.template.id,
           mode: "interactive",
           status: "draft",
@@ -125,25 +233,27 @@ export function AnamnesisSubmissionsPanel({
         });
         if (!result.ok) {
           setError(result.error);
+          notifyError(null, result.error);
           return;
         }
         submissionId = result.id;
       }
       if (!submissionId) return;
-      router.push(`/anamnese/interativa/${clientId}/${submissionId}`);
+      router.push(`${copy.interactiveBaseHref}/${clientId}/${submissionId}`);
     });
   }
 
   return (
     <div className="space-y-6">
+      {confirmDialog}
       {error && <p className="text-sm text-danger">{error}</p>}
 
       {openChooser && (
         <ModeChooserOverlay
           title={
             openChooser.kind === "template"
-              ? `Iniciar nova anamnese — ${openChooser.template.name}`
-              : `Continuar — ${openChooser.template?.name ?? "submissão"}`
+              ? copy.startTitle(openChooser.template.name)
+              : copy.continueTitle(openChooser.template?.name ?? "registro")
           }
           submission={openChooser.kind === "submission" ? openChooser.submission : null}
           onClose={() => setOpenChooser(null)}
@@ -185,6 +295,7 @@ export function AnamnesisSubmissionsPanel({
             templatePdfUrl={activeTemplate?.pdf_url ?? null}
             formSchema={activeTemplate?.form_schema ?? []}
             initialFormValues={activeSubmission?.form_values ?? {}}
+            initialInkStrokes={activeSubmission?.ink_strokes ?? []}
             initialSignerName={activeSubmission?.signer_name}
             initialStatus={(activeSubmission?.status ?? "draft") as
               | "draft"
@@ -193,19 +304,18 @@ export function AnamnesisSubmissionsPanel({
             hasInkAnnotations={
               activeSubmission ? (activeSubmission.ink_strokes ?? []).length > 0 : false
             }
+            entityKind={entityKind}
           />
         </section>
       ) : null}
 
       <section className="rounded-[1.75rem] bg-surface p-6 shadow-lift ring-1 ring-line md:p-7">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-subtle">
-          Iniciar nova anamnese/consentimento
+          {copy.newSectionTitle}
         </h3>
         {templates.length === 0 ? (
           <p className="mt-2 text-sm text-ink-muted">
-            Você ainda não cadastrou templates — vá em{" "}
-            <span className="font-medium text-ink">Configurações › Anamnese</span>{" "}
-            para enviar o PDF.
+            {copy.emptyHelp}
           </p>
         ) : (
           <ul className="mt-4 space-y-3">
@@ -243,7 +353,7 @@ export function AnamnesisSubmissionsPanel({
 
       <section>
         <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-subtle">
-          Submissões da paciente
+          {copy.submissionsTitle}
         </h3>
         {submissions.length === 0 ? (
           <p className="mt-3 text-sm text-ink-muted">Nenhuma submissão ainda.</p>

@@ -153,6 +153,30 @@ export type Database = {
           },
         ];
       };
+      dashboard_phrases: {
+        Row: {
+          id: string;
+          category: "motivational" | "hopeful" | "joyful" | "warm";
+          text: string;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          category: "motivational" | "hopeful" | "joyful" | "warm";
+          text: string;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          category?: "motivational" | "hopeful" | "joyful" | "warm";
+          text?: string;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -212,6 +236,8 @@ export type Database = {
           signature_storage_key: string | null;
           stamp_storage_key: string | null;
           role: string;
+          theme_accent_preset: string | null;
+          theme_mode: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -226,6 +252,8 @@ export type Database = {
           signature_storage_key?: string | null;
           stamp_storage_key?: string | null;
           role?: string;
+          theme_accent_preset?: string | null;
+          theme_mode?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -240,6 +268,8 @@ export type Database = {
           signature_storage_key?: string | null;
           stamp_storage_key?: string | null;
           role?: string;
+          theme_accent_preset?: string | null;
+          theme_mode?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -248,6 +278,38 @@ export type Database = {
             foreignKeyName: "profiles_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      clinic_theme_settings: {
+        Row: {
+          tenant_id: string;
+          default_accent_preset: string;
+          default_mode: string;
+          updated_at: string;
+          updated_by_profile_id: string | null;
+        };
+        Insert: {
+          tenant_id: string;
+          default_accent_preset?: string;
+          default_mode?: string;
+          updated_at?: string;
+          updated_by_profile_id?: string | null;
+        };
+        Update: {
+          tenant_id?: string;
+          default_accent_preset?: string;
+          default_mode?: string;
+          updated_at?: string;
+          updated_by_profile_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "clinic_theme_settings_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: true;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
@@ -785,6 +847,105 @@ export type Database = {
           },
         ];
       };
+      evolution_templates: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          name: string;
+          description: string | null;
+          pdf_storage_path: string;
+          page_count: number;
+          form_schema: Json;
+          ink_regions: Json;
+          is_default: boolean;
+          is_archived: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          name: string;
+          description?: string | null;
+          pdf_storage_path: string;
+          page_count?: number;
+          form_schema?: Json;
+          ink_regions?: Json;
+          is_default?: boolean;
+          is_archived?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          name?: string;
+          description?: string | null;
+          pdf_storage_path?: string;
+          page_count?: number;
+          form_schema?: Json;
+          ink_regions?: Json;
+          is_default?: boolean;
+          is_archived?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      evolution_submissions: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          client_id: string;
+          template_id: string | null;
+          mode: "interactive" | "desktop";
+          status: "draft" | "submitted" | "signed";
+          form_values: Json;
+          ink_strokes: Json;
+          flattened_pdf_path: string | null;
+          signer_name: string | null;
+          signed_at: string | null;
+          submitted_at: string | null;
+          created_by_profile_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          client_id: string;
+          template_id?: string | null;
+          mode?: "interactive" | "desktop";
+          status?: "draft" | "submitted" | "signed";
+          form_values?: Json;
+          ink_strokes?: Json;
+          flattened_pdf_path?: string | null;
+          signer_name?: string | null;
+          signed_at?: string | null;
+          submitted_at?: string | null;
+          created_by_profile_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          client_id?: string;
+          template_id?: string | null;
+          mode?: "interactive" | "desktop";
+          status?: "draft" | "submitted" | "signed";
+          form_values?: Json;
+          ink_strokes?: Json;
+          flattened_pdf_path?: string | null;
+          signer_name?: string | null;
+          signed_at?: string | null;
+          submitted_at?: string | null;
+          created_by_profile_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       evolutions: {
         Row: {
           id: string;
@@ -1022,6 +1183,8 @@ export type Database = {
           discount_cents: number;
           total_cents: number | null;
           valid_until: string | null;
+          cancelled_at: string | null;
+          cancellation_reason: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1036,6 +1199,8 @@ export type Database = {
           discount_cents?: number;
           total_cents?: number | null;
           valid_until?: string | null;
+          cancelled_at?: string | null;
+          cancellation_reason?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1050,6 +1215,8 @@ export type Database = {
           discount_cents?: number;
           total_cents?: number | null;
           valid_until?: string | null;
+          cancelled_at?: string | null;
+          cancellation_reason?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1306,6 +1473,8 @@ export type Database = {
           storage_key: string | null;
           mime_type: string | null;
           is_default: boolean;
+          form_schema: Json;
+          page_count: number;
           created_at: string;
           updated_at: string;
         };
@@ -1317,6 +1486,8 @@ export type Database = {
           storage_key?: string | null;
           mime_type?: string | null;
           is_default?: boolean;
+          form_schema?: Json;
+          page_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -1328,6 +1499,8 @@ export type Database = {
           storage_key?: string | null;
           mime_type?: string | null;
           is_default?: boolean;
+          form_schema?: Json;
+          page_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -1340,6 +1513,60 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      contract_submissions: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          client_id: string;
+          template_id: string | null;
+          mode: "interactive" | "desktop";
+          status: "draft" | "submitted" | "signed";
+          form_values: Json;
+          ink_strokes: Json;
+          flattened_pdf_path: string | null;
+          signer_name: string | null;
+          signed_at: string | null;
+          submitted_at: string | null;
+          created_by_profile_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          client_id: string;
+          template_id?: string | null;
+          mode?: "interactive" | "desktop";
+          status?: "draft" | "submitted" | "signed";
+          form_values?: Json;
+          ink_strokes?: Json;
+          flattened_pdf_path?: string | null;
+          signer_name?: string | null;
+          signed_at?: string | null;
+          submitted_at?: string | null;
+          created_by_profile_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          client_id?: string;
+          template_id?: string | null;
+          mode?: "interactive" | "desktop";
+          status?: "draft" | "submitted" | "signed";
+          form_values?: Json;
+          ink_strokes?: Json;
+          flattened_pdf_path?: string | null;
+          signer_name?: string | null;
+          signed_at?: string | null;
+          submitted_at?: string | null;
+          created_by_profile_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       documents: {
         Row: {
@@ -1605,6 +1832,382 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      branding_assets: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          kind: "header" | "footer" | "logo";
+          label: string | null;
+          storage_key: string;
+          mime_type: string;
+          width_px: number | null;
+          height_px: number | null;
+          file_size: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          kind: "header" | "footer" | "logo";
+          label?: string | null;
+          storage_key: string;
+          mime_type: string;
+          width_px?: number | null;
+          height_px?: number | null;
+          file_size?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          kind?: "header" | "footer" | "logo";
+          label?: string | null;
+          storage_key?: string;
+          mime_type?: string;
+          width_px?: number | null;
+          height_px?: number | null;
+          file_size?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "branding_assets_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      document_branding_profiles: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          name: string;
+          is_default: boolean;
+          show_header: boolean;
+          show_footer: boolean;
+          show_logo: boolean;
+          header_asset_id: string | null;
+          footer_asset_id: string | null;
+          logo_asset_id: string | null;
+          logo_position:
+            | "top-left"
+            | "top-center"
+            | "top-right"
+            | "below-header-left"
+            | "below-header-center";
+          logo_scale_pct: number;
+          header_height_mm: number;
+          footer_height_mm: number;
+          margin_top_mm: number;
+          margin_right_mm: number;
+          margin_bottom_mm: number;
+          margin_left_mm: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          name: string;
+          is_default?: boolean;
+          show_header?: boolean;
+          show_footer?: boolean;
+          show_logo?: boolean;
+          header_asset_id?: string | null;
+          footer_asset_id?: string | null;
+          logo_asset_id?: string | null;
+          logo_position?:
+            | "top-left"
+            | "top-center"
+            | "top-right"
+            | "below-header-left"
+            | "below-header-center";
+          logo_scale_pct?: number;
+          header_height_mm?: number;
+          footer_height_mm?: number;
+          margin_top_mm?: number;
+          margin_right_mm?: number;
+          margin_bottom_mm?: number;
+          margin_left_mm?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          name?: string;
+          is_default?: boolean;
+          show_header?: boolean;
+          show_footer?: boolean;
+          show_logo?: boolean;
+          header_asset_id?: string | null;
+          footer_asset_id?: string | null;
+          logo_asset_id?: string | null;
+          logo_position?:
+            | "top-left"
+            | "top-center"
+            | "top-right"
+            | "below-header-left"
+            | "below-header-center";
+          logo_scale_pct?: number;
+          header_height_mm?: number;
+          footer_height_mm?: number;
+          margin_top_mm?: number;
+          margin_right_mm?: number;
+          margin_bottom_mm?: number;
+          margin_left_mm?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_branding_profiles_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "document_branding_profiles_header_asset_id_fkey";
+            columns: ["header_asset_id"];
+            isOneToOne: false;
+            referencedRelation: "branding_assets";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "document_branding_profiles_footer_asset_id_fkey";
+            columns: ["footer_asset_id"];
+            isOneToOne: false;
+            referencedRelation: "branding_assets";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "document_branding_profiles_logo_asset_id_fkey";
+            columns: ["logo_asset_id"];
+            isOneToOne: false;
+            referencedRelation: "branding_assets";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      financial_accounts: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          name: string;
+          kind: "cash" | "bank" | "wallet" | "other";
+          opening_balance_cents: number;
+          currency: string;
+          is_archived: boolean;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          name: string;
+          kind?: "cash" | "bank" | "wallet" | "other";
+          opening_balance_cents?: number;
+          currency?: string;
+          is_archived?: boolean;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          name?: string;
+          kind?: "cash" | "bank" | "wallet" | "other";
+          opening_balance_cents?: number;
+          currency?: string;
+          is_archived?: boolean;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      financial_categories: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          name: string;
+          kind: "income" | "expense";
+          parent_id: string | null;
+          is_archived: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          name: string;
+          kind: "income" | "expense";
+          parent_id?: string | null;
+          is_archived?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          name?: string;
+          kind?: "income" | "expense";
+          parent_id?: string | null;
+          is_archived?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      financial_payment_methods: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          name: string;
+          kind:
+            | "cash"
+            | "pix"
+            | "debit_card"
+            | "credit_card"
+            | "bank_transfer"
+            | "other";
+          default_account_id: string | null;
+          is_archived: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          name: string;
+          kind?:
+            | "cash"
+            | "pix"
+            | "debit_card"
+            | "credit_card"
+            | "bank_transfer"
+            | "other";
+          default_account_id?: string | null;
+          is_archived?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          name?: string;
+          kind?:
+            | "cash"
+            | "pix"
+            | "debit_card"
+            | "credit_card"
+            | "bank_transfer"
+            | "other";
+          default_account_id?: string | null;
+          is_archived?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      financial_transactions: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          kind: "income" | "expense";
+          status: "pending" | "paid" | "cancelled";
+          amount_cents: number;
+          description: string | null;
+          notes: string | null;
+          occurred_on: string;
+          due_date: string | null;
+          paid_at: string | null;
+          account_id: string | null;
+          category_id: string | null;
+          payment_method_id: string | null;
+          client_id: string | null;
+          responsible_profile_id: string | null;
+          source_kind:
+            | "manual"
+            | "sale"
+            | "budget"
+            | "budget_installment"
+            | "procedure_purchase"
+            | "reversal"
+            | null;
+          source_id: string | null;
+          reverses_transaction_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          kind: "income" | "expense";
+          status?: "pending" | "paid" | "cancelled";
+          amount_cents: number;
+          description?: string | null;
+          notes?: string | null;
+          occurred_on?: string;
+          due_date?: string | null;
+          paid_at?: string | null;
+          account_id?: string | null;
+          category_id?: string | null;
+          payment_method_id?: string | null;
+          client_id?: string | null;
+          responsible_profile_id?: string | null;
+          source_kind?:
+            | "manual"
+            | "sale"
+            | "budget"
+            | "budget_installment"
+            | "procedure_purchase"
+            | "reversal"
+            | null;
+          source_id?: string | null;
+          reverses_transaction_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          kind?: "income" | "expense";
+          status?: "pending" | "paid" | "cancelled";
+          amount_cents?: number;
+          description?: string | null;
+          notes?: string | null;
+          occurred_on?: string;
+          due_date?: string | null;
+          paid_at?: string | null;
+          account_id?: string | null;
+          category_id?: string | null;
+          payment_method_id?: string | null;
+          client_id?: string | null;
+          responsible_profile_id?: string | null;
+          source_kind?:
+            | "manual"
+            | "sale"
+            | "budget"
+            | "budget_installment"
+            | "procedure_purchase"
+            | "reversal"
+            | null;
+          source_id?: string | null;
+          reverses_transaction_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
     };
     Views: {

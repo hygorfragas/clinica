@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { notifyError } from "@/lib/ui/notify";
 
 const loginSchema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -44,11 +45,14 @@ export function LoginForm({ signupOpen }: { signupOpen: boolean }) {
       });
       if (signError) {
         setError(signError.message);
+        notifyError(signError, signError.message);
         return;
       }
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
-        setError("Sessão não iniciada. Tente novamente.");
+        const msg = "Sessão não iniciada. Tente novamente.";
+        setError(msg);
+        notifyError(null, msg);
         return;
       }
       // Navegação completa: garante que os cookies da sessão cheguem ao servidor
@@ -108,8 +112,13 @@ export function LoginForm({ signupOpen }: { signupOpen: boolean }) {
               {error}
             </p>
           )}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Entrando…" : "Entrar"}
+          <Button
+            type="submit"
+            className="w-full"
+            loading={loading}
+            loadingLabel="Entrando..."
+          >
+            Entrar
           </Button>
         </form>
         {signupOpen ? (

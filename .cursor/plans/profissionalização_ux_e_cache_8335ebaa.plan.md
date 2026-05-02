@@ -4,43 +4,43 @@ overview: "Quatro fases incrementais: (1) feedback de operações com sonner e c
 todos:
   - id: f1_toaster
     content: "Fase 1: instalar sonner, montar Toaster em app/layout.tsx, criar ConfirmDialog, notify helpers e humanize-error"
-    status: pending
+    status: completed
   - id: f1_migrar
     content: "Fase 1: migrar formulários principais (agenda, pacientes, vendas, orçamentos, estoque, anamnese, configurações) para toasts + ConfirmDialog + botão loading padrão"
-    status: pending
+    status: completed
   - id: f2_provider
     content: "Fase 2: criar AgendaNotificationsProvider com Realtime global + timer de marcos T-15 e T-0 + dedupe por sessionStorage"
-    status: pending
+    status: completed
   - id: f2_banner
     content: "Fase 2: banner sticky NextAppointmentBanner no AppShell, carga inicial server-side no dashboard layout"
-    status: pending
+    status: completed
   - id: f3a_tanstack
     content: "Fase 3a: ativar TanStack Query com query keys centralizadas, migrar agenda-calendar e págineis de plataforma para useQuery/useMutation"
-    status: pending
+    status: completed
   - id: f3b_hydration
     content: "Fase 3b: dehydrate/HydrationBoundary nas rotas RSC críticas (pacientes, vendas, orçamentos)"
-    status: pending
+    status: completed
   - id: f3c_loading
     content: "Fase 3c: criar loading.tsx + skeletons por rota do dashboard e error.tsx global"
-    status: pending
+    status: completed
   - id: f3d_revalidate
     content: "Fase 3d: revisar force-dynamic, alinhar revalidatePath em lib/agenda/actions.ts, remover router.refresh redundantes"
-    status: pending
+    status: completed
   - id: f3e_transicoes
     content: "Fase 3e: template.tsx com fade curto e garantir prefetch dos Links"
-    status: pending
+    status: completed
   - id: f4_schema
     content: "Fase 4: migração com theme_accent_preset + theme_mode em clinic.profiles e tabela clinic.clinic_theme_settings (default por tenant)"
-    status: pending
+    status: completed
   - id: f4_tokens
     content: "Fase 4: refatorar app/globals.css em tokens por preset (data-accent) + dark mode (html.dark), habilitar darkMode class no tailwind.config.ts, script anti-FOUC no <head>"
-    status: pending
+    status: completed
   - id: f4_provider
     content: "Fase 4: ThemeProvider client aplicando cookie/prefs + resolução clínica-default → override do usuário + atualização otimista"
-    status: pending
+    status: completed
   - id: f4_perfil
     content: "Fase 4: área /configuracoes/perfil com trocar senha (Supabase Auth), seletor de modo (light/dark/system) e seletor de paleta; admin edita default da clínica em /configuracoes/aparencia"
-    status: pending
+    status: completed
 isProject: false
 ---
 

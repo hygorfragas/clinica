@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { HydrationBoundary } from "@tanstack/react-query";
 import { AgendaCalendar } from "@/components/agenda/agenda-calendar";
 import {
   canAccessAgenda,
@@ -8,6 +9,8 @@ import {
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { APPOINTMENT_SELECT, mapAppointmentRow } from "@/lib/agenda/mapper";
 import { CLINIC_TIMEZONE } from "@/lib/dates";
+import { queryKeys } from "@/lib/query/keys";
+import { createServerQueryClient, dehydrateClient } from "@/lib/query/server";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +99,12 @@ export default async function AgendaPage() {
       | "webhook";
   const googleConnected = Boolean(gconnRes.data?.id);
 
+  const queryClient = createServerQueryClient();
+  queryClient.setQueryData(
+    queryKeys.agenda.list({ from: fromIso, to: toIso }),
+    appointments,
+  );
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-1">
@@ -109,18 +118,20 @@ export default async function AgendaPage() {
         </p>
       </header>
 
-      <AgendaCalendar
-        tenantId={tenantId}
-        timezone={timezone}
-        initialAppointments={appointments}
-        initialRange={{ fromIso, toIso }}
-        clinicClients={clients}
-        procedures={procedures}
-        googleConnected={googleConnected}
-        googleSyncMode={googleSyncMode}
-        defaultSlotMinutes={defaultSlotMinutes}
-        canEdit={isTenantManager(profile) || canAccessAgenda(profile)}
-      />
+      <HydrationBoundary state={dehydrateClient(queryClient)}>
+        <AgendaCalendar
+          tenantId={tenantId}
+          timezone={timezone}
+          initialAppointments={appointments}
+          initialRange={{ fromIso, toIso }}
+          clinicClients={clients}
+          procedures={procedures}
+          googleConnected={googleConnected}
+          googleSyncMode={googleSyncMode}
+          defaultSlotMinutes={defaultSlotMinutes}
+          canEdit={isTenantManager(profile) || canAccessAgenda(profile)}
+        />
+      </HydrationBoundary>
     </div>
   );
 }
