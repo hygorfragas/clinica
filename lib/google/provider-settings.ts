@@ -1,7 +1,8 @@
 import { z } from "zod";
-import type { createServerSupabaseClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
 
-type Client = Awaited<ReturnType<typeof createServerSupabaseClient>>;
+type Client = SupabaseClient<Database>;
 
 const providerSchema = z.object({
   clientId: z.string().trim().min(1),

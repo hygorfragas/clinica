@@ -1,11 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import {
-  canAccessAgenda,
-  fetchClinicProfile,
-  isTenantManager,
-} from "@/lib/auth/clinic-profile";
+import { requireLocalAgendaContext } from "@/lib/auth/local-route-context";
 import { exchangeCodeForTokens } from "@/lib/google/oauth";
 import { encryptToken } from "@/lib/google/crypto";
 import { loadGoogleProviderSettings } from "@/lib/google/provider-settings";
@@ -48,25 +43,16 @@ export async function GET(request: NextRequest) {
   }
   cookieStore.delete("gcal_oauth_state");
 
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const auth = await requireLocalAgendaContext({ requireTenantManager: true });
+  if (!auth.ok && auth.status === 401) {
     return redirectWith(request, "/login", {});
   }
-  const profile = await fetchClinicProfile(supabase, user.id);
-  if (
-    !profile ||
-    !canAccessAgenda(profile) ||
-    !isTenantManager(profile) ||
-    !profile.tenant_id
-  ) {
+  if (!auth.ok) {
     return redirectWith(request, "/configuracoes/agenda", {
       google_error: "forbidden",
     });
   }
-  const provider = await loadGoogleProviderSettings(supabase, profile.tenant_id);
+  const provider = await loadGoogleProviderSettings(auth.supabase, auth.tenantId);
   if (!provider.configured) {
     return redirectWith(request, "/configuracoes/agenda", {
       google_error: "configuracao_incompleta",
@@ -109,13 +95,13 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const { error: upsertErr } = await supabase
+  const { error: upsertErr } = await auth.supabase
     .schema("clinic")
     .from("google_calendar_connections")
     .upsert(
       {
-        profile_id: profile.id,
-        tenant_id: profile.tenant_id,
+        profile_id: auth.user.userId,
+        tenant_id: auth.tenantId,
         google_account_email: googleEmail,
         calendar_id: "primary",
         refresh_token_ciphertext: cipher,
@@ -138,12 +124,12 @@ export async function GET(request: NextRequest) {
   }
 
   // Garante registro em calendar_settings (default off → pull ao usuário ativar)
-  await supabase
+  await auth.supabase
     .schema("clinic")
     .from("calendar_settings")
     .upsert(
       {
-        tenant_id: profile.tenant_id,
+        tenant_id: auth.tenantId,
         google_sync_mode: "pull",
       },
       { onConflict: "tenant_id" },

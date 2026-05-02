@@ -1,52 +1,35 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import {
-  canAccessAgenda,
-  fetchClinicProfile,
-  isTenantManager,
-} from "@/lib/auth/clinic-profile";
+import { requireLocalAgendaContext } from "@/lib/auth/local-route-context";
 
 export const dynamic = "force-dynamic";
 
 export async function POST() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Sessão expirada." }, { status: 401 });
-  }
-  const profile = await fetchClinicProfile(supabase, user.id);
-  if (
-    !profile ||
-    !canAccessAgenda(profile) ||
-    !isTenantManager(profile) ||
-    !profile.tenant_id
-  ) {
-    return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
+  const auth = await requireLocalAgendaContext({ requireTenantManager: true });
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  await supabase
+  await auth.supabase
     .schema("clinic")
     .from("google_calendar_sync_state")
     .delete()
-    .eq("tenant_id", profile.tenant_id);
+    .eq("tenant_id", auth.tenantId);
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .schema("clinic")
     .from("google_calendar_connections")
     .delete()
-    .eq("profile_id", profile.id);
+    .eq("profile_id", auth.user.userId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  await supabase
+  await auth.supabase
     .schema("clinic")
     .from("calendar_settings")
     .update({ google_sync_mode: "off" })
-    .eq("tenant_id", profile.tenant_id);
+    .eq("tenant_id", auth.tenantId);
 
   return NextResponse.json({ ok: true });
 }

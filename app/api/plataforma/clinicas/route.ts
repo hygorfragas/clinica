@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { fetchClinicProfile, isPlatformSuperAdmin } from "@/lib/auth/clinic-profile";
+import { requireLocalPlatformAdminContext } from "@/lib/auth/local-route-context";
 import { createClinicBodySchema } from "@/lib/validations/tenant";
 import { isSupabasePublicEnvConfigured } from "@/lib/supabase/env";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service";
 import { slugifyName } from "@/lib/strings";
 
@@ -25,17 +24,9 @@ export async function POST(request: Request) {
     }
 
     const body = parsed.data;
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-    }
-
-    const profile = await fetchClinicProfile(supabase, user.id);
-    if (!isPlatformSuperAdmin(profile)) {
-      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+    const auth = await requireLocalPlatformAdminContext();
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
     let svc;
@@ -143,17 +134,9 @@ export async function GET() {
       );
     }
 
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-    }
-
-    const profile = await fetchClinicProfile(supabase, user.id);
-    if (!isPlatformSuperAdmin(profile)) {
-      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+    const auth = await requireLocalPlatformAdminContext();
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
     let svc;

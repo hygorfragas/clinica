@@ -1,30 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import {
-  canAccessAgenda,
-  fetchClinicProfile,
-  isTenantManager,
-} from "@/lib/auth/clinic-profile";
+import { requireLocalAgendaContext } from "@/lib/auth/local-route-context";
 import { calendarSettingsSchema } from "@/lib/agenda/schemas";
 
 export const dynamic = "force-dynamic";
 
 export async function PATCH(request: NextRequest) {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Sessão expirada." }, { status: 401 });
-  }
-  const profile = await fetchClinicProfile(supabase, user.id);
-  if (
-    !profile ||
-    !canAccessAgenda(profile) ||
-    !isTenantManager(profile) ||
-    !profile.tenant_id
-  ) {
-    return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
+  const auth = await requireLocalAgendaContext({ requireTenantManager: true });
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   let body: unknown = null;
@@ -42,12 +25,12 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .schema("clinic")
     .from("calendar_settings")
     .upsert(
       {
-        tenant_id: profile.tenant_id,
+        tenant_id: auth.tenantId,
         google_sync_mode: parsed.data.googleSyncMode,
         pull_interval_minutes: parsed.data.pullIntervalMinutes,
         default_slot_minutes: parsed.data.defaultSlotMinutes,

@@ -1,36 +1,17 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import {
-  canAccessAgenda,
-  fetchClinicProfile,
-  isTenantManager,
-} from "@/lib/auth/clinic-profile";
+import { requireLocalAgendaContext } from "@/lib/auth/local-route-context";
 import { getGoogleCalendarForTenant } from "@/lib/google/sync";
 import { loadGoogleProviderSettings } from "@/lib/google/provider-settings";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Sessão expirada." }, { status: 401 });
+  const auth = await requireLocalAgendaContext({ requireTenantManager: true });
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const profile = await fetchClinicProfile(supabase, user.id);
-  if (
-    !profile ||
-    !canAccessAgenda(profile) ||
-    !isTenantManager(profile) ||
-    !profile.tenant_id
-  ) {
-    return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
-  }
-
-  const provider = await loadGoogleProviderSettings(supabase, profile.tenant_id);
+  const provider = await loadGoogleProviderSettings(auth.supabase, auth.tenantId);
   if (!provider.configured) {
     return NextResponse.json(
       {
@@ -44,11 +25,11 @@ export async function GET() {
     );
   }
 
-  const { data: connection } = await supabase
+  const { data: connection } = await auth.supabase
     .schema("clinic")
     .from("google_calendar_connections")
     .select("id, calendar_id, google_account_email")
-    .eq("tenant_id", profile.tenant_id)
+    .eq("tenant_id", auth.tenantId)
     .limit(1)
     .maybeSingle();
 
@@ -63,8 +44,8 @@ export async function GET() {
 
   try {
     const calendarCtx = await getGoogleCalendarForTenant(
-      supabase,
-      profile.tenant_id,
+      auth.supabase,
+      auth.tenantId,
     );
     if (!calendarCtx) {
       return NextResponse.json(

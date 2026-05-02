@@ -1,4 +1,5 @@
-import type { createServerSupabaseClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
 import {
   deleteEvent as gDeleteEvent,
   getCalendarClient,
@@ -13,7 +14,7 @@ import { createClientWithRefreshToken } from "./oauth";
 import { decryptToken } from "./crypto";
 import { loadGoogleProviderSettings } from "./provider-settings";
 
-type Client = Awaited<ReturnType<typeof createServerSupabaseClient>>;
+type Client = SupabaseClient<Database>;
 
 type ConnectionRow = {
   id: string;

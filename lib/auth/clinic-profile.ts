@@ -10,23 +10,25 @@ export type ClinicSupabaseForProfile =
 export type ClinicProfileRow =
   Database["clinic"]["Tables"]["profiles"]["Row"];
 
+type ProfileAccessShape = Pick<ClinicProfileRow, "role" | "tenant_id"> | null;
+
 const TENANT_ROLES = new Set(["owner", "clinic_admin", "agent"]);
 
 const TENANT_MANAGER_ROLES = new Set(["owner", "clinic_admin"]);
 
-export function canAccessAgenda(profile: ClinicProfileRow | null): boolean {
+export function canAccessAgenda(profile: ProfileAccessShape): boolean {
   if (!profile?.tenant_id) return false;
   return TENANT_ROLES.has(profile.role);
 }
 
 /** Owner ou administrador da clínica: pode gerir agentes no tenant. */
-export function isTenantManager(profile: ClinicProfileRow | null): boolean {
+export function isTenantManager(profile: ProfileAccessShape): boolean {
   if (!profile?.tenant_id) return false;
   return TENANT_MANAGER_ROLES.has(profile.role);
 }
 
 export function isPlatformSuperAdmin(
-  profile: ClinicProfileRow | null,
+  profile: ProfileAccessShape,
 ): boolean {
   if (!profile || profile.tenant_id != null) return false;
   // Regra do produto: quando logado como `owner` (sem tenant) é Superadmin.
@@ -34,7 +36,7 @@ export function isPlatformSuperAdmin(
 }
 
 export function isPendingRegistration(
-  profile: ClinicProfileRow | null,
+  profile: ProfileAccessShape,
 ): boolean {
   return profile?.role === "pending_registration";
 }
