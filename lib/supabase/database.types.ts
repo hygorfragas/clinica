@@ -1655,6 +1655,8 @@ export type Database = {
           purchase_id: string | null;
           comparison_role: string | null;
           evolution_id: string | null;
+          evolution_submission_id: string | null;
+          phase: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1670,6 +1672,8 @@ export type Database = {
           purchase_id?: string | null;
           comparison_role?: string | null;
           evolution_id?: string | null;
+          evolution_submission_id?: string | null;
+          phase?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1685,6 +1689,8 @@ export type Database = {
           purchase_id?: string | null;
           comparison_role?: string | null;
           evolution_id?: string | null;
+          evolution_submission_id?: string | null;
+          phase?: string | null;
           created_at?: string;
           updated_at?: string;
         };

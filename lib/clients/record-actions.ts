@@ -647,6 +647,167 @@ export async function uploadClinicalPhotosBatch(
   return { ok: true };
 }
 
+type EvolutionPhotoMeta = {
+  caption?: string | null;
+  comparison_role?: "before" | "after" | null;
+  /** Região do corpo (opcional; default "face"). */
+  body_region?: BodyRegion | null;
+};
+
+/**
+ * Upload de fotos clínicas vinculadas a uma submissão de evolução.
+ *
+ * Diferenças vs. uploadClinicalPhotosBatch:
+ * - aceita comparison_role (Antes/Depois) sem exigir purchase_id, já que aqui o
+ *   contexto é a sessão de evolução em si;
+ * - grava evolution_submission_id pra agrupar fotos da ficha no PDF/painel.
+ */
+export async function uploadEvolutionSubmissionPhotos(
+  clientId: string,
+  submissionId: string,
+  formData: FormData,
+): Promise<ActionOk | ActionError> {
+  const ctx = await requireClinicalContext();
+  if (!ctx.ok) return ctx;
+
+  const belongs = await assertClientInTenant(
+    ctx.supabase,
+    ctx.tenantId,
+    clientId,
+  );
+  if (!belongs) {
+    return { ok: false, error: "Paciente não encontrada." };
+  }
+
+  const submissionParsed = z.string().uuid().safeParse(submissionId);
+  if (!submissionParsed.success) {
+    return { ok: false, error: "Identificador de evolução inválido." };
+  }
+
+  const { data: submission } = await ctx.supabase
+    .schema("clinic")
+    .from("evolution_submissions")
+    .select("id")
+    .eq("id", submissionParsed.data)
+    .eq("client_id", clientId)
+    .eq("tenant_id", ctx.tenantId)
+    .maybeSingle();
+  if (!submission) {
+    return { ok: false, error: "Ficha de evolução não encontrada." };
+  }
+
+  const metaRaw = formData.get("meta");
+  if (typeof metaRaw !== "string") {
+    return { ok: false, error: "Metadados do envio ausentes." };
+  }
+
+  let meta: EvolutionPhotoMeta[];
+  try {
+    meta = JSON.parse(metaRaw) as EvolutionPhotoMeta[];
+  } catch {
+    return { ok: false, error: "Metadados inválidos." };
+  }
+
+  const files = formData
+    .getAll("files")
+    .filter((x): x is File => x instanceof Blob && x.size > 0);
+
+  if (files.length === 0) {
+    return { ok: false, error: "Selecione ao menos uma imagem." };
+  }
+  if (files.length > MAX_PHOTOS_PER_BATCH) {
+    return {
+      ok: false,
+      error: `Máximo de ${MAX_PHOTOS_PER_BATCH} fotos por envio.`,
+    };
+  }
+  if (meta.length !== files.length) {
+    return {
+      ok: false,
+      error: "Cada arquivo precisa de metadados correspondentes.",
+    };
+  }
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const item = meta[i] ?? {};
+
+    if (file.size > MAX_PHOTO_BYTES) {
+      return {
+        ok: false,
+        error: `A foto ${i + 1} excede o tamanho máximo (12 MB).`,
+      };
+    }
+    const mimeErr = assertPhotoMime(file.type);
+    if (mimeErr) return { ok: false, error: mimeErr };
+
+    const region: BodyRegion =
+      item.body_region && isBodyRegion(item.body_region)
+        ? item.body_region
+        : BODY_REGIONS.face;
+
+    const cap =
+      typeof item.caption === "string" && item.caption.trim() !== ""
+        ? item.caption.trim().slice(0, 500)
+        : null;
+
+    let comparison_role: string | null = null;
+    if (item.comparison_role === "before" || item.comparison_role === "after") {
+      comparison_role = item.comparison_role;
+    }
+
+    const path = buildClinicalStoragePath({
+      tenantId: ctx.tenantId,
+      clientId,
+      category: "photos",
+      originalFileName: file.name,
+    });
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { error: upErr } = await ctx.supabase.storage
+      .from(CLINICAL_BUCKET)
+      .upload(path, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (upErr) {
+      return {
+        ok: false,
+        error:
+          upErr.message ??
+          "Falha no upload. Confira o bucket clinical e as políticas de Storage.",
+      };
+    }
+
+    const { error: dbErr } = await ctx.supabase
+      .schema("clinic")
+      .from("photos")
+      .insert({
+        tenant_id: ctx.tenantId,
+        client_id: clientId,
+        storage_key: path,
+        caption: cap,
+        body_region: region,
+        capture_angle: null,
+        purchase_id: null,
+        comparison_role,
+        evolution_submission_id: submissionParsed.data,
+      });
+
+    if (dbErr) {
+      await ctx.supabase.storage.from(CLINICAL_BUCKET).remove([path]);
+      return {
+        ok: false,
+        error: dbErr.message ?? `Erro ao registrar a foto ${i + 1}.`,
+      };
+    }
+  }
+
+  revalidatePaciente(clientId);
+  return { ok: true };
+}
+
 const documentKindSchema = z.enum([
   DOCUMENT_KINDS.procedure,
   DOCUMENT_KINDS.contract,

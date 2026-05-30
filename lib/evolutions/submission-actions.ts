@@ -438,3 +438,69 @@ export async function deleteEvolutionSubmission(
   revalidatePath(`/pacientes/${cid.data}/evolucao`);
   return { ok: true };
 }
+
+export async function linkPhotoToEvolutionSubmission(
+  clientId: string,
+  photoId: string,
+  submissionId: string,
+  phase: "before" | "after",
+): Promise<Ok | Err> {
+  const ctx = await requireClinicalTenantContext();
+  if (!ctx.ok) return ctx;
+
+  const cid = idSchema.safeParse(clientId);
+  const pid = idSchema.safeParse(photoId);
+  const sid = idSchema.safeParse(submissionId);
+  if (!cid.success || !pid.success || !sid.success) {
+    return { ok: false, error: "Identificador inválido." };
+  }
+
+  const { error } = await ctx.supabase
+    .schema("clinic")
+    .from("photos")
+    .update({
+      evolution_submission_id: sid.data,
+      phase,
+    })
+    .eq("id", pid.data)
+    .eq("tenant_id", ctx.tenantId);
+
+  if (error) {
+    return { ok: false, error: error.message ?? "Falha ao vincular foto." };
+  }
+
+  revalidatePath(`/pacientes/${cid.data}/evolucao`);
+  return { ok: true };
+}
+
+export async function unlinkPhotoFromEvolutionSubmission(
+  clientId: string,
+  photoId: string,
+): Promise<Ok | Err> {
+  const ctx = await requireClinicalTenantContext();
+  if (!ctx.ok) return ctx;
+
+  const cid = idSchema.safeParse(clientId);
+  const pid = idSchema.safeParse(photoId);
+  if (!cid.success || !pid.success) {
+    return { ok: false, error: "Identificador inválido." };
+  }
+
+  const { error } = await ctx.supabase
+    .schema("clinic")
+    .from("photos")
+    .update({
+      evolution_submission_id: null,
+      phase: null,
+    })
+    .eq("id", pid.data)
+    .eq("tenant_id", ctx.tenantId);
+
+  if (error) {
+    return { ok: false, error: error.message ?? "Falha ao desvincular foto." };
+  }
+
+  revalidatePath(`/pacientes/${cid.data}/evolucao`);
+  return { ok: true };
+}
+

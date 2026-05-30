@@ -64,6 +64,16 @@ type Props = {
   templateLabel?: string;
   /** Define qual tabela de submissions é gravada. */
   entityKind?: "anamnesis" | "evolution" | "contract";
+  /**
+   * Recebe um flush síncrono que o pai pode chamar antes de desmontar o
+   * editor — garante persistência da última edição não-debouncada.
+   */
+  registerFlush?: (flush: (() => Promise<void>) | null) => void;
+  /** Slot opcional renderizado em um drawer lateral (fotos de evolução). */
+  extraSidePanel?: {
+    label: string;
+    content: React.ReactNode;
+  } | null;
 };
 
 export function InteractiveAnamnesisEditor({
@@ -77,6 +87,8 @@ export function InteractiveAnamnesisEditor({
   patientLabel,
   templateLabel,
   entityKind = "anamnesis",
+  registerFlush,
+  extraSidePanel,
 }: Props) {
   const router = useRouter();
   const saveAction =
@@ -111,7 +123,9 @@ export function InteractiveAnamnesisEditor({
   const [penSize, setPenSize] = useState(1.6);
   const [highlighterSize, setHighlighterSize] = useState(14);
   const [allowNonPen, setAllowNonPen] = useState(false);
-  const [thumbsCollapsed, setThumbsCollapsed] = useState(false);
+  // Em mobile (<md) começa colapsada para liberar espaço pro PDF. No client,
+  // se for tela md+ abrimos automaticamente. O usuário pode alternar a qualquer momento.
+  const [thumbsCollapsed, setThumbsCollapsed] = useState(true);
 
   const [signerName, setSignerName] = useState<string>(initialSignerName ?? "");
   const [status, setStatus] = useState(initialStatus);
@@ -125,6 +139,8 @@ export function InteractiveAnamnesisEditor({
   const [viewerWidth, setViewerWidth] = useState(820);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef(false);
+  const dirtyRef = useRef(false);
+  const [extraOpen, setExtraOpen] = useState(false);
 
   // Preferência "permitir dedo/mouse" em localStorage.
   useEffect(() => {
@@ -134,6 +150,15 @@ export function InteractiveAnamnesisEditor({
       if (raw === "1") setAllowNonPen(true);
     } catch {
       // ignorado
+    }
+  }, []);
+
+  // Em telas md+ abre o painel de miniaturas por padrão (SSR começa colapsado
+  // pra não estourar a largura em mobile).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(min-width: 768px)").matches) {
+      setThumbsCollapsed(false);
     }
   }, []);
 
@@ -149,21 +174,32 @@ export function InteractiveAnamnesisEditor({
   // Carrega PDF apenas quando o path base do arquivo muda. Signed URLs
   // regeneradas pelo servidor com o mesmo path não devem disparar reload
   // (evita o PDF "piscando" a cada autosave).
+  //
+  // `pdfLoadedRef` guarda se o PDF já chegou ao state. Sem essa segunda
+  // guarda, um re-render do server (revalidatePath / router.refresh) durante
+  // o load inicial cancela a Promise anterior e o useEffect seguinte decide
+  // "mesma base, já carreguei" — mas nada chegou a setPdf e o documento
+  // nunca aparece. Esse era o sintoma da regressão na 1ª abertura.
   const loadedPdfBaseRef = useRef<string | null>(null);
+  const pdfLoadedRef = useRef(false);
   useEffect(() => {
     if (!templatePdfUrl) {
       setPdf(null);
       loadedPdfBaseRef.current = null;
+      pdfLoadedRef.current = false;
       return;
     }
     const base = pdfBaseKey(templatePdfUrl);
-    if (loadedPdfBaseRef.current === base) return;
+    if (loadedPdfBaseRef.current === base && pdfLoadedRef.current) return;
     loadedPdfBaseRef.current = base;
 
     let cancelled = false;
     loadPdfDocument(templatePdfUrl)
       .then((p) => {
-        if (!cancelled) setPdf(p);
+        if (!cancelled) {
+          setPdf(p);
+          pdfLoadedRef.current = true;
+        }
       })
       .catch((err) => {
         console.error(err);
@@ -179,7 +215,7 @@ export function InteractiveAnamnesisEditor({
     const target = viewerRef.current;
     if (!target || typeof ResizeObserver === "undefined") return;
     const update = () => {
-      const next = Math.max(320, Math.floor(target.getBoundingClientRect().width));
+      const next = Math.max(280, Math.floor(target.getBoundingClientRect().width));
       setViewerWidth((prev) => (Math.abs(prev - next) < 1 ? prev : next));
     };
     update();
@@ -238,6 +274,7 @@ export function InteractiveAnamnesisEditor({
         pushHistory(prev);
         return [...prev, stroke];
       });
+      dirtyRef.current = true;
       scheduleAutosave();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -251,6 +288,7 @@ export function InteractiveAnamnesisEditor({
         pushHistory(prev);
         return prev.filter((_, i) => i !== index);
       });
+      dirtyRef.current = true;
       scheduleAutosave();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -265,6 +303,7 @@ export function InteractiveAnamnesisEditor({
         setRedoStack((r) => [...r, prev].slice(-50));
         return last;
       });
+      dirtyRef.current = true;
       scheduleAutosave();
       return u.slice(0, -1);
     });
@@ -279,6 +318,7 @@ export function InteractiveAnamnesisEditor({
         setUndoStack((u) => [...u, prev].slice(-50));
         return next;
       });
+      dirtyRef.current = true;
       scheduleAutosave();
       return r.slice(0, -1);
     });
@@ -309,9 +349,43 @@ export function InteractiveAnamnesisEditor({
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(() => {
       void doSave({ silent: true });
-    }, 2000);
+    }, 800);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const flushSave = useCallback(async () => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    if (!dirtyRef.current) return;
+    await doSave({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!registerFlush) return;
+    registerFlush(flushSave);
+    return () => registerFlush(null);
+  }, [registerFlush, flushSave]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onHide = () => {
+      if (dirtyRef.current) void flushSave();
+    };
+    const onVis = () => {
+      if (document.visibilityState === "hidden" && dirtyRef.current) {
+        void flushSave();
+      }
+    };
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [flushSave]);
 
   async function doSave(opts?: { silent?: boolean }) {
     if (!canInteract) return null;
@@ -336,6 +410,7 @@ export function InteractiveAnamnesisEditor({
         setError(result.error);
         return null;
       }
+      dirtyRef.current = false;
       if (!opts?.silent) setInfo("Rascunho salvo.");
       return result.id;
     } finally {
@@ -381,7 +456,7 @@ export function InteractiveAnamnesisEditor({
 
   const pageCount = pdf?.numPages ?? 1;
   const activeSize = pageSizes[activePage];
-  const renderWidth = Math.max(320, Math.min(1100, viewerWidth));
+  const renderWidth = Math.min(1100, viewerWidth);
   const currentSize = tool === "highlighter" ? highlighterSize : penSize;
   const strokeCountByPage = useMemo(() => {
     const map: Record<number, number> = {};
@@ -453,6 +528,21 @@ export function InteractiveAnamnesisEditor({
             </div>
 
             <div className="flex items-center gap-2 text-[11px] text-ink-muted">
+              {extraSidePanel ? (
+                <button
+                  type="button"
+                  onClick={() => setExtraOpen((v) => !v)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-medium transition",
+                    extraOpen
+                      ? "bg-brand text-white"
+                      : "bg-secondary-container text-on-secondary-container hover:brightness-95",
+                  )}
+                  aria-pressed={extraOpen}
+                >
+                  {extraSidePanel.label}
+                </button>
+              ) : null}
               {canInteract ? (
                 <>
                   <input
@@ -545,7 +635,38 @@ export function InteractiveAnamnesisEditor({
             ) : null}
           </div>
         </main>
+
+        {extraSidePanel && extraOpen ? (
+          <aside className="hidden w-80 shrink-0 overflow-y-auto border-l border-line/70 bg-surface/60 p-4 md:block">
+            {extraSidePanel.content}
+          </aside>
+        ) : null}
       </div>
+
+      {extraSidePanel && extraOpen ? (
+        <div
+          className="fixed inset-0 z-30 flex justify-end bg-black/30 md:hidden"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setExtraOpen(false);
+          }}
+        >
+          <div className="h-full w-[min(420px,90vw)] overflow-y-auto bg-surface p-4 shadow-lift">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-ink">
+                {extraSidePanel.label}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setExtraOpen(false)}
+                className="rounded-full px-2 py-1 text-xs text-ink-muted hover:bg-muted"
+              >
+                Fechar
+              </button>
+            </div>
+            {extraSidePanel.content}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

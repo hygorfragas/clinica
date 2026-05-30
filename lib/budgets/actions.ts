@@ -542,3 +542,34 @@ export async function generateBudgetPdf(
 
   return { ok: true, url: signed.signedUrl, documentId: documentRow.id };
 }
+
+export async function deleteBudget(budgetId: string): Promise<Ok | Err> {
+  const ctx = await requireClinicalTenantContext();
+  if (!ctx.ok) return ctx;
+
+  const parsed = budgetIdSchema.safeParse(budgetId);
+  if (!parsed.success) return { ok: false, error: "Orçamento inválido." };
+
+  // Primeiro cancelamos para estornar o financeiro se aplicável
+  await dispatchBudgetCancelled(
+    ctx.supabase,
+    ctx.tenantId,
+    parsed.data,
+    "Orçamento excluído",
+  );
+
+  const { error } = await ctx.supabase
+    .schema("clinic")
+    .from("budgets")
+    .delete()
+    .eq("id", parsed.data)
+    .eq("tenant_id", ctx.tenantId);
+
+  if (error) {
+    return { ok: false, error: error.message ?? "Falha ao excluir orçamento." };
+  }
+
+  revalidatePath("/orcamentos");
+  return { ok: true };
+}
+

@@ -2,9 +2,10 @@
 
 import { useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MessageCircle, Plus, Share2 } from "lucide-react";
+import { MessageCircle, Plus, Share2, Trash2 } from "lucide-react";
 import { PatientSearchDialog } from "@/components/clients/patient-search-dialog";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { notifyError, notifySuccess } from "@/lib/ui/notify";
@@ -12,6 +13,7 @@ import {
   changeBudgetStatus,
   convertBudgetToPurchase,
   createBudget,
+  deleteBudget,
   generateBudgetPdf,
 } from "@/lib/budgets/actions";
 
@@ -104,6 +106,7 @@ export function BudgetsManager({
   brandingProfiles?: BrandingProfileOption[];
 }) {
   const router = useRouter();
+  const { confirm, element: confirmDialog } = useConfirmDialog();
   const draftNs = useId().replace(/:/g, "");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -258,6 +261,31 @@ export function BudgetsManager({
     });
   }
 
+  function removeBudget(budgetId: string) {
+    confirm({
+      title: "Excluir orçamento",
+      description:
+        "O orçamento será apagado e a entrada pendente no Financeiro (se houver) será estornada. Não pode ser desfeito.",
+      confirmLabel: "Excluir",
+      destructive: true,
+      onConfirm: () =>
+        new Promise<void>((resolve, reject) => {
+          startTransition(async () => {
+            const result = await deleteBudget(budgetId);
+            if (!result.ok) {
+              setError(result.error);
+              notifyError(null, result.error);
+              reject(new Error(result.error));
+              return;
+            }
+            notifySuccess("Orçamento excluído.");
+            router.refresh();
+            resolve();
+          });
+        }),
+    });
+  }
+
   function exportPdf(budgetId: string) {
     setError(null);
     const selected = selectedBrandingByBudget[budgetId] ?? defaultBrandingId;
@@ -276,6 +304,7 @@ export function BudgetsManager({
 
   return (
     <div className="space-y-8">
+      {confirmDialog}
       <form
         onSubmit={submitBudget}
         className="rounded-[1.75rem] bg-surface p-6 shadow-lift ring-1 ring-line md:p-7"
@@ -602,6 +631,18 @@ export function BudgetsManager({
                     onClick={() => launchFinancial(budget.id)}
                   >
                     Lançar no financeiro
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="text-danger hover:bg-danger/10 hover:text-danger"
+                    disabled={pending}
+                    onClick={() => removeBudget(budget.id)}
+                    title="Excluir orçamento"
+                    aria-label="Excluir orçamento"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </article>

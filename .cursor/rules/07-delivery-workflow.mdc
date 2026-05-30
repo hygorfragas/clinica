@@ -14,6 +14,10 @@ alwaysApply: true
 
 Se a tarefa tiver **task ClickUp** associada, seguir também **ClickUp e roadmap** (`.cursor/rules/08-clickup-roadmap-sincronia.mdc`) e manter `documentacao/roadmap_e_plano_clickup.md` alinhado ao status e ao relatório da task.
 
+## Release com imagem Docker
+
+Ao preparar **nova versão** para build/push de container, seguir **`.cursor/rules/10-docker-image-versioning.mdc`**: tag semver (`hygorfragas/clinica:X.Y.Z`) **antes** de publicar ou depender de `latest`.
+
 ## Em mudanças estruturais
 Sempre considerar:
 - banco

@@ -78,6 +78,14 @@ type Props = {
   hasInkAnnotations?: boolean;
   /** Define se grava em anamnesis_submissions ou evolution_submissions. */
   entityKind?: SubmissionEntityKind;
+  /**
+   * Recebe uma função de flush síncrono que o pai pode chamar antes de
+   * desmontar o editor. Garante que a digitação dos últimos ms (entre
+   * autosaves) seja persistida antes do close.
+   */
+  registerFlush?: (flush: (() => Promise<void>) | null) => void;
+  /** Slot opcional renderizado dentro da sidebar — usado para fotos de evolução. */
+  extraSidebarPanel?: React.ReactNode;
 };
 
 export function DesktopAnamnesisEditor({
@@ -92,6 +100,8 @@ export function DesktopAnamnesisEditor({
   initialStatus,
   hasInkAnnotations,
   entityKind = "anamnesis",
+  registerFlush,
+  extraSidebarPanel,
 }: Props) {
   const saveAction =
     entityKind === "evolution"
@@ -129,6 +139,11 @@ export function DesktopAnamnesisEditor({
   const [signatureModal, setSignatureModal] =
     useState<AnamnesisField | null>(null);
   const [showFinalStep, setShowFinalStep] = useState(false);
+  // Aba ativa da coluna lateral. Só faz diferença quando há `extraSidebarPanel`
+  // (atualmente: galeria de fotos clínicas em evoluções). Separa o "preenchimento
+  // de campos" do "consultar fotos" pra que o layout não fique empilhado em
+  // tablets/portrait onde a grid ainda é 1 coluna.
+  const [sidebarTab, setSidebarTab] = useState<"fields" | "photos">("fields");
 
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const fieldRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -142,24 +157,35 @@ export function DesktopAnamnesisEditor({
   const inkStrokesRef = useRef<AnamnesisStroke[]>(initialInkStrokes ?? []);
   const signerNameRef = useRef<string>(initialSignerName ?? "");
   const savingRef = useRef<Promise<string | null> | null>(null);
+  // Marca que existe edição não persistida desde o último save bem-sucedido.
+  const dirtyRef = useRef(false);
 
   const canInteract = status === "draft";
 
   const loadedPdfBaseRef = useRef<string | null>(null);
+  // Marca que o PDF já está pronto na tela. Sem isso, se a URL muda durante
+  // o load (server refresh com signed URL novo, mesma base), a guarda de
+  // base decide "já carreguei" mas o load anterior foi cancelado e setPdf
+  // nunca foi chamado — PDF some na primeira abertura.
+  const pdfLoadedRef = useRef(false);
   useEffect(() => {
     if (!templatePdfUrl) {
       setPdf(null);
       loadedPdfBaseRef.current = null;
+      pdfLoadedRef.current = false;
       return;
     }
     const base = pdfBaseKey(templatePdfUrl);
-    if (loadedPdfBaseRef.current === base) return;
+    if (loadedPdfBaseRef.current === base && pdfLoadedRef.current) return;
     loadedPdfBaseRef.current = base;
 
     let cancelled = false;
     loadPdfDocument(templatePdfUrl)
       .then((p) => {
-        if (!cancelled) setPdf(p);
+        if (!cancelled) {
+          setPdf(p);
+          pdfLoadedRef.current = true;
+        }
       })
       .catch((err) => {
         console.error(err);
@@ -174,7 +200,7 @@ export function DesktopAnamnesisEditor({
     const target = viewerRef.current;
     if (!target || typeof ResizeObserver === "undefined") return;
     const update = () => {
-      const next = Math.max(320, Math.floor(target.getBoundingClientRect().width));
+      const next = Math.max(280, Math.floor(target.getBoundingClientRect().width));
       setViewerWidth((prev) => (Math.abs(prev - next) < 1 ? prev : next));
     };
     update();
@@ -379,6 +405,7 @@ export function DesktopAnamnesisEditor({
         formValuesRef.current = next;
         return next;
       });
+      dirtyRef.current = true;
       scheduleAutosave();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -390,9 +417,47 @@ export function DesktopAnamnesisEditor({
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(() => {
       void doSave({ silent: true });
-    }, 2000);
+    }, 800);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canInteract]);
+
+  // Flush imediato: cancela debounce e força save final. Usado em
+  // pagehide/visibilitychange e no fechamento do editor pelo pai.
+  const flushSave = useCallback(async () => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    if (!dirtyRef.current) return;
+    await doSave({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!registerFlush) return;
+    registerFlush(flushSave);
+    return () => registerFlush(null);
+  }, [registerFlush, flushSave]);
+
+  // Eventos do navegador: aba mudando, página fechando, tablet dormindo.
+  // Tenta um save final antes que a aba seja descartada.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onHide = () => {
+      if (dirtyRef.current) void flushSave();
+    };
+    const onVis = () => {
+      if (document.visibilityState === "hidden" && dirtyRef.current) {
+        void flushSave();
+      }
+    };
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [flushSave]);
 
   useEffect(
     () => () => {
@@ -429,6 +494,7 @@ export function DesktopAnamnesisEditor({
       // event-loop já enxergue o id correto.
       submissionIdRef.current = result.id;
       setCurrentSubmissionId(result.id);
+      dirtyRef.current = false;
       if (!opts?.silent) setInfo("Rascunho salvo.");
       return result.id;
     })();
@@ -503,6 +569,7 @@ export function DesktopAnamnesisEditor({
       return next;
     });
     setSignatureModal(null);
+    dirtyRef.current = true;
     scheduleAutosave();
     // Avança para o próximo campo após assinar.
     requestAnimationFrame(() => gotoNext());
@@ -514,6 +581,7 @@ export function DesktopAnamnesisEditor({
       inkStrokesRef.current = next;
       return next;
     });
+    dirtyRef.current = true;
     scheduleAutosave();
   }
 
@@ -536,7 +604,10 @@ export function DesktopAnamnesisEditor({
   }, [signatureModal, inkStrokes]);
 
   const pageCount = pdf?.numPages ?? 1;
-  const renderWidth = Math.max(320, Math.min(960, viewerWidth));
+  // viewerWidth já tem mínimo de 320 (clamp do ResizeObserver); em mobile pequeno
+  // o viewerWidth real pode ser menor que 320, mas o ResizeObserver garante 320
+  // como piso. Aqui só limitamos o teto pra não estourar em desktops largos.
+  const renderWidth = Math.min(960, viewerWidth);
   const totalFields = orderedFields.length;
 
   // Atalho global de teclado: Enter avança no modo guiado.
@@ -653,7 +724,6 @@ export function DesktopAnamnesisEditor({
               slideDir={slideDir}
               onChangePage={(p) => gotoPage(p)}
               onSlideEnd={() => setSlideDir("none")}
-              renderWidth={renderWidth}
               renderPage={(pNum) => {
                 const size = pageSizes[pNum];
                 const pageFields = fieldsByPage.get(pNum) ?? [];
@@ -697,36 +767,53 @@ export function DesktopAnamnesisEditor({
         </div>
 
         {/* Sidebar */}
-        <aside className="space-y-3">
-          {mode === "guided" && activeField ? (
-            <GuidedActiveCard
-              field={activeField}
-              index={activeIndex}
-              total={totalFields}
-              filled={isFieldFilled(activeField)}
-              onPrev={gotoPrev}
-              onNext={gotoNext}
-              onSkip={() => gotoNext()}
-              onOpenSignature={() => setSignatureModal(activeField)}
-              hasPrev={activeIndex > 0}
-              hasNext={activeIndex < totalFields - 1}
+        <aside className="min-w-0 space-y-3">
+          {extraSidebarPanel ? (
+            <SidebarTabs
+              activeTab={sidebarTab}
+              onChange={setSidebarTab}
             />
           ) : null}
 
-          <FieldNavigator
-            fieldsByPage={fieldsByPage}
-            pageCount={pageCount}
-            activeFieldId={activeFieldId}
-            onJump={focusActiveField}
-            isFieldFilled={isFieldFilled}
-            detecting={detectingFields && formSchema.length === 0}
-          />
+          {(!extraSidebarPanel || sidebarTab === "fields") ? (
+            <>
+              {mode === "guided" && activeField ? (
+                <GuidedActiveCard
+                  field={activeField}
+                  index={activeIndex}
+                  total={totalFields}
+                  filled={isFieldFilled(activeField)}
+                  onPrev={gotoPrev}
+                  onNext={gotoNext}
+                  onSkip={() => gotoNext()}
+                  onOpenSignature={() => setSignatureModal(activeField)}
+                  hasPrev={activeIndex > 0}
+                  hasNext={activeIndex < totalFields - 1}
+                />
+              ) : null}
 
-          {totalFields === 0 && !detectingFields ? (
-            <p className="rounded-2xl bg-surface p-4 text-xs text-ink-muted ring-1 ring-line">
-              Este template não tem campos rastreados. Você pode finalizar
-              diretamente, ou abrir em modo interativo para anotar a caneta.
-            </p>
+              <FieldNavigator
+                fieldsByPage={fieldsByPage}
+                pageCount={pageCount}
+                activeFieldId={activeFieldId}
+                onJump={focusActiveField}
+                isFieldFilled={isFieldFilled}
+                detecting={detectingFields && formSchema.length === 0}
+              />
+
+              {totalFields === 0 && !detectingFields ? (
+                <p className="rounded-2xl bg-surface p-4 text-xs text-ink-muted ring-1 ring-line">
+                  Este template não tem campos rastreados. Você pode finalizar
+                  diretamente, ou abrir em modo interativo para anotar a caneta.
+                </p>
+              ) : null}
+            </>
+          ) : null}
+
+          {extraSidebarPanel && sidebarTab === "photos" ? (
+            <div className="h-[70vh] min-h-[420px] overflow-hidden rounded-2xl ring-1 ring-line">
+              {extraSidebarPanel}
+            </div>
           ) : null}
         </aside>
       </div>
@@ -773,7 +860,6 @@ function PageCarousel({
   slideDir,
   onChangePage,
   onSlideEnd,
-  renderWidth,
   renderPage,
 }: {
   pageCount: number;
@@ -781,7 +867,6 @@ function PageCarousel({
   slideDir: "none" | "next" | "prev";
   onChangePage: (p: number) => void;
   onSlideEnd: () => void;
-  renderWidth: number;
   renderPage: (pNum: number) => React.ReactNode;
 }) {
   const slideClass =
@@ -849,9 +934,8 @@ function PageCarousel({
       <div className="relative overflow-hidden">
         <div
           key={activePage}
-          className={cn("flex justify-center will-change-transform", slideClass)}
+          className={cn("flex w-full justify-center will-change-transform", slideClass)}
           onAnimationEnd={() => onSlideEnd()}
-          style={{ minWidth: renderWidth }}
         >
           {renderPage(activePage)}
         </div>
@@ -1029,6 +1113,8 @@ function GuidedActiveCard({
   );
 }
 
+const FIELD_NAV_PAGE_SIZE = 8;
+
 function FieldNavigator({
   fieldsByPage,
   pageCount,
@@ -1044,6 +1130,41 @@ function FieldNavigator({
   isFieldFilled: (f: AnamnesisField) => boolean;
   detecting: boolean;
 }) {
+  // Achata todos os campos preservando a ordem (página do PDF → topo → esq.),
+  // guardando de qual página do PDF cada um veio para exibir o cabeçalho.
+  const flat = useMemo(() => {
+    const list: Array<{ field: AnamnesisField; pdfPage: number }> = [];
+    for (let p = 1; p <= pageCount; p += 1) {
+      const fields = fieldsByPage.get(p) ?? [];
+      for (const field of fields) list.push({ field, pdfPage: p });
+    }
+    return list;
+  }, [fieldsByPage, pageCount]);
+
+  const totalNavPages = Math.max(
+    1,
+    Math.ceil(flat.length / FIELD_NAV_PAGE_SIZE),
+  );
+  const [navPage, setNavPage] = useState(0);
+
+  const activeIndex = useMemo(
+    () => flat.findIndex((x) => x.field.id === activeFieldId),
+    [flat, activeFieldId],
+  );
+
+  // Troca automática: quando o campo ativo está em outra página da lista
+  // (ex.: usuário concluiu um campo e o foco avançou para o próximo pendente),
+  // a paginação acompanha sem o usuário precisar paginar manualmente.
+  useEffect(() => {
+    if (activeIndex < 0) return;
+    setNavPage(Math.floor(activeIndex / FIELD_NAV_PAGE_SIZE));
+  }, [activeIndex]);
+
+  // Mantém navPage válido se a quantidade de campos mudar.
+  useEffect(() => {
+    setNavPage((p) => Math.min(p, totalNavPages - 1));
+  }, [totalNavPages]);
+
   if (detecting) {
     return (
       <div className="rounded-2xl bg-surface p-4 text-xs text-ink-muted shadow-sm ring-1 ring-line">
@@ -1052,63 +1173,105 @@ function FieldNavigator({
     );
   }
 
+  if (flat.length === 0) return null;
+
+  const start = navPage * FIELD_NAV_PAGE_SIZE;
+  const slice = flat.slice(start, start + FIELD_NAV_PAGE_SIZE);
+
   return (
     <div className="rounded-2xl bg-surface p-4 shadow-sm ring-1 ring-line">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">
-        Mapa de campos
-      </h3>
-      <div className="mt-2 space-y-3 text-xs">
-        {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => {
-          const fields = fieldsByPage.get(p) ?? [];
-          if (fields.length === 0) return null;
+      <div className="flex items-center justify-between">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">
+          Mapa de campos
+        </h3>
+        <span className="text-[10px] text-ink-subtle">
+          {flat.length} campo(s)
+        </span>
+      </div>
+
+      <ul className="mt-2 space-y-0.5 text-xs">
+        {slice.map(({ field: f, pdfPage }, i) => {
+          const filled = isFieldFilled(f);
+          const active = activeFieldId === f.id;
+          // Cabeçalho de página do PDF quando muda dentro da lista paginada.
+          const prevPdfPage = i > 0 ? slice[i - 1].pdfPage : null;
+          const showPageHeader = pdfPage !== prevPdfPage;
           return (
-            <div key={p}>
-              <p className="text-[10px] font-medium uppercase text-ink-subtle">
-                Página {p}
-              </p>
-              <ul className="mt-1 space-y-0.5">
-                {fields.map((f) => {
-                  const filled = isFieldFilled(f);
-                  const active = activeFieldId === f.id;
-                  return (
-                    <li key={f.id}>
-                      <button
-                        type="button"
-                        onClick={() => onJump(f.id)}
-                        className={cn(
-                          "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition",
-                          active
-                            ? "bg-brand/10 text-ink"
-                            : "text-ink-muted hover:bg-brand/5 hover:text-ink",
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full",
-                            filled
-                              ? "bg-brand text-white"
-                              : f.required
-                                ? "bg-danger/15 text-danger"
-                                : "bg-muted text-ink-muted",
-                          )}
-                        >
-                          {filled ? "✓" : f.required ? "!" : ""}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate">
-                          {f.label}
-                        </span>
-                        <span className="text-[10px] text-ink-subtle">
-                          {shortType(f.type)}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+            <li key={f.id}>
+              {showPageHeader ? (
+                <p className="mb-0.5 mt-2 text-[10px] font-medium uppercase text-ink-subtle first:mt-0">
+                  Página {pdfPage}
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => onJump(f.id)}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition",
+                  active
+                    ? "bg-brand/10 text-ink"
+                    : "text-ink-muted hover:bg-brand/5 hover:text-ink",
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full",
+                    filled
+                      ? "bg-brand text-white"
+                      : f.required
+                        ? "bg-danger/15 text-danger"
+                        : "bg-muted text-ink-muted",
+                  )}
+                >
+                  {filled ? "✓" : f.required ? "!" : ""}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{f.label}</span>
+                <span className="text-[10px] text-ink-subtle">
+                  {shortType(f.type)}
+                </span>
+              </button>
+            </li>
           );
         })}
-      </div>
+      </ul>
+
+      {totalNavPages > 1 ? (
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-line/60 pt-2">
+          <button
+            type="button"
+            onClick={() => setNavPage((p) => Math.max(0, p - 1))}
+            disabled={navPage === 0}
+            className={cn(
+              "inline-flex h-7 items-center gap-1 rounded-md px-2 text-[11px] font-medium transition",
+              navPage === 0
+                ? "cursor-not-allowed text-ink-subtle/50"
+                : "text-ink-muted hover:bg-brand/10 hover:text-brand",
+            )}
+            aria-label="Campos anteriores"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" /> Ant.
+          </button>
+          <span className="text-[10px] text-ink-subtle">
+            {navPage + 1} / {totalNavPages}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              setNavPage((p) => Math.min(totalNavPages - 1, p + 1))
+            }
+            disabled={navPage >= totalNavPages - 1}
+            className={cn(
+              "inline-flex h-7 items-center gap-1 rounded-md px-2 text-[11px] font-medium transition",
+              navPage >= totalNavPages - 1
+                ? "cursor-not-allowed text-ink-subtle/50"
+                : "text-ink-muted hover:bg-brand/10 hover:text-brand",
+            )}
+            aria-label="Próximos campos"
+          >
+            Próx. <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1204,6 +1367,51 @@ function FinalStepDialog({
   );
 }
 
+function SidebarTabs({
+  activeTab,
+  onChange,
+}: {
+  activeTab: "fields" | "photos";
+  onChange: (t: "fields" | "photos") => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Seções da coluna lateral"
+      className="inline-flex w-full rounded-xl bg-canvas p-0.5 ring-1 ring-line"
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={activeTab === "fields"}
+        onClick={() => onChange("fields")}
+        className={cn(
+          "flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition",
+          activeTab === "fields"
+            ? "bg-brand text-white shadow-sm"
+            : "text-ink-muted hover:text-ink",
+        )}
+      >
+        Preencher campos
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={activeTab === "photos"}
+        onClick={() => onChange("photos")}
+        className={cn(
+          "flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition",
+          activeTab === "photos"
+            ? "bg-brand text-white shadow-sm"
+            : "text-ink-muted hover:text-ink",
+        )}
+      >
+        Fotos clínicas
+      </button>
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /* Overlay sobre o PDF                                                        */
 /* -------------------------------------------------------------------------- */
@@ -1251,10 +1459,12 @@ function FieldOverlay({
         };
 
         if (!showInput) {
-          // Modo guiado, campo inativo: marcador discreto.
+          // Modo guiado, campo inativo: mostra valor preenchido (read-only)
+          // ou marcador discreto. Clicar reativa o campo para edição.
           const filled =
             (isSig && hasSig) ||
             (!isSig && hasValue(formValues[f.id]));
+          const display = !isSig ? formatFieldDisplay(f, formValues[f.id]) : null;
           return (
             <button
               key={f.id}
@@ -1263,16 +1473,28 @@ function FieldOverlay({
               onClick={() => onActivate(f.id)}
               style={style}
               className={cn(
-                "pointer-events-auto absolute rounded transition",
+                "pointer-events-auto absolute overflow-hidden rounded text-left transition",
                 filled
-                  ? "border border-brand/40 bg-brand/10"
+                  ? "border border-brand/40 bg-white/80"
                   : f.required
                     ? "border border-dashed border-danger/50 bg-danger/5 hover:border-danger/70"
                     : "border border-dashed border-line bg-white/40 hover:border-brand/50 hover:bg-brand/5",
               )}
-              aria-label={`Ativar campo ${f.label}`}
-              title={f.label}
-            />
+              aria-label={`${filled ? "Editar" : "Ativar"} campo ${f.label}`}
+              title={filled && display ? `${f.label}: ${display}` : f.label}
+            >
+              {filled && !isSig && display ? (
+                <span className="pointer-events-none block h-full w-full overflow-hidden whitespace-nowrap px-1 text-[11px] leading-[1.1] text-ink">
+                  {display}
+                </span>
+              ) : null}
+              {filled && isSig ? (
+                <span className="pointer-events-none flex h-full w-full items-center justify-center gap-1 px-1 text-[10px] font-medium text-brand">
+                  <CheckCircle2 className="h-3 w-3" />
+                  {f.type === "initials" ? "Rubricado" : "Assinado"}
+                </span>
+              ) : null}
+            </button>
           );
         }
 
@@ -1476,6 +1698,27 @@ function hasValue(v: unknown): boolean {
   if (typeof v === "string") return v.trim() !== "";
   if (typeof v === "boolean") return v === true;
   return true;
+}
+
+function formatFieldDisplay(
+  field: AnamnesisField,
+  value: unknown,
+): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "boolean") {
+    return value ? (field.label || "✓") : null;
+  }
+  if (field.type === "yesno") {
+    if (value === "yes") return "Sim";
+    if (value === "no") return "Não";
+    return null;
+  }
+  if (field.type === "date" && typeof value === "string" && value) {
+    const d = new Date(`${value}T00:00:00`);
+    if (!Number.isNaN(d.getTime())) return d.toLocaleDateString("pt-BR");
+  }
+  const s = typeof value === "string" ? value : String(value);
+  return s.trim() ? s : null;
 }
 
 function hintForType(t: AnamnesisField["type"]): string {

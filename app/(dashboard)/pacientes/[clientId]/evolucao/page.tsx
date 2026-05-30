@@ -27,6 +27,13 @@ type TemplateLite = {
   form_schema: AnamnesisField[];
 };
 
+type SubmissionPhotoLite = {
+  id: string;
+  url: string | null;
+  caption: string | null;
+  phase: "before" | "after" | "during" | null;
+};
+
 type SubmissionListItem = {
   id: string;
   template_id: string | null;
@@ -40,6 +47,7 @@ type SubmissionListItem = {
   flattened_pdf_url: string | null;
   form_values: AnamnesisFormValues;
   ink_strokes: AnamnesisStroke[];
+  photos?: SubmissionPhotoLite[];
 };
 
 export default async function PacienteEvolucaoPage({ params }: PageProps) {
@@ -49,7 +57,7 @@ export default async function PacienteEvolucaoPage({ params }: PageProps) {
 
   const storageClient = createServiceRoleClient();
 
-  const [{ data: templatesRows }, { data: submissionRows }] = await Promise.all([
+  const [{ data: templatesRows }, { data: submissionRows }, { data: photosRows }] = await Promise.all([
     ctx.supabase
       .schema("clinic")
       .from("evolution_templates")
@@ -69,6 +77,13 @@ export default async function PacienteEvolucaoPage({ params }: PageProps) {
       .eq("tenant_id", ctx.tenantId)
       .eq("client_id", clientId)
       .order("updated_at", { ascending: false }),
+    ctx.supabase
+      .schema("clinic")
+      .from("photos")
+      .select("id, storage_key, caption, phase, evolution_submission_id")
+      .eq("client_id", clientId)
+      .eq("tenant_id", ctx.tenantId)
+      .not("evolution_submission_id", "is", null),
   ]);
 
   const templateMap = new Map<string, string>();
@@ -101,6 +116,20 @@ export default async function PacienteEvolucaoPage({ params }: PageProps) {
     });
   }
 
+  const photosBySubmission = new Map<string, typeof photosRows>();
+  if (photosRows) {
+    for (const p of photosRows) {
+      if (p.evolution_submission_id) {
+        let arr = photosBySubmission.get(p.evolution_submission_id);
+        if (!arr) {
+          arr = [];
+          photosBySubmission.set(p.evolution_submission_id, arr);
+        }
+        arr.push(p);
+      }
+    }
+  }
+
   const submissions: SubmissionListItem[] = [];
   for (const s of submissionRows ?? []) {
     let flattenedUrl: string | null = null;
@@ -117,6 +146,26 @@ export default async function PacienteEvolucaoPage({ params }: PageProps) {
       }
       flattenedUrl = signed?.signedUrl ?? null;
     }
+
+    const subPhotos = photosBySubmission.get(s.id) ?? [];
+    const photosWithUrls = await Promise.all(
+      subPhotos.map(async (p) => {
+        let signedUrl: string | null = null;
+        if (p.storage_key) {
+          const { data } = await storageClient.storage
+            .from(CLINICAL_BUCKET)
+            .createSignedUrl(p.storage_key, 60 * 30);
+          signedUrl = data?.signedUrl ?? null;
+        }
+        return {
+          id: p.id,
+          url: signedUrl,
+          caption: p.caption,
+          phase: p.phase as "before" | "after" | "during" | null,
+        };
+      })
+    );
+
     const parsedValues = anamnesisFormValuesSchema.safeParse(s.form_values ?? {});
     const parsedStrokes = anamnesisStrokesSchema.safeParse(s.ink_strokes ?? []);
     submissions.push({
@@ -132,6 +181,7 @@ export default async function PacienteEvolucaoPage({ params }: PageProps) {
       flattened_pdf_url: flattenedUrl,
       form_values: parsedValues.success ? parsedValues.data : {},
       ink_strokes: parsedStrokes.success ? parsedStrokes.data : [],
+      photos: photosWithUrls,
     });
   }
 

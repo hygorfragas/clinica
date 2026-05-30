@@ -246,3 +246,46 @@ html.dark[data-accent="grafite"] {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* Smartphone: a visão de Dia (forçada via JS) precisa ocupar a largura toda
+   sem scroll horizontal, e os controles ficam empilhados de forma legível. */
+@media (max-width: 640px) {
+  .agenda-calendar-shell {
+    /* na visão de dia não há 7 colunas: não force rolagem lateral */
+    overflow-x: hidden;
+  }
+
+  .agenda-calendar-shell .sx__calendar {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* Controles do topo: barra cheia, botões com toque confortável */
+  .agenda-calendar-shell .sx__calendar-header {
+    align-items: stretch;
+    gap: 0.4rem;
+  }
+
+  .agenda-calendar-shell .sx__view-selection,
+  .agenda-calendar-shell .sx__view-selection-selected-item,
+  .agenda-calendar-shell .sx__date-picker-wrapper {
+    width: 100%;
+  }
+
+  .agenda-calendar-shell .sx__view-selection-items {
+    width: 100%;
+  }
+
+  /* Eventos com fonte e padding um pouco maiores para leitura no celular */
+  .agenda-calendar-shell .sx__time-grid-event,
+  .agenda-calendar-shell .sx__month-grid-event,
+  .agenda-calendar-shell .sx__date-grid-event {
+    font-size: 0.8rem;
+    line-height: 1.15;
+  }
+
+  /* Coluna de horas mais estreita para sobrar espaço pro evento */
+  .agenda-calendar-shell .sx__time-grid-hour {
+    font-size: 0.7rem;
+  }
+}

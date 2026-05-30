@@ -4,6 +4,18 @@ Documento vivo para **controle do que já está pronto**, **onde paramos** e **o
 
 ---
 
+## Dados do projeto (referência rápida)
+
+| Item | Valor |
+|------|--------|
+| **Versão de produto (app)** | `1.0.0` (`package.json`) |
+| **Imagem Docker (Docker Hub)** | `hygorfragas/clinica` |
+| **Política de tags** | Publicar **sempre** com semver `hygorfragas/clinica:X.Y.Z` antes de qualquer uso de `:latest` — ver `.cursor/rules/10-docker-image-versioning.mdc` |
+| **Produção** | Stack ativa; runtime via container (Portainer / compose); variáveis Supabase e `NEXT_PUBLIC_APP_URL` no ambiente |
+| **Backend** | Supabase (Auth, Postgres com schema `clinic`, RLS, Storage conforme migrações) |
+
+---
+
 ## Como usar com o ClickUp
 
 1. **Uma atividade = uma task** no ClickUp (idealmente com ID customizado legível, ex.: `CLIN-12`).
@@ -22,15 +34,16 @@ Os nomes de status (**Fazendo**, **Complete**, **Revisar**) devem ser **exatamen
 |------|---------------------------|--------|
 | Multitenancy + RLS (`clinic`) | `86e0ggp44` | Concluído (banco + tipos + doc) |
 | Supabase: envs, tipos, client SSR | `86e0ggp42` | Concluído (repo + Next mínimo para cookies) |
-| Fundação Next (stack completa) | `86e0ggp41` | Parcial: app mínimo criado para cumprir SSR; falta shadcn, rotas, layout produto |
+| Fundação Next (stack completa) | `86e0ggp41` | Evoluído: app completo com domínio clínica |
+| *(demais)* | *(atualizar ao vincular)* | |
 
 ---
 
 ## Status geral (leitura rápida)
 
-- **Última atualização:** 2026-03-21
-- **Foco atual:** Auth + onboarding tenant (`86e0ggp45`) e UI produto
-- **Principal risco / bloqueio:** criação de tenant só com service role / Edge Function (ainda não implementado)
+- **Última atualização:** 2026-05-02
+- **Foco atual:** operação em produção; próximas melhorias conforme feedback e roadmap de produto
+- **Deploy:** imagem `hygorfragas/clinica` com tag versionada; compose de referência em `docker-compose.yml`
 
 ---
 
@@ -38,23 +51,29 @@ Os nomes de status (**Fazendo**, **Complete**, **Revisar**) devem ser **exatamen
 
 Marque entregas verificáveis (código, migração, documento). Referencie PR/commit ou pasta quando fizer sentido.
 
-- [x] Migração multitenant no schema **`clinic`** (tabelas MVP + RLS + extensão de `handle_new_user`) — `supabase/migrations/20260321195600_initial_multitenant_clinic_schema.sql` (commit `0ac8dd2`).
-- [x] **Supabase no repo:** `lib/supabase/` — `database.types.ts` (public legado + `clinic`), `client.ts`, `server.ts`, `middleware.ts`, `clinic()` helper, `env` Zod; `.env.example`; Next 15 mínimo + `middleware` de sessão.
-- [ ] Auth + vínculo tenant + telas de domínio
+- [x] **Multitenant** no schema **`clinic`** (RLS, perfis, tenants) — migrações em `supabase/migrations/`.
+- [x] **Supabase no app:** clientes SSR/browser, middleware de sessão, tipos, helpers.
+- [x] **Auth** e fluxo de aplicação com isolamento por tenant.
+- [x] **Agenda**, pacientes, orçamentos/protocolos, evolução e contratos (templates e submissões).
+- [x] **Financeiro** (visão geral, categorias, contas, lançamentos, relatórios) — módulo alinhado a migrações dedicadas.
+- [x] **Tema/branding** por clínica e preferências de usuário; documentos com identidade.
+- [x] **Docker** produção: `Dockerfile` multi-stage Next standalone, `docker/entrypoint.sh` para `NEXT_PUBLIC_*` em runtime, `docker-compose.yml` para Portainer.
+- [x] **Produção** — versão estável em uso (release documentado como **1.0.0** no repositório).
 
 ---
 
 ## Onde paramos
 
-- Camada **Supabase + shell Next** pronta para começar **Auth** e **onboarding de tenant**; sem telas de negócio ainda.
+- Sistema **em produção** com stack containerizada.
+- Próximos passos de produto: refinar fluxos operacionais, integrações (ex.: Google Calendar por clínica), e itens do PRD ainda não marcados como feitos.
 
 ---
 
 ## Próximas entregas (ordem sugerida)
 
-1. **`86e0ggp45`** — Auth email/senha + perfil `clinic.profiles` + fluxo criar tenant (Edge Function ou server com service role).
-2. Completar **`86e0ggp41`** — Tailwind/shadcn, estrutura de pastas do produto (se ainda não considerado “feito”).
-3. **`86e0ggp46`** em diante (pacientes, agenda, …).
+1. Manter **sincronia de versão**: ao cada release, subir `package.json`, tag Git se o time usar, e imagem `hygorfragas/clinica:X.Y.Z` antes de `latest`.
+2. Evoluções de domínio conforme prioridade clínica (agenda, prontuário, documentos, estoque).
+3. Atualizar a tabela **Tarefas ClickUp** acima quando novas tasks forem o fio condutor do trabalho.
 
 ---
 
@@ -62,7 +81,7 @@ Marque entregas verificáveis (código, migração, documento). Referencie PR/co
 
 Itens em **Revisar** no ClickUp ou aguardando alguém de fora.
 
-- *(preencher)*
+- *(preencher quando houver)*
 
 ---
 
@@ -70,7 +89,18 @@ Itens em **Revisar** no ClickUp ou aguardando alguém de fora.
 
 Formato sugerido: `AAAA-MM-DD — task — o que mudou (1–2 linhas)`.
 
-- 2026-03-21 — `86e0ggp42` + `86e0ggp44` — Tipos `clinic`+`public`, clientes SSR/browser, middleware sessão, `.env.example`, Next mínimo; tasks fechadas no ClickUp.
+- **2026-05-02** — Release **1.0.0** — Produção com stack Docker; documentação de projeto e roadmap atualizados; regra de imagens **sempre com tag semver** (`hygorfragas/clinica:X.Y.Z`) antes de `latest` (`.cursor/rules/10-docker-image-versioning.mdc`); `package.json` e `docker-compose.yml` alinhados à versão e ao registry.
+- **2026-03-21** — `86e0ggp42` + `86e0ggp44` — Tipos `clinic`+`public`, clientes SSR/browser, middleware sessão, `.env.example`, Next mínimo; tasks fechadas no ClickUp.
+
+---
+
+## Evolução do produto (linha do tempo macro)
+
+| Período | Marco |
+|---------|--------|
+| 2026-03 | Fundação: schema `clinic`, Supabase, Next shell, multitenant |
+| 2026-04–05 | Domínio clínico ampliado: financeiro, evolução/contratos, tema, branding, Docker para deploy |
+| 2026-05-02 | **Go-live documentado:** versão **1.0.0**, produção, política de tags Docker formalizada |
 
 ---
 

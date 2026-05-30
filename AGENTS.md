@@ -14,6 +14,7 @@ Entregar um produto web seguro, simples e operacional para uso diário de uma pr
 5. Código limpo, tipado, testável e fácil de evoluir.
 6. Rodar typecheck sempre que alterar um arquivo
 7. Sempre fazer um commit quando necessario e criar versionamento.
+8. **Docker Hub:** imagem `hygorfragas/clinica`; ao buildar release, publicar **primeiro** com tag semver (`:X.Y.Z`), nunca só `:latest` como primeira tag — ver `.cursor/rules/10-docker-image-versioning.mdc`.
 
 ## Stack base
 - Frontend: Next.js + React + TypeScript

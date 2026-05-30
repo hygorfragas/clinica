@@ -1,9 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { AppointmentDto } from "@/lib/agenda/types";
 import { notifyError, notifySuccess } from "@/lib/ui/notify";
+import { cn } from "@/lib/utils";
 
 type AppointmentQuickStatus =
   | "confirmed"
@@ -23,6 +26,8 @@ type Props = {
       endsAt?: string;
     },
   ) => Promise<{ ok: boolean; error?: string }>;
+  /** Remove o agendamento de vez (apaga da agenda e do Google, se conectado). */
+  onDelete?: (id: string) => Promise<{ ok: boolean; error?: string }>;
 };
 
 const STATUS_BUTTONS: Array<{
@@ -67,11 +72,13 @@ export function AppointmentQuickActions({
   onClose,
   onOpenFullEdit,
   onApplyStatus,
+  onDelete,
 }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nextStart, setNextStart] = useState(() => toInputValue(appointment.startsAt));
   const [showRescheduleFields, setShowRescheduleFields] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const durationMs = useMemo(() => {
     return (
@@ -114,11 +121,32 @@ export function AppointmentQuickActions({
     onClose();
   }
 
+  async function handleDeleteConfirmed() {
+    if (!onDelete) return;
+    setSubmitting(true);
+    setError(null);
+    const result = await onDelete(appointment.id);
+    setSubmitting(false);
+    if (!result.ok) {
+      const msg = result.error ?? "Não foi possível excluir o agendamento.";
+      setError(msg);
+      notifyError(null, msg);
+      throw new Error(msg);
+    }
+    notifySuccess("Agendamento excluído da agenda.");
+    onClose();
+  }
+
   return (
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/35 p-2 sm:items-center sm:p-4"
+      className={cn(
+        "fixed inset-0 flex items-end justify-center bg-black/35 p-2 sm:items-center sm:p-4",
+        // Enquanto o ConfirmDialog (portal em z-[100]) está aberto, baixamos o
+        // z deste modal para que a confirmação fique por cima.
+        confirmDeleteOpen ? "z-[80]" : "z-[9999]",
+      )}
       onClick={onClose}
     >
       <div
@@ -185,15 +213,53 @@ export function AppointmentQuickActions({
           </p>
         )}
 
-        <footer className="mt-4 flex flex-wrap items-center justify-between gap-2">
-          <Button type="button" variant="ghost" onClick={onOpenFullEdit} disabled={submitting}>
+        <footer className="mt-4 flex flex-col gap-2 border-t border-line/60 pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            className="justify-center sm:justify-start"
+            onClick={onOpenFullEdit}
+            disabled={submitting}
+          >
             Abrir formulário completo
           </Button>
-          <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
-            Fechar
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {onDelete && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="justify-center border border-red-200 text-red-700 hover:bg-red-50 sm:justify-start"
+                onClick={() => setConfirmDeleteOpen(true)}
+                disabled={submitting}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+                Excluir da agenda
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              className="justify-center sm:justify-start"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              Fechar
+            </Button>
+          </div>
         </footer>
       </div>
+
+      {onDelete && (
+        <ConfirmDialog
+          open={confirmDeleteOpen}
+          onOpenChange={setConfirmDeleteOpen}
+          title="Excluir agendamento"
+          description="Esta ação não pode ser desfeita. O evento também será removido do Google Agenda, se estiver conectado."
+          confirmLabel="Excluir"
+          destructive
+          onConfirm={handleDeleteConfirmed}
+        />
+      )}
     </div>
   );
 }

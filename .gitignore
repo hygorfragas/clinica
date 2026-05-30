@@ -30,3 +30,7 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+.git.broken-20260526-085135/
+
+# Backup local de artefatos Docker recuperados — não versionar
+recuperado-docker/

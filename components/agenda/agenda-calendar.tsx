@@ -11,7 +11,6 @@ import {
   type CalendarEventExternal,
 } from "@schedule-x/calendar";
 import { createEventsServicePlugin } from "@schedule-x/events-service";
-import { createEventModalPlugin } from "@schedule-x/event-modal";
 import { createDragAndDropPlugin } from "@schedule-x/drag-and-drop";
 import { createResizePlugin } from "@schedule-x/resize";
 import { createCurrentTimePlugin } from "@schedule-x/current-time";
@@ -119,8 +118,16 @@ export function AgendaCalendar({
   );
   const [feedback, setFeedback] = useState<string | null>(null);
 
+  // Em smartphone a visão de semana (7 colunas) fica espremida e ilegível;
+  // a visão de Dia é muito mais usável no touch. Detectamos uma vez na
+  // montagem (o calendário só renderiza no client, então não há mismatch).
+  const [isSmallScreen] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 640px)").matches,
+  );
+
   const eventsService = useMemo(() => createEventsServicePlugin(), []);
-  const eventModal = useMemo(() => createEventModalPlugin(), []);
   const dragAndDrop = useMemo(
     () => createDragAndDropPlugin(defaultSlotMinutes),
     [defaultSlotMinutes],
@@ -133,6 +140,7 @@ export function AgendaCalendar({
 
   const appointmentsRef = useRef(appointments);
   appointmentsRef.current = appointments;
+  const calendarShellRef = useRef<HTMLDivElement | null>(null);
 
   const initialEvents = useMemo(
     () => initialAppointments.map((a) => appointmentToEvent(a, timezone)),
@@ -146,7 +154,7 @@ export function AgendaCalendar({
       createViewMonthGrid(),
       createViewMonthAgenda(),
     ],
-    defaultView: "week",
+    defaultView: isSmallScreen ? "day" : "week",
     events: initialEvents,
     locale: "pt-BR",
     firstDayOfWeek: 1,
@@ -281,7 +289,11 @@ export function AgendaCalendar({
           onBeforeEventUpdate: (_old, _next) => true,
         }
       : {},
-    plugins: [eventsService, eventModal, dragAndDrop, resize, currentTime],
+    // Sem o event-modal nativo do Schedule-X: ele abria um segundo card de
+    // detalhes no mesmo clique do nosso quick-actions, sobrepondo os dois.
+    // Agora: hover mostra detalhes (tooltip nativo, ver effect abaixo) e o
+    // clique/toque abre o quick-actions (ações).
+    plugins: [eventsService, dragAndDrop, resize, currentTime],
   });
 
   // Sincroniza a lista com o plugin quando ela muda
@@ -290,6 +302,40 @@ export function AgendaCalendar({
       appointments.map((a) => appointmentToEvent(a, timezone)),
     );
   }, [appointments, timezone, eventsService]);
+
+  // Tooltip nativo no hover (desktop) — "fácil visualização" sem abrir modal.
+  // O Schedule-X marca cada evento com data-event-id; mapeamos ao appointment
+  // e setamos o atributo title. Em touch (mobile) não há hover, então só o
+  // clique abre o quick-actions. Um MutationObserver reaplica quando o
+  // calendário re-renderiza (troca de view/data). Observa só childList/subtree,
+  // não atributos — setar title não dispara o próprio observer.
+  useEffect(() => {
+    const root = calendarShellRef.current;
+    if (!root) return;
+
+    const applyTitles = () => {
+      const nodes = root.querySelectorAll<HTMLElement>("[data-event-id]");
+      nodes.forEach((node) => {
+        const id = node.getAttribute("data-event-id");
+        if (!id) return;
+        const a = appointmentsRef.current.find((x) => x.id === id);
+        if (!a) return;
+        const when = new Date(a.startsAt).toLocaleString("pt-BR", {
+          dateStyle: "short",
+          timeStyle: "short",
+        });
+        const parts = [a.clientName ?? a.title ?? "Agendamento", when];
+        if (a.procedureName) parts.push(a.procedureName);
+        node.setAttribute("title", parts.join(" • "));
+      });
+    };
+
+    applyTitles();
+    const observer = new MutationObserver(() => applyTitles());
+    observer.observe(root, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
 
   // Realtime Supabase
   useEffect(() => {
@@ -456,7 +502,7 @@ export function AgendaCalendar({
       </div>
 
       <div className="rounded-[1.5rem] border border-line/60 bg-surface p-2 shadow-lift">
-        <div className="agenda-calendar-shell overflow-x-auto">
+        <div ref={calendarShellRef} className="agenda-calendar-shell overflow-x-auto">
           {app && <ScheduleXCalendar calendarApp={app} />}
         </div>
       </div>
@@ -470,6 +516,7 @@ export function AgendaCalendar({
             setQuickAppointment(null);
           }}
           onApplyStatus={(id, input) => onUpdate(id, input)}
+          onDelete={onDelete}
         />
       )}
 
