@@ -48,7 +48,7 @@ COPY . .
 
 # Copia o worker do pdfjs para /public/pdf-worker (o postinstall foi pulado).
 RUN node scripts/copy-pdf-worker.mjs
-
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # =============================================================================

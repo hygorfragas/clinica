@@ -11,6 +11,8 @@ import {
   Trash2,
   Undo2,
   Hand,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -58,6 +60,8 @@ type Props = {
   onBack: () => void;
   onFinalize: () => void;
   finalizing?: boolean;
+  viewportLocked?: boolean;
+  onToggleViewportLock?: () => void;
   title?: string;
   subtitle?: string;
 };
@@ -80,6 +84,8 @@ export function InteractiveToolbar({
   onBack,
   onFinalize,
   finalizing,
+  viewportLocked,
+  onToggleViewportLock,
   title,
   subtitle,
 }: Props) {
@@ -214,6 +220,27 @@ export function InteractiveToolbar({
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        {onToggleViewportLock ? (
+          <button
+            type="button"
+            onClick={onToggleViewportLock}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] uppercase tracking-wide transition",
+              viewportLocked
+                ? "bg-brand text-white"
+                : "bg-canvas text-ink-muted ring-1 ring-line hover:text-ink",
+            )}
+            title="Travar zoom e posição do PDF"
+            aria-pressed={viewportLocked}
+          >
+            {viewportLocked ? (
+              <Lock className="h-3.5 w-3.5" />
+            ) : (
+              <Unlock className="h-3.5 w-3.5" />
+            )}
+            {viewportLocked ? "Travado" : "Travar"}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => onAllowNonPenChange(!allowNonPen)}

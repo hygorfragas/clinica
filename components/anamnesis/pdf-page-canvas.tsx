@@ -25,9 +25,10 @@ export function PdfPageCanvas({ pdf, pageNumber, targetWidth, onPageLoaded }: Pr
     async function render() {
       const page = await pdf.getPage(pageNumber);
       if (cancelled) return;
-      const viewport0 = page.getViewport({ scale: 1 });
+      const rotation = page.rotate ?? 0;
+      const viewport0 = page.getViewport({ scale: 1, rotation });
       const scale = targetWidth / viewport0.width;
-      const viewport = page.getViewport({ scale });
+      const viewport = page.getViewport({ scale, rotation });
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ratio = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;

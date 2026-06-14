@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { InteractiveAnamnesisEditor } from "@/components/anamnesis/interactive-anamnesis-editor";
+import { EvolucaoInteractiveEditor } from "@/components/evolutions/evolucao-interactive-editor";
 import { CLINICAL_BUCKET } from "@/lib/clinical/storage";
 import { loadPacienteClinicContext } from "@/lib/clients/paciente-context";
 import {
@@ -68,7 +68,7 @@ export default async function EvolucaoInterativaPage({ params }: PageProps) {
     : [];
 
   return (
-    <InteractiveAnamnesisEditor
+    <EvolucaoInteractiveEditor
       clientId={clientId}
       submissionId={submissionId}
       templateId={submission.template_id}
@@ -78,7 +78,6 @@ export default async function EvolucaoInterativaPage({ params }: PageProps) {
       initialStatus={submission.status as "draft" | "submitted" | "signed"}
       patientLabel={ctx.client.full_name}
       templateLabel={templateLabel ?? undefined}
-      entityKind="evolution"
     />
   );
 }

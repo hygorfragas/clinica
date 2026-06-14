@@ -25,6 +25,7 @@ import {
   submitEvolution,
 } from "@/lib/evolutions/submission-actions";
 import type { AnamnesisStroke } from "@/lib/anamnesis/template-schema";
+import { usePinchPan } from "@/lib/anamnesis/use-pinch-pan";
 import { cn } from "@/lib/utils";
 import { PdfPageCanvas } from "./pdf-page-canvas";
 import {
@@ -141,6 +142,14 @@ export function InteractiveAnamnesisEditor({
   const pendingSaveRef = useRef(false);
   const dirtyRef = useRef(false);
   const [extraOpen, setExtraOpen] = useState(false);
+  const {
+    transform,
+    locked,
+    isGesturing,
+    toggleLock,
+    resetTransform,
+    handlers: pinchPanHandlers,
+  } = usePinchPan({ allowFingerDraw: allowNonPen });
 
   // Preferência "permitir dedo/mouse" em localStorage.
   useEffect(() => {
@@ -454,6 +463,10 @@ export function InteractiveAnamnesisEditor({
     };
   }, []);
 
+  useEffect(() => {
+    resetTransform();
+  }, [activePage, resetTransform]);
+
   const pageCount = pdf?.numPages ?? 1;
   const activeSize = pageSizes[activePage];
   const renderWidth = Math.min(1100, viewerWidth);
@@ -489,6 +502,8 @@ export function InteractiveAnamnesisEditor({
         onBack={() => router.push(backHref)}
         onFinalize={onFinalize}
         finalizing={finalizing || pending}
+        viewportLocked={locked}
+        onToggleViewportLock={toggleLock}
         title={patientLabel}
         subtitle={templateLabel}
       />
@@ -583,7 +598,8 @@ export function InteractiveAnamnesisEditor({
           <div
             ref={viewerRef}
             className="flex-1 overflow-auto px-4 py-6"
-            style={{ touchAction: "pan-y" }}
+            style={{ touchAction: transform.scale > 1 ? "none" : "pan-y" }}
+            {...pinchPanHandlers}
           >
             {!pdf && templatePdfUrl ? (
               <div className="rounded-2xl bg-surface p-6 text-sm text-ink-muted ring-1 ring-line">
@@ -597,7 +613,13 @@ export function InteractiveAnamnesisEditor({
             ) : null}
 
             {pdf ? (
-              <div className="mx-auto flex justify-center">
+              <div
+                className="mx-auto flex justify-center"
+                style={{
+                  transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`,
+                  transformOrigin: "top center",
+                }}
+              >
                 <div
                   className={cn("relative inline-block rounded-md bg-white shadow-lift")}
                   style={{
@@ -605,8 +627,6 @@ export function InteractiveAnamnesisEditor({
                     userSelect: "none",
                     WebkitUserSelect: "none",
                     WebkitTouchCallout: "none",
-                    // iPadOS: reivindica o gesto na área do PDF/tinta; scroll vertical fica no container externo.
-                    touchAction: canInteract ? "none" : undefined,
                   }}
                 >
                   <PdfPageCanvas
@@ -623,7 +643,7 @@ export function InteractiveAnamnesisEditor({
                       color={color}
                       size={currentSize}
                       tool={tool}
-                      disabled={!canInteract}
+                      disabled={!canInteract || isGesturing}
                       allowNonPen={allowNonPen}
                       strokes={strokes}
                       onStrokeCommit={handleStrokeCommit}
@@ -637,7 +657,7 @@ export function InteractiveAnamnesisEditor({
         </main>
 
         {extraSidePanel && extraOpen ? (
-          <aside className="hidden w-80 shrink-0 overflow-y-auto border-l border-line/70 bg-surface/60 p-4 md:block">
+          <aside className="hidden w-80 shrink-0 overflow-y-auto border-l border-line/70 bg-surface/60 p-4 md:block md:min-h-0">
             {extraSidePanel.content}
           </aside>
         ) : null}
@@ -650,7 +670,7 @@ export function InteractiveAnamnesisEditor({
             if (e.target === e.currentTarget) setExtraOpen(false);
           }}
         >
-          <div className="h-full w-[min(420px,90vw)] overflow-y-auto bg-surface p-4 shadow-lift">
+          <div className="flex h-full w-[min(420px,90vw)] flex-col overflow-y-auto bg-surface p-4 shadow-lift">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-ink">
                 {extraSidePanel.label}

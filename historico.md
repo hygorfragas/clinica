@@ -104,7 +104,7 @@ Memória de continuidade. Cada fase é marcada como concluída ao final.
 
 ## Schema
 
-- **Migration**: `supabase/migrations/20260525120000_photos_evolution_submission_link.sql` adiciona coluna `clinic.photos.evolution_submission_id` (FK → `evolution_submissions`, `ON DELETE SET NULL`) + índice composto.
+- [x] **Migration aplicada**: `supabase/migrations/20260525120000_photos_evolution_submission_link.sql` — coluna `clinic.photos.evolution_submission_id` (FK → `evolution_submissions`, `ON DELETE SET NULL`) + índice composto.
 - Decisão consciente: PDF da evolução **não** embute as fotos; vínculo no DB substitui o pipeline de PDF compose (mais simples, sem mudar gerador).
 - `lib/supabase/database.types.ts` já tinha a coluna nos tipos.
 
@@ -116,9 +116,37 @@ Memória de continuidade. Cada fase é marcada como concluída ao final.
 
 ## ⚠️ Para colocar em produção (release 1.0.4)
 
-1. Aplicar a migration `20260525120000_photos_evolution_submission_link.sql` no Supabase (`supabase db push` ou pelo dashboard).
+1. ~~Aplicar a migration `20260525120000_photos_evolution_submission_link.sql` no Supabase~~ ✅ **Feito** (2026-06-08).
 2. Buildar e publicar imagem Docker:
    - `docker build -t hygorfragas/clinica:1.0.4 .`
    - `docker push hygorfragas/clinica:1.0.4`
 3. Atualizar a stack no Portainer pra `hygorfragas/clinica:1.0.4`.
 4. Testar no iPad: drawer mobile, modo guiado (valores visíveis), upload de foto na evolução (câmera + galeria), Antes/Depois.
+
+---
+
+# Release 1.0.5 — Fotos no interativo, login 50/50, PDF interativo (2026-06-08)
+
+## Fotos no modo interativo (evolução)
+
+- Novo wrapper `components/evolutions/evolucao-interactive-editor.tsx` conecta `EvolutionPhotoSidePanel` via `extraSidePanel` na rota `/evolucao/interativa/...`.
+- Upload câmera/galeria, Antes/Depois e filtro por sessão disponíveis no drawer mobile e painel lateral desktop.
+
+## Login / cadastro 50/50
+
+- Novo `components/auth/auth-split-layout.tsx`: grid 50/50 com formulário + vídeo vertical em loop (`public/media/login-loop.mp4`).
+- Mobile portrait: metade superior formulário, metade inferior vídeo (`grid-rows` 50/50).
+- Desktop: colunas lado a lado. Overlay de sombra no vídeo; fallback em gradiente se o arquivo não existir.
+
+## PDF interativo — bug e melhorias
+
+**Causa raiz confirmada (código):**
+1. `touchAction: "none"` no wrapper do PDF bloqueava scroll vertical ao tocar no documento em tablets — parte inferior de PDFs altos ficava inacessível.
+2. `getViewport` sem `rotation: page.rotate` podia distorcer/cortar PDFs com rotação atípica.
+
+**Correções:**
+- Removido `touchAction: "none"` do wrapper; scroll `pan-y` restaurado no viewer.
+- `pdf-page-canvas.tsx` passa `rotation` ao `getViewport`.
+- Pinch-zoom (2 dedos, 0.5x–3x) e pan com 1 dedo quando zoom > 1 e dedo/mouse OFF.
+- Botão **Travar** na toolbar congela zoom/posição; desenho com Apple Pencil continua.
+- Hook `lib/anamnesis/use-pinch-pan.ts`; transform reset ao trocar de página.
