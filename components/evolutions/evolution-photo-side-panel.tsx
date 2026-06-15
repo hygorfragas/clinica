@@ -14,6 +14,11 @@ import {
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { CLINICAL_BUCKET } from "@/lib/clinical/storage";
 import { BODY_REGION_OPTIONS, type BodyRegion } from "@/lib/clinical/body-regions";
+import {
+  compressPhotoForUpload,
+  photoProcessingErrorMessage,
+  serverActionTransportErrorMessage,
+} from "@/lib/clinical/compress-photo-client";
 import { uploadEvolutionSubmissionPhotos } from "@/lib/clients/record-actions";
 import { notifyError, notifySuccess } from "@/lib/ui/notify";
 import { Button } from "@/components/ui/button";
@@ -68,6 +73,7 @@ export function EvolutionPhotoSidePanel({
     BODY_REGION_OPTIONS[0]?.value ?? ("face" as BodyRegion),
   );
   const [uploading, startUpload] = useTransition();
+  const [compressing, setCompressing] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
 
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -183,19 +189,35 @@ export function EvolutionPhotoSidePanel({
   }
 
   function handleFiles(list: FileList | null) {
-    if (!list?.length) return;
+    if (!list?.length || compressing) return;
     const incoming = Array.from(list);
-    setRows((prev) => {
-      const room = Math.max(0, MAX_BATCH - prev.length);
-      const next = incoming.slice(0, room).map<PendingRow>((file) => ({
-        key: newKey(),
-        file,
-        comparison: "",
-        caption: "",
-        previewUrl: URL.createObjectURL(file),
-      }));
-      return [...prev, ...next];
-    });
+    const room = Math.max(0, MAX_BATCH - rows.length);
+    const slice = incoming.slice(0, room);
+    if (slice.length === 0) return;
+
+    void (async () => {
+      setCompressing(true);
+      try {
+        const compressed = await Promise.all(
+          slice.map((file) => compressPhotoForUpload(file)),
+        );
+        setRows((prev) => {
+          const next = compressed.map<PendingRow>((file) => ({
+            key: newKey(),
+            file,
+            comparison: "",
+            caption: "",
+            previewUrl: URL.createObjectURL(file),
+          }));
+          return [...prev, ...next];
+        });
+      } catch (err) {
+        console.error("[evolution-photos] compress failed:", err);
+        notifyError(null, photoProcessingErrorMessage(err));
+      } finally {
+        setCompressing(false);
+      }
+    })();
   }
 
   function removeRow(key: string) {
@@ -235,20 +257,25 @@ export function EvolutionPhotoSidePanel({
     for (const r of rows) fd.append("files", r.file);
 
     startUpload(async () => {
-      const result = await uploadEvolutionSubmissionPhotos(
-        clientId,
-        submissionId,
-        fd,
-      );
-      if (!result.ok) {
-        notifyError(null, result.error);
-        return;
+      try {
+        const result = await uploadEvolutionSubmissionPhotos(
+          clientId,
+          submissionId,
+          fd,
+        );
+        if (!result.ok) {
+          notifyError(null, result.error);
+          return;
+        }
+        notifySuccess(`${rows.length} foto(s) anexada(s) à evolução.`);
+        clearRows();
+        setUploaderOpen(false);
+        setFilter("session");
+        setReloadTick((t) => t + 1);
+      } catch (err) {
+        console.error("[evolution-photos] upload failed:", err);
+        notifyError(null, serverActionTransportErrorMessage(err));
       }
-      notifySuccess(`${rows.length} foto(s) anexada(s) à evolução.`);
-      clearRows();
-      setUploaderOpen(false);
-      setFilter("session");
-      setReloadTick((t) => t + 1);
     });
   }
 
@@ -299,7 +326,7 @@ export function EvolutionPhotoSidePanel({
           <input
             ref={cameraInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/*"
             capture="environment"
             className="hidden"
             onChange={(e) => {
@@ -310,7 +337,7 @@ export function EvolutionPhotoSidePanel({
           <input
             ref={galleryInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/*"
             multiple
             className="hidden"
             onChange={(e) => {
@@ -323,7 +350,7 @@ export function EvolutionPhotoSidePanel({
             <button
               type="button"
               onClick={() => cameraInputRef.current?.click()}
-              disabled={rows.length >= MAX_BATCH || uploading}
+              disabled={rows.length >= MAX_BATCH || uploading || compressing}
               className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-brand text-xs font-medium text-white shadow-sm transition hover:brightness-95 disabled:opacity-50"
             >
               <Camera className="h-3.5 w-3.5" />
@@ -332,7 +359,7 @@ export function EvolutionPhotoSidePanel({
             <button
               type="button"
               onClick={() => galleryInputRef.current?.click()}
-              disabled={rows.length >= MAX_BATCH || uploading}
+              disabled={rows.length >= MAX_BATCH || uploading || compressing}
               className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-secondary-container text-xs font-medium text-on-secondary-container shadow-sm transition hover:brightness-95 disabled:opacity-50"
             >
               <ImageIcon className="h-3.5 w-3.5" />
@@ -348,7 +375,7 @@ export function EvolutionPhotoSidePanel({
               value={bodyRegion}
               onChange={(e) => setBodyRegion(e.target.value as BodyRegion)}
               className="h-9 w-full rounded-md border border-line bg-canvas px-2 text-xs"
-              disabled={uploading}
+              disabled={uploading || compressing}
             >
               {BODY_REGION_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -357,6 +384,12 @@ export function EvolutionPhotoSidePanel({
               ))}
             </select>
           </div>
+
+          {compressing ? (
+            <p className="rounded-md bg-muted/40 px-2 py-1.5 text-center text-[11px] text-ink-muted">
+              Preparando imagens…
+            </p>
+          ) : null}
 
           {rows.length > 0 ? (
             <ul className="space-y-2">
@@ -458,7 +491,7 @@ export function EvolutionPhotoSidePanel({
               type="button"
               size="sm"
               onClick={submit}
-              disabled={rows.length === 0 || uploading}
+              disabled={rows.length === 0 || uploading || compressing}
               loading={uploading}
               loadingLabel="Enviando..."
             >
