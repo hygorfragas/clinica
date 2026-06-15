@@ -13,6 +13,11 @@ import {
   MAX_PHOTOS_PER_BATCH,
   type BodyRegion,
 } from "@/lib/clinical/body-regions";
+import {
+  compressPhotoForUpload,
+  photoProcessingErrorMessage,
+  serverActionTransportErrorMessage,
+} from "@/lib/clinical/compress-photo-client";
 import { uploadClinicalPhotosBatch } from "@/lib/clients/record-actions";
 import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
@@ -53,6 +58,7 @@ export function ClinicalPhotoUploader({
   const [purchaseId, setPurchaseId] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [pending, startTransition] = useTransition();
+  const [compressing, setCompressing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const duplicateFaceAngles = useMemo(() => {
@@ -66,19 +72,35 @@ export function ClinicalPhotoUploader({
   }, [region, rows]);
 
   function onPickFiles(list: FileList | null) {
-    if (!list?.length) return;
+    if (!list?.length || compressing) return;
     const next = Array.from(list).slice(0, MAX_PHOTOS_PER_BATCH);
-    setRows(
-      next.map((file) => ({
-        key: newKey(),
-        file,
-        angle: region === BODY_REGIONS.face ? "" : "__other__",
-        caption: "",
-        taken_at: "",
-        comparisonRole: "",
-      })),
-    );
     setError(null);
+
+    void (async () => {
+      setCompressing(true);
+      try {
+        const compressed = await Promise.all(
+          next.map((file) => compressPhotoForUpload(file)),
+        );
+        setRows(
+          compressed.map((file) => ({
+            key: newKey(),
+            file,
+            angle: region === BODY_REGIONS.face ? "" : "__other__",
+            caption: "",
+            taken_at: "",
+            comparisonRole: "",
+          })),
+        );
+      } catch (err) {
+        console.error("[clinical-photo-uploader] compress failed:", err);
+        const msg = photoProcessingErrorMessage(err);
+        setError(msg);
+        notifyError(null, msg);
+      } finally {
+        setCompressing(false);
+      }
+    })();
   }
 
   function clearRows() {
@@ -135,16 +157,23 @@ export function ClinicalPhotoUploader({
     }
 
     startTransition(async () => {
-      const result = await uploadClinicalPhotosBatch(clientId, fd);
-      if (result.ok) {
-        notifySuccess("Fotos enviadas.");
-        clearRows();
-        router.refresh();
-        onBatchComplete?.();
-        return;
+      try {
+        const result = await uploadClinicalPhotosBatch(clientId, fd);
+        if (result.ok) {
+          notifySuccess("Fotos enviadas.");
+          clearRows();
+          router.refresh();
+          onBatchComplete?.();
+          return;
+        }
+        setError(result.error);
+        notifyError(null, result.error);
+      } catch (err) {
+        console.error("[clinical-photo-uploader] upload failed:", err);
+        const msg = serverActionTransportErrorMessage(err);
+        setError(msg);
+        notifyError(null, msg);
       }
-      setError(result.error);
-      notifyError(null, result.error);
     });
   }
 
@@ -257,10 +286,14 @@ export function ClinicalPhotoUploader({
         <Input
           id={`${baseId}-files`}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp,image/*"
           multiple
+          disabled={compressing || pending}
           onChange={(e) => onPickFiles(e.target.files)}
         />
+        {compressing ? (
+          <p className="text-xs text-ink-subtle">Preparando imagens…</p>
+        ) : null}
         {rows.length > 0 && (
           <p className="text-xs text-ink-subtle">
             {rows.length} arquivo(s) selecionado(s)
@@ -391,7 +424,7 @@ export function ClinicalPhotoUploader({
           type="button"
           loading={pending}
           loadingLabel="Enviando..."
-          disabled={rows.length === 0}
+          disabled={rows.length === 0 || compressing}
           onClick={submit}
         >
           Enviar fotos

@@ -5,8 +5,8 @@
 # reinicia. Sem `--build-arg`.
 #
 # Build (sempre com versão primeiro — ver .cursor/rules/10-docker-image-versioning.mdc):
-#   docker build -t hygorfragas/clinica:1.0.4 .
-#   docker push hygorfragas/clinica:1.0.4
+#   docker build -t hygorfragas/clinica:1.0.7 .
+#   docker push hygorfragas/clinica:1.0.7
 # Opcional depois: docker tag hygorfragas/clinica:1.0.4 hygorfragas/clinica:latest && docker push hygorfragas/clinica:latest
 #
 # A substituição dos NEXT_PUBLIC_* acontece no entrypoint do container

@@ -1,6 +1,6 @@
 {
   "name": "sistema-agenda-clinicas",
-  "version": "1.0.4",
+  "version": "1.0.7",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
