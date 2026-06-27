@@ -808,6 +808,139 @@ export async function uploadEvolutionSubmissionPhotos(
   return { ok: true };
 }
 
+type LibraryPhotoMeta = {
+  caption?: string | null;
+};
+
+/**
+ * Upload de fotos pela biblioteca da ficha (sem região/ângulo obrigatórios).
+ * Processa arquivos em série no servidor; todos compartilham o mesmo captured_at.
+ */
+export async function uploadPatientLibraryPhotos(
+  clientId: string,
+  formData: FormData,
+): Promise<ActionOk | ActionError> {
+  const ctx = await requireClinicalContext();
+  if (!ctx.ok) return ctx;
+
+  const belongs = await assertClientInTenant(
+    ctx.supabase,
+    ctx.tenantId,
+    clientId,
+  );
+  if (!belongs) {
+    return { ok: false, error: "Paciente não encontrada." };
+  }
+
+  const capturedRaw = formData.get("captured_at");
+  const capturedParsed = z.string().datetime().safeParse(capturedRaw);
+  if (!capturedParsed.success) {
+    return { ok: false, error: "Informe a data e hora da captura." };
+  }
+  const captured_at = capturedParsed.data;
+  const taken_at = captured_at.slice(0, 10);
+
+  const metaRaw = formData.get("meta");
+  let meta: LibraryPhotoMeta[] = [];
+  if (typeof metaRaw === "string" && metaRaw.trim() !== "") {
+    try {
+      meta = JSON.parse(metaRaw) as LibraryPhotoMeta[];
+    } catch {
+      return { ok: false, error: "Metadados inválidos." };
+    }
+  }
+
+  const files = formData
+    .getAll("files")
+    .filter((x): x is File => x instanceof Blob && x.size > 0);
+
+  if (files.length === 0) {
+    return { ok: false, error: "Selecione ao menos uma imagem." };
+  }
+  if (files.length > MAX_PHOTOS_PER_BATCH) {
+    return {
+      ok: false,
+      error: `Máximo de ${MAX_PHOTOS_PER_BATCH} fotos por envio.`,
+    };
+  }
+  if (meta.length > 0 && meta.length !== files.length) {
+    return {
+      ok: false,
+      error: "Cada arquivo precisa de metadados correspondentes.",
+    };
+  }
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const item = meta[i] ?? {};
+
+    if (file.size > MAX_PHOTO_BYTES) {
+      return {
+        ok: false,
+        error: `A foto ${i + 1} excede o tamanho máximo (12 MB).`,
+      };
+    }
+    const mimeErr = assertPhotoMime(file.type);
+    if (mimeErr) return { ok: false, error: mimeErr };
+
+    const cap =
+      typeof item.caption === "string" && item.caption.trim() !== ""
+        ? item.caption.trim().slice(0, 500)
+        : null;
+
+    const path = buildClinicalStoragePath({
+      tenantId: ctx.tenantId,
+      clientId,
+      category: "photos",
+      originalFileName: file.name,
+    });
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { error: upErr } = await ctx.supabase.storage
+      .from(CLINICAL_BUCKET)
+      .upload(path, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (upErr) {
+      return {
+        ok: false,
+        error:
+          upErr.message ??
+          "Falha no upload. Confira o bucket clinical e as políticas de Storage.",
+      };
+    }
+
+    const { error: dbErr } = await ctx.supabase
+      .schema("clinic")
+      .from("photos")
+      .insert({
+        tenant_id: ctx.tenantId,
+        client_id: clientId,
+        storage_key: path,
+        caption: cap,
+        taken_at,
+        captured_at,
+        body_region: BODY_REGIONS.other,
+        capture_angle: null,
+        purchase_id: null,
+        comparison_role: null,
+      });
+
+    if (dbErr) {
+      await ctx.supabase.storage.from(CLINICAL_BUCKET).remove([path]);
+      return {
+        ok: false,
+        error: dbErr.message ?? `Erro ao registrar a foto ${i + 1}.`,
+      };
+    }
+  }
+
+  revalidatePaciente(clientId);
+  return { ok: true };
+}
+
 const documentKindSchema = z.enum([
   DOCUMENT_KINDS.procedure,
   DOCUMENT_KINDS.contract,

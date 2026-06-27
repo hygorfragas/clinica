@@ -1657,6 +1657,7 @@ export type Database = {
           evolution_id: string | null;
           evolution_submission_id: string | null;
           phase: string | null;
+          captured_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1674,6 +1675,7 @@ export type Database = {
           evolution_id?: string | null;
           evolution_submission_id?: string | null;
           phase?: string | null;
+          captured_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1691,6 +1693,7 @@ export type Database = {
           evolution_id?: string | null;
           evolution_submission_id?: string | null;
           phase?: string | null;
+          captured_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
