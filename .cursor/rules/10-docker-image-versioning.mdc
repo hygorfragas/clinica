@@ -1,5 +1,5 @@
 ---
-description: Versionamento de imagens Docker no Hub — tag semver obrigatória; evitar latest como primeira publicação
+description: Versionamento de imagens Docker no Hub — tag semver obrigatória; build Mac ARM para linux/amd64
 alwaysApply: true
 ---
 
@@ -9,24 +9,45 @@ alwaysApply: true
 
 - **Docker Hub:** `hygorfragas/clinica` (substituir apenas se o time mudar o registry ou o nome do repo).
 
+## Mac Apple Silicon → produção linux/amd64 (obrigatório)
+
+Dev no **Mac ARM**; Portainer/VPS em **`linux/amd64`**.
+
+**Nunca** sugerir só `docker build -t ... .` + `docker push` para release de produção — gera imagem **arm64** e o deploy falha com `no matching manifest for linux/amd64`.
+
+**Comando padrão do projeto** (substituir `X.Y.Z`):
+
+```bash
+npm run docker:push -- X.Y.Z
+```
+
+Ou `./scripts/docker-release.sh X.Y.Z` — ver `documentacao/docker-build-mac-arm.md`.
+
+Equivalente manual:
+
+```bash
+docker buildx create --use --name clinica-builder 2>/dev/null || docker buildx use clinica-builder
+docker buildx build --platform linux/amd64 -t hygorfragas/clinica:X.Y.Z --push .
+```
+
+Validar: `docker buildx imagetools inspect hygorfragas/clinica:X.Y.Z` (deve listar `linux/amd64`).
+
 ## Regra obrigatória ao buildar e publicar
 
-1. **Sempre** construir e publicar primeiro com **tag de versão semântica** alinhada ao release (mesma versão em `package.json` quando houver release formal), por exemplo:
-   - `docker build -t hygorfragas/clinica:1.0.9 .`
-   - `docker push hygorfragas/clinica:1.0.9`
-2. **Não** usar apenas `latest` como **única** ou **primeira** tag de um build novo. Evita deploy sem rastreio de versão e rollback impossível.
-3. **Opcional** (depois da tag versionada): atualizar um alias `latest` apontando para a mesma imagem já versionada, **somente se** a política do ambiente exigir (ex.: stack que ainda referencia `:latest`):
-   - `docker tag hygorfragas/clinica:1.0.9 hygorfragas/clinica:latest`
-   - `docker push hygorfragas/clinica:latest`
-4. Em **Portainer / compose**, preferir fixar `image: hygorfragas/clinica:1.0.9` (ou a versão corrente) em produção; mudar a tag quando subir release novo.
+1. **Sempre** construir e publicar primeiro com **tag de versão semântica** alinhada ao release (mesma versão em `package.json` quando houver release formal).
+2. **Não** usar apenas `latest` como **única** ou **primeira** tag de um build novo.
+3. **Opcional** (depois da tag versionada): alias `latest` apontando para a mesma imagem, se o ambiente exigir.
+4. Em **Portainer / compose**, fixar `image: hygorfragas/clinica:X.Y.Z` em produção.
 
 ## Checklist rápido para o agente / dev
 
 - [ ] Versão em `package.json` atualizada para o release (se aplicável).
-- [ ] Build + push com `:X.Y.Z` antes de qualquer `:latest`.
+- [ ] Build + push com `:X.Y.Z` via **`npm run docker:push -- X.Y.Z`** (linux/amd64).
+- [ ] `imagetools inspect` confirma `linux/amd64`.
 - [ ] Roadmap ou nota de release com versão e data (quando for entrega relevante).
 
 ## Não fazer
 
+- `docker build` simples no Mac ARM para imagem de produção sem `--platform linux/amd64`.
 - Publicar só `docker push ...:latest` sem tag semver correspondente no mesmo ciclo.
-- Documentar exemplos de CI/CD que ensinem `latest` como tag primária.
+- Documentar exemplos de CI/CD que ensinem `latest` como tag primária ou `docker build` sem buildx em Mac ARM.

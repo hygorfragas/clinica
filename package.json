@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "node scripts/copy-pdf-worker.mjs",
     "pdf:copy-worker": "node scripts/copy-pdf-worker.mjs",
-    "db:apply-clinical-bucket": "node scripts/apply-clinical-storage-bucket.mjs"
+    "db:apply-clinical-bucket": "node scripts/apply-clinical-storage-bucket.mjs",
+    "docker:push": "bash scripts/docker-release.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

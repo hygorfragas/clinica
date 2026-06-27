@@ -218,5 +218,4 @@ Quick wins de feature — Dashboard e Sistema (SaaS)
  4. Performance: a página /inicio deve carregar em ≤ 1s mesmo com 500 agendamentos no dia. Todas as
  queries da dashboard ficam dentro de um único Promise.all no server component.
  5. Build & types: npx tsc --noEmit limpo + npm run build sem warnings.
- 6. Docker: subir versão 1.0.4 (ou próxima) seguindo o fluxo docker build → docker push → atualizar image:
-  no compose → re-pull no Portainer.
+ 6. Docker (Mac ARM): `npm run docker:push -- X.Y.Z` → atualizar `image:` no compose / Portainer.

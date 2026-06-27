@@ -4,6 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  getCached,
+  makeKey,
+  putCached,
+  THUMB_BUCKET,
+} from "@/lib/anamnesis/page-raster-cache";
 
 type Props = {
   pdf: PDFDocumentProxy | null;
@@ -114,19 +120,48 @@ function ThumbItem({
     let cancelled = false;
 
     async function render() {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const pdfId = pdf.fingerprints?.[0] ?? null;
+      const cacheKey = pdfId ? makeKey(pdfId, page, THUMB_BUCKET) : null;
+
+      // Cache hit: pinta a miniatura instantaneamente (colapsar/expandir o
+      // painel deixa de rerasterizar tudo).
+      if (cacheKey) {
+        const hit = getCached(cacheKey);
+        if (hit) {
+          canvas.width = hit.deviceWidth;
+          canvas.height = hit.deviceHeight;
+          canvas.style.width = `${hit.cssWidth}px`;
+          canvas.style.height = `${hit.cssHeight}px`;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.drawImage(hit.bitmap, 0, 0);
+          }
+          setRatio(hit.cssHeight / hit.cssWidth);
+          return;
+        }
+      }
+
       const pg = await pdf.getPage(page);
       if (cancelled) return;
       const viewport0 = pg.getViewport({ scale: 1 });
       const width = 100;
       const scale = width / viewport0.width;
       const viewport = pg.getViewport({ scale });
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+      // Cap de DPR em 2: a 100px de largura a nitidez é idêntica e poupa
+      // memória/custo (há N miniaturas).
+      const dpr = Math.min(
+        typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
+        2,
+      );
+      const cssWidth = Math.floor(viewport.width);
+      const cssHeight = Math.floor(viewport.height);
       canvas.width = Math.floor(viewport.width * dpr);
       canvas.height = Math.floor(viewport.height * dpr);
-      canvas.style.width = `${Math.floor(viewport.width)}px`;
-      canvas.style.height = `${Math.floor(viewport.height)}px`;
+      canvas.style.width = `${cssWidth}px`;
+      canvas.style.height = `${cssHeight}px`;
       setRatio(viewport.height / viewport.width);
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
@@ -134,6 +169,25 @@ function ThumbItem({
       const task = pg.render({ canvasContext: ctx, viewport });
       try {
         await task.promise;
+        if (cancelled) return;
+        if (cacheKey && typeof createImageBitmap === "function") {
+          try {
+            const bitmap = await createImageBitmap(canvas);
+            if (cancelled) {
+              bitmap.close();
+            } else {
+              putCached(cacheKey, {
+                bitmap,
+                deviceWidth: canvas.width,
+                deviceHeight: canvas.height,
+                cssWidth,
+                cssHeight,
+              });
+            }
+          } catch {
+            // Sem cache neste render; a miniatura já foi desenhada.
+          }
+        }
       } catch (err) {
         if (!(err instanceof Error) || err.name !== "RenderingCancelledException") {
           console.error("Falha ao renderizar miniatura", err);

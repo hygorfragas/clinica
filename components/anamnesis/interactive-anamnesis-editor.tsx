@@ -26,7 +26,10 @@ import {
 } from "@/lib/evolutions/submission-actions";
 import type { AnamnesisStroke } from "@/lib/anamnesis/template-schema";
 import { usePinchPan } from "@/lib/anamnesis/use-pinch-pan";
+import { useViewerWidth } from "@/lib/anamnesis/use-viewer-width";
+import { clearForPdf } from "@/lib/anamnesis/page-raster-cache";
 import { cn } from "@/lib/utils";
+import { InkLayerErrorBoundary } from "./ink-layer-error-boundary";
 import { PdfPageCanvas } from "./pdf-page-canvas";
 import {
   InteractiveToolbar,
@@ -137,11 +140,24 @@ export function InteractiveAnamnesisEditor({
 
   const canInteract = status === "draft";
   const viewerRef = useRef<HTMLDivElement | null>(null);
-  const [viewerWidth, setViewerWidth] = useState(820);
+  const pageFrameRef = useRef<HTMLDivElement | null>(null);
+  // Largura útil já bucketizada (múltiplos de 16px) e com debounce na rotação —
+  // evita re-render a cada sub-pixel e casa com a chave do cache de render.
+  const renderWidth = useViewerWidth(viewerRef, {
+    min: 280,
+    max: 1100,
+    bucket: 16,
+    subtractPadding: true,
+  });
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef(false);
   const dirtyRef = useRef(false);
   const [extraOpen, setExtraOpen] = useState(false);
+  const activeSize = pageSizes[activePage];
+  const pageWidth = activeSize?.width ?? renderWidth;
+  const pageHeight =
+    activeSize?.height ?? Math.max(1, Math.round(renderWidth * 1.414));
+
   const {
     transform,
     locked,
@@ -149,7 +165,12 @@ export function InteractiveAnamnesisEditor({
     toggleLock,
     resetTransform,
     handlers: pinchPanHandlers,
-  } = usePinchPan({ allowFingerDraw: allowNonPen });
+  } = usePinchPan({
+    allowFingerDraw: allowNonPen,
+    contentRef: pageFrameRef,
+    pageWidth,
+    pageHeight,
+  });
 
   // Preferência "permitir dedo/mouse" em localStorage.
   useEffect(() => {
@@ -219,19 +240,13 @@ export function InteractiveAnamnesisEditor({
     };
   }, [templatePdfUrl]);
 
-  // Observa tamanho do viewer.
+  // Libera o cache de páginas rasterizadas ao trocar de PDF / desmontar.
   useEffect(() => {
-    const target = viewerRef.current;
-    if (!target || typeof ResizeObserver === "undefined") return;
-    const update = () => {
-      const next = Math.max(280, Math.floor(target.getBoundingClientRect().width));
-      setViewerWidth((prev) => (Math.abs(prev - next) < 1 ? prev : next));
+    const id = pdf?.fingerprints?.[0];
+    return () => {
+      if (id) clearForPdf(id);
     };
-    update();
-    const observer = new ResizeObserver(() => update());
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, []);
+  }, [pdf]);
 
   // Atalhos: setas para navegar páginas, Ctrl/Cmd+Z undo, shift+Z redo.
   useEffect(() => {
@@ -468,8 +483,6 @@ export function InteractiveAnamnesisEditor({
   }, [activePage, resetTransform]);
 
   const pageCount = pdf?.numPages ?? 1;
-  const activeSize = pageSizes[activePage];
-  const renderWidth = Math.min(1100, viewerWidth);
   const currentSize = tool === "highlighter" ? highlighterSize : penSize;
   const strokeCountByPage = useMemo(() => {
     const map: Record<number, number> = {};
@@ -598,7 +611,13 @@ export function InteractiveAnamnesisEditor({
           <div
             ref={viewerRef}
             className="flex-1 overflow-auto px-4 py-6"
-            style={{ touchAction: transform.scale > 1 ? "none" : "pan-y" }}
+            style={{
+              // A rolagem/pan por toque é tratada manualmente em usePinchPan
+              // (mantendo o Pencil sempre desenhando), então desativamos os
+              // gestos de toque nativos para não rolar em dobro. Scroll por
+              // roda/trackpad no desktop não é afetado por touch-action.
+              touchAction: "none",
+            }}
             {...pinchPanHandlers}
           >
             {!pdf && templatePdfUrl ? (
@@ -613,17 +632,18 @@ export function InteractiveAnamnesisEditor({
             ) : null}
 
             {pdf ? (
-              <div
-                className="mx-auto flex justify-center"
-                style={{
-                  transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`,
-                  transformOrigin: "top center",
-                }}
-              >
+              <div className="flex w-full min-w-0 justify-center">
                 <div
-                  className={cn("relative inline-block rounded-md bg-white shadow-lift")}
+                  ref={pageFrameRef}
+                  className={cn(
+                    "relative shrink-0 rounded-md bg-white shadow-lift",
+                  )}
                   style={{
-                    width: activeSize?.width ?? renderWidth,
+                    width: pageWidth,
+                    height: pageHeight,
+                    transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`,
+                    transformOrigin: `${transform.originX}px ${transform.originY}px`,
+                    willChange: isGesturing ? "transform" : undefined,
                     userSelect: "none",
                     WebkitUserSelect: "none",
                     WebkitTouchCallout: "none",
@@ -633,22 +653,27 @@ export function InteractiveAnamnesisEditor({
                     pdf={pdf}
                     pageNumber={activePage}
                     targetWidth={renderWidth}
+                    enableCache
                     onPageLoaded={handlePageLoaded}
                   />
-                  {activeSize ? (
-                    <InkLayer
-                      width={activeSize.width}
-                      height={activeSize.height}
-                      page={activePage}
-                      color={color}
-                      size={currentSize}
-                      tool={tool}
-                      disabled={!canInteract || isGesturing}
-                      allowNonPen={allowNonPen}
-                      strokes={strokes}
-                      onStrokeCommit={handleStrokeCommit}
-                      onEraseStroke={handleEraseStroke}
-                    />
+                  {activeSize &&
+                  activeSize.width > 0 &&
+                  activeSize.height > 0 ? (
+                    <InkLayerErrorBoundary>
+                      <InkLayer
+                        width={Math.round(activeSize.width)}
+                        height={Math.round(activeSize.height)}
+                        page={activePage}
+                        color={color}
+                        size={currentSize}
+                        tool={tool}
+                        disabled={!canInteract || isGesturing}
+                        allowNonPen={allowNonPen}
+                        strokes={strokes}
+                        onStrokeCommit={handleStrokeCommit}
+                        onEraseStroke={handleEraseStroke}
+                      />
+                    </InkLayerErrorBoundary>
                   ) : null}
                 </div>
               </div>
