@@ -14,6 +14,7 @@ import {
   MAX_PHOTOS_PER_BATCH,
   type BodyRegion,
 } from "@/lib/clinical/body-regions";
+import { assertPhotoFileSignature } from "@/lib/clinical/photo-file-validation";
 import {
   assertDocumentMime,
   assertPhotoMime,
@@ -358,6 +359,24 @@ export async function getClinicalSignedUrl(
   return { ok: true, url: data.signedUrl };
 }
 
+async function preparePhotoUpload(
+  file: File,
+  index?: number,
+): Promise<{ buffer: Buffer } | { error: string }> {
+  const label = index != null ? `A foto ${index + 1} ` : "A imagem ";
+  if (file.size > MAX_PHOTO_BYTES) {
+    return {
+      error: `${label}excede o tamanho máximo (12 MB).`.replace("A imagem ", "Imagem "),
+    };
+  }
+  const mimeErr = assertPhotoMime(file.type);
+  if (mimeErr) return { error: mimeErr };
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const sigErr = assertPhotoFileSignature(buffer);
+  if (sigErr) return { error: sigErr };
+  return { buffer };
+}
+
 export async function uploadClinicalPhoto(
   clientId: string,
   formData: FormData,
@@ -378,11 +397,12 @@ export async function uploadClinicalPhoto(
   if (!(file instanceof Blob) || file.size === 0) {
     return { ok: false, error: "Selecione uma imagem." };
   }
-  if (file.size > MAX_PHOTO_BYTES) {
-    return { ok: false, error: "Imagem muito grande (máx. 12 MB)." };
+
+  const prepared = await preparePhotoUpload(file as File);
+  if ("error" in prepared) {
+    return { ok: false, error: prepared.error };
   }
-  const mimeErr = assertPhotoMime(file.type);
-  if (mimeErr) return { ok: false, error: mimeErr };
+  const { buffer } = prepared;
 
   const captionRaw = formData.get("caption");
   const caption =
@@ -418,7 +438,6 @@ export async function uploadClinicalPhoto(
     originalFileName: (file as File).name ?? "arquivo",
   });
 
-  const buffer = Buffer.from(await file.arrayBuffer());
   const { error: upErr } = await ctx.supabase.storage
     .from(CLINICAL_BUCKET)
     .upload(path, buffer, {
@@ -553,8 +572,12 @@ export async function uploadClinicalPhotosBatch(
         error: `A foto ${i + 1} excede o tamanho máximo (12 MB).`,
       };
     }
-    const mimeErr = assertPhotoMime(file.type);
-    if (mimeErr) return { ok: false, error: mimeErr };
+
+    const prepared = await preparePhotoUpload(file, i);
+    if ("error" in prepared) {
+      return { ok: false, error: prepared.error };
+    }
+    const { buffer } = prepared;
 
     let capture_angle: string | null = null;
     if (body_region === BODY_REGIONS.face) {
@@ -602,7 +625,6 @@ export async function uploadClinicalPhotosBatch(
       originalFileName: file.name,
     });
 
-    const buffer = Buffer.from(await file.arrayBuffer());
     const { error: upErr } = await ctx.supabase.storage
       .from(CLINICAL_BUCKET)
       .upload(path, buffer, {
@@ -738,8 +760,12 @@ export async function uploadEvolutionSubmissionPhotos(
         error: `A foto ${i + 1} excede o tamanho máximo (12 MB).`,
       };
     }
-    const mimeErr = assertPhotoMime(file.type);
-    if (mimeErr) return { ok: false, error: mimeErr };
+
+    const prepared = await preparePhotoUpload(file, i);
+    if ("error" in prepared) {
+      return { ok: false, error: prepared.error };
+    }
+    const { buffer } = prepared;
 
     const region: BodyRegion =
       item.body_region && isBodyRegion(item.body_region)
@@ -763,7 +789,6 @@ export async function uploadEvolutionSubmissionPhotos(
       originalFileName: file.name,
     });
 
-    const buffer = Buffer.from(await file.arrayBuffer());
     const { error: upErr } = await ctx.supabase.storage
       .from(CLINICAL_BUCKET)
       .upload(path, buffer, {
@@ -874,14 +899,11 @@ export async function uploadPatientLibraryPhotos(
     const file = files[i];
     const item = meta[i] ?? {};
 
-    if (file.size > MAX_PHOTO_BYTES) {
-      return {
-        ok: false,
-        error: `A foto ${i + 1} excede o tamanho máximo (12 MB).`,
-      };
+    const prepared = await preparePhotoUpload(file, i);
+    if ("error" in prepared) {
+      return { ok: false, error: prepared.error };
     }
-    const mimeErr = assertPhotoMime(file.type);
-    if (mimeErr) return { ok: false, error: mimeErr };
+    const { buffer } = prepared;
 
     const cap =
       typeof item.caption === "string" && item.caption.trim() !== ""
@@ -895,7 +917,6 @@ export async function uploadPatientLibraryPhotos(
       originalFileName: file.name,
     });
 
-    const buffer = Buffer.from(await file.arrayBuffer());
     const { error: upErr } = await ctx.supabase.storage
       .from(CLINICAL_BUCKET)
       .upload(path, buffer, {

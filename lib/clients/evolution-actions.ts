@@ -9,6 +9,7 @@ import {
   CLINICAL_BUCKET,
   MAX_PHOTO_BYTES,
 } from "@/lib/clinical/storage";
+import { assertPhotoFileSignature } from "@/lib/clinical/photo-file-validation";
 
 type Ok<T = unknown> = { ok: true } & T;
 type Err = { ok: false; error: string };
@@ -122,6 +123,10 @@ export async function uploadEvolutionPhoto(
   const mimeErr = assertPhotoMime(file.type);
   if (mimeErr) return { ok: false, error: mimeErr };
 
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const sigErr = assertPhotoFileSignature(buffer);
+  if (sigErr) return { ok: false, error: sigErr };
+
   const captionRaw = formData.get("caption");
   const caption =
     typeof captionRaw === "string" && captionRaw.trim() !== ""
@@ -135,7 +140,6 @@ export async function uploadEvolutionPhoto(
     originalFileName: (file as File).name ?? "arquivo",
   });
 
-  const buffer = Buffer.from(await file.arrayBuffer());
   const { error: upErr } = await ctx.supabase.storage
     .from(CLINICAL_BUCKET)
     .upload(path, buffer, { contentType: file.type, upsert: false });

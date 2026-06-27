@@ -4,9 +4,13 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ImagePlus, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ClinicDateTimePicker } from "@/components/ui/clinic-datetime-picker";
 import { Label } from "@/components/ui/label";
 import { MAX_PHOTOS_PER_BATCH } from "@/lib/clinical/body-regions";
+import {
+  filterAllowedPhotoFiles,
+  PHOTO_ACCEPT,
+} from "@/lib/clinical/photo-file-validation";
 import { uploadPatientLibraryPhotos } from "@/lib/clients/record-actions";
 import {
   clinicDateTimeLocalToUtcIso,
@@ -39,13 +43,19 @@ export function PacienteFotoLibraryUploader({ clientId }: Props) {
       return;
     }
     const picked = Array.from(list);
-    if (picked.length > MAX_PHOTOS_PER_BATCH) {
-      setError(`Máximo de ${MAX_PHOTOS_PER_BATCH} fotos por envio.`);
-      setFiles(picked.slice(0, MAX_PHOTOS_PER_BATCH));
-      return;
+    const { accepted, rejected } = filterAllowedPhotoFiles(picked);
+    if (rejected.length > 0) {
+      setError(
+        "Apenas imagens JPG, PNG ou WebP são permitidas. Arquivos inválidos foram ignorados.",
+      );
+    } else {
+      setError(null);
     }
-    setError(null);
-    setFiles(picked);
+    const limited = accepted.slice(0, MAX_PHOTOS_PER_BATCH);
+    if (accepted.length > MAX_PHOTOS_PER_BATCH) {
+      setError(`Máximo de ${MAX_PHOTOS_PER_BATCH} fotos por envio.`);
+    }
+    setFiles(limited);
   }
 
   function submit() {
@@ -76,7 +86,17 @@ export function PacienteFotoLibraryUploader({ clientId }: Props) {
     }
 
     startUpload(async () => {
-      const result = await uploadPatientLibraryPhotos(clientId, fd);
+      let result: Awaited<ReturnType<typeof uploadPatientLibraryPhotos>>;
+      try {
+        result = await uploadPatientLibraryPhotos(clientId, fd);
+      } catch {
+        setUploadLabel(null);
+        const msg =
+          "Falha no envio (arquivo grande demais ou conexão interrompida). Tente menos fotos ou imagens menores.";
+        setError(msg);
+        notifyError(null, msg);
+        return;
+      }
       setUploadLabel(null);
       if (result.ok) {
         setFiles([]);
@@ -111,14 +131,11 @@ export function PacienteFotoLibraryUploader({ clientId }: Props) {
         <div className="space-y-2 md:col-span-2">
           <Label htmlFor="library_captured_at">Data e hora da captura</Label>
           <div className="flex flex-wrap items-center gap-2">
-            <Input
+            <ClinicDateTimePicker
               id="library_captured_at"
-              type="datetime-local"
               value={capturedAtLocal}
-              onChange={(e) => setCapturedAtLocal(e.target.value)}
+              onChange={setCapturedAtLocal}
               disabled={uploading}
-              required
-              className="max-w-xs"
             />
             <Button
               type="button"
@@ -134,15 +151,31 @@ export function PacienteFotoLibraryUploader({ clientId }: Props) {
 
         <div className="space-y-2 md:col-span-2">
           <Label htmlFor="library_files">Imagens</Label>
-          <Input
+          <input
             ref={fileInputRef}
             id="library_files"
             type="file"
-            accept="image/*"
+            accept={PHOTO_ACCEPT}
             multiple
             disabled={uploading}
+            className="sr-only"
             onChange={(e) => onFilesChange(e.target.files)}
           />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Selecionar imagens
+            </Button>
+            <span className="text-xs text-ink-muted">
+              JPG, PNG ou WebP — até {MAX_PHOTOS_PER_BATCH} por envio (máx. 12 MB
+              cada).
+            </span>
+          </div>
           {files.length > 0 ? (
             <p className="text-xs text-ink-muted">
               {files.length} arquivo{files.length === 1 ? "" : "s"} selecionado
