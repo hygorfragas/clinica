@@ -2,7 +2,7 @@
 # Stack do Sistema Agenda Clínicas — pronto pra colar no Portainer.
 #
 # Como usar:
-#   1) Use a imagem com tag de versão (ex.: hygorfragas/clinica:1.0.9), não só
+#   1) Use a imagem com tag de versão (ex.: hygorfragas/clinica:1.1.0), não só
 #      :latest — ver .cursor/rules/10-docker-image-versioning.mdc.
 #   2) Edite os valores das variáveis na seção `environment:` abaixo.
 #   3) Suba a stack no Portainer (Stacks → Add stack → cole este YAML).
@@ -20,8 +20,8 @@
 
 services:
   app:
-    # Ex.: hygorfragas/clinica:1.0.9 — fixe a versão em produção; evite só :latest.
-    image: hygorfragas/clinica:1.0.9
+    # Ex.: hygorfragas/clinica:1.1.0 — fixe a versão em produção; evite só :latest.
+    image: hygorfragas/clinica:1.1.0
     container_name: clinica-app
     restart: unless-stopped
 

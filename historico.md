@@ -201,3 +201,17 @@ Memória de continuidade. Cada fase é marcada como concluída ao final.
 ## Infra
 
 - Imagem Docker: `hygorfragas/clinica:1.0.9` (`linux/amd64`).
+
+---
+
+# Release 1.1.0 — Biblioteca de fotos: paginação, filtro e lightbox (2026-06-29)
+
+## Biblioteca de fotos
+
+- **Paginação:** 24 fotos por página com navegação Anterior/Próxima.
+- **Filtro por data** (de/até) pela data de captura ou envio.
+- **Lightbox:** original via `GET /api/clinical/photos/[id]/full` (corrige 404 da Server Action em produção).
+
+## Infra
+
+- Imagem Docker: `hygorfragas/clinica:1.1.0` (`linux/amd64`).
