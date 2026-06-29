@@ -1,37 +1,65 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ImagePlus, Upload } from "lucide-react";
+import { ImagePlus, Plus, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClinicDateTimePicker } from "@/components/ui/clinic-datetime-picker";
 import { Label } from "@/components/ui/label";
-import { MAX_PHOTOS_PER_BATCH } from "@/lib/clinical/body-regions";
 import {
   filterAllowedPhotoFiles,
   PHOTO_ACCEPT,
 } from "@/lib/clinical/photo-file-validation";
-import { uploadPatientLibraryPhotos } from "@/lib/clients/record-actions";
+import { MAX_PHOTO_BATCH_BYTES } from "@/lib/clinical/storage";
+import { uploadPatientLibraryPhoto } from "@/lib/clients/record-actions";
 import {
   clinicDateTimeLocalToUtcIso,
   clinicNowDateTimeLocalValue,
 } from "@/lib/dates";
 import { notifyError, notifySuccess } from "@/lib/ui/notify";
+import { cn } from "@/lib/utils";
+import {
+  PhotoUploadProgressCard,
+  type PhotoUploadProgressState,
+} from "@/components/clients/photo-upload-progress-card";
 
 type Props = {
   clientId: string;
 };
 
+function formatMegabytes(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(0);
+}
+
+function totalBytes(files: File[]): number {
+  return files.reduce((sum, f) => sum + f.size, 0);
+}
+
 export function PacienteFotoLibraryUploader({ clientId }: Props) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploaderOpen, setUploaderOpen] = useState(false);
   const [capturedAtLocal, setCapturedAtLocal] = useState(() =>
     clinicNowDateTimeLocalValue(),
   );
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [uploading, startUpload] = useTransition();
-  const [uploadLabel, setUploadLabel] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<PhotoUploadProgressState | null>(
+    null,
+  );
+
+  const dismissProgress = useCallback(() => setProgress(null), []);
+
+  useEffect(() => {
+    if (!uploading) return;
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [uploading]);
 
   function useToday() {
     setCapturedAtLocal(clinicNowDateTimeLocalValue());
@@ -51,20 +79,35 @@ export function PacienteFotoLibraryUploader({ clientId }: Props) {
     } else {
       setError(null);
     }
-    const limited = accepted.slice(0, MAX_PHOTOS_PER_BATCH);
-    if (accepted.length > MAX_PHOTOS_PER_BATCH) {
-      setError(`Máximo de ${MAX_PHOTOS_PER_BATCH} fotos por envio.`);
+
+    const batchTotal = totalBytes(accepted);
+    if (batchTotal > MAX_PHOTO_BATCH_BYTES) {
+      setError(
+        `Lote de ${formatMegabytes(batchTotal)} MB — máximo ${formatMegabytes(MAX_PHOTO_BATCH_BYTES)} MB por envio.`,
+      );
+      setFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
     }
-    setFiles(limited);
+
+    setFiles(accepted);
   }
 
-  function submit() {
+  async function submit() {
     if (!capturedAtLocal.trim()) {
       setError("Informe a data e hora da captura.");
       return;
     }
     if (files.length === 0) {
       setError("Selecione ao menos uma imagem.");
+      return;
+    }
+
+    const batchTotal = totalBytes(files);
+    if (batchTotal > MAX_PHOTO_BATCH_BYTES) {
+      setError(
+        `Lote de ${formatMegabytes(batchTotal)} MB — máximo ${formatMegabytes(MAX_PHOTO_BATCH_BYTES)} MB por envio.`,
+      );
       return;
     }
 
@@ -77,163 +120,202 @@ export function PacienteFotoLibraryUploader({ clientId }: Props) {
     }
 
     setError(null);
-    setUploadLabel(`Enviando ${files.length} foto${files.length === 1 ? "" : "s"}…`);
+    setUploaderOpen(false);
+    setUploading(true);
 
-    const fd = new FormData();
-    fd.set("captured_at", capturedIso);
-    for (const file of files) {
-      fd.append("files", file);
+    const total = files.length;
+    let uploaded = 0;
+    let lastError: string | null = null;
+
+    for (let i = 0; i < files.length; i++) {
+      setProgress({
+        phase: "uploading",
+        current: i,
+        total,
+        fileName: files[i].name,
+      });
+
+      const fd = new FormData();
+      fd.set("captured_at", capturedIso);
+      fd.set("file", files[i]);
+      if (i < files.length - 1) {
+        fd.set("skip_revalidate", "1");
+      }
+
+      let result: Awaited<ReturnType<typeof uploadPatientLibraryPhoto>>;
+      try {
+        result = await uploadPatientLibraryPhoto(clientId, fd);
+      } catch {
+        lastError =
+          "Falha no envio (arquivo grande demais ou conexão interrompida).";
+        break;
+      }
+
+      if (!result.ok) {
+        lastError = result.error;
+        break;
+      }
+
+      uploaded += 1;
     }
 
-    startUpload(async () => {
-      let result: Awaited<ReturnType<typeof uploadPatientLibraryPhotos>>;
-      try {
-        result = await uploadPatientLibraryPhotos(clientId, fd);
-      } catch {
-        setUploadLabel(null);
-        const msg =
-          "Falha no envio (arquivo grande demais ou conexão interrompida). Tente menos fotos ou imagens menores.";
-        setError(msg);
-        notifyError(null, msg);
-        return;
-      }
-      setUploadLabel(null);
-      if (result.ok) {
-        setFiles([]);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        notifySuccess(
-          files.length === 1
-            ? "Foto enviada."
-            : `${files.length} fotos enviadas.`,
-        );
+    setUploading(false);
+
+    if (lastError) {
+      setProgress({
+        phase: "error",
+        uploaded,
+        total,
+        message: lastError,
+      });
+      notifyError(null, lastError);
+      if (uploaded > 0) {
         router.refresh();
-        return;
       }
-      setError(result.error);
-      notifyError(null, result.error);
+      return;
+    }
+
+    setFiles([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    setProgress({
+      phase: "success",
+      uploaded: total,
+      total,
     });
+
+    notifySuccess(
+      total === 1 ? "Foto enviada." : `${total} fotos enviadas.`,
+    );
+    router.refresh();
   }
 
+  const batchMb =
+    files.length > 0 ? formatMegabytes(totalBytes(files)) : null;
+
   return (
-    <section className="rounded-[1.75rem] border border-line/80 bg-muted/20 p-6 shadow-inner">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h3 className="text-sm font-semibold text-ink">Enviar fotos</h3>
-          <p className="mt-1 max-w-xl text-xs leading-relaxed text-ink-muted">
-            Defina a data e hora da captura e selecione uma ou mais imagens. As
-            fotos aparecem na biblioteca junto com envios de evolução e cadastro.
-          </p>
-        </div>
-        <ImagePlus className="h-8 w-8 shrink-0 text-ink-subtle" aria-hidden />
-      </div>
-
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="library_captured_at">Data e hora da captura</Label>
-          <div className="flex flex-wrap items-center gap-2">
-            <ClinicDateTimePicker
-              id="library_captured_at"
-              value={capturedAtLocal}
-              onChange={setCapturedAtLocal}
-              disabled={uploading}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={useToday}
-              disabled={uploading}
-            >
-              Usar data de hoje
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="library_files">Imagens</Label>
-          <input
-            ref={fileInputRef}
-            id="library_files"
-            type="file"
-            accept={PHOTO_ACCEPT}
-            multiple
-            disabled={uploading}
-            className="sr-only"
-            onChange={(e) => onFilesChange(e.target.files)}
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              Selecionar imagens
-            </Button>
-            <span className="text-xs text-ink-muted">
-              JPG, PNG ou WebP — até {MAX_PHOTOS_PER_BATCH} por envio (máx. 12 MB
-              cada).
-            </span>
-          </div>
-          {files.length > 0 ? (
-            <p className="text-xs text-ink-muted">
-              {files.length} arquivo{files.length === 1 ? "" : "s"} selecionado
-              {files.length === 1 ? "" : "s"} (máx. {MAX_PHOTOS_PER_BATCH}).
+          {!uploaderOpen && !uploading ? (
+            <p className="mt-0.5 text-xs text-ink-muted">
+              JPG, PNG ou WebP — até {formatMegabytes(MAX_PHOTO_BATCH_BYTES)} MB
+              por envio.
             </p>
-          ) : (
-            <p className="text-xs text-ink-muted">
-              Formatos de imagem aceitos; até {MAX_PHOTOS_PER_BATCH} por envio.
-            </p>
-          )}
+          ) : null}
         </div>
-      </div>
-
-      {uploading && uploadLabel ? (
-        <div className="mt-4 space-y-2">
-          <p className="text-sm font-medium text-ink">{uploadLabel}</p>
-          <div
-            className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
-            role="progressbar"
-            aria-valuetext={uploadLabel}
-          >
-            <div className="h-full w-1/3 animate-pulse rounded-full bg-brand" />
-          </div>
-        </div>
-      ) : null}
-
-      {error ? (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        {files.length > 0 ? (
-          <Button
+        {!uploading ? (
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setFiles([]);
-              if (fileInputRef.current) fileInputRef.current.value = "";
-            }}
-            disabled={uploading}
+            onClick={() => setUploaderOpen((o) => !o)}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition",
+              uploaderOpen
+                ? "bg-muted text-ink"
+                : "bg-brand text-white hover:brightness-95",
+            )}
+            aria-expanded={uploaderOpen}
           >
-            Limpar seleção
-          </Button>
+            {uploaderOpen ? (
+              <X className="h-3.5 w-3.5" aria-hidden />
+            ) : (
+              <ImagePlus className="h-3.5 w-3.5" aria-hidden />
+            )}
+            {uploaderOpen ? "Fechar" : "Enviar fotos"}
+          </button>
         ) : null}
-        <Button
-          type="button"
-          onClick={submit}
-          disabled={files.length === 0 || uploading}
-          loading={uploading}
-          loadingLabel="Enviando..."
-        >
-          <Upload className="h-4 w-4" />
-          Enviar fotos
-        </Button>
       </div>
-    </section>
+
+      <PhotoUploadProgressCard state={progress} onDismiss={dismissProgress} />
+
+      {uploaderOpen && !uploading ? (
+        <section className="rounded-[1.75rem] border border-line/80 bg-muted/20 p-6 shadow-inner">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="library_captured_at">Data e hora da captura</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <ClinicDateTimePicker
+                  id="library_captured_at"
+                  value={capturedAtLocal}
+                  onChange={setCapturedAtLocal}
+                />
+                <Button type="button" variant="ghost" size="sm" onClick={useToday}>
+                  Usar data de hoje
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="library_files">Imagens</Label>
+              <input
+                ref={fileInputRef}
+                id="library_files"
+                type="file"
+                accept={PHOTO_ACCEPT}
+                multiple
+                className="sr-only"
+                onChange={(e) => onFilesChange(e.target.files)}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Selecionar imagens
+                </Button>
+                <span className="text-xs text-ink-muted">
+                  Sem limite por arquivo — máx.{" "}
+                  {formatMegabytes(MAX_PHOTO_BATCH_BYTES)} MB no total do lote.
+                </span>
+              </div>
+              {files.length > 0 ? (
+                <p className="text-xs text-ink-muted">
+                  {files.length} arquivo{files.length === 1 ? "" : "s"} —{" "}
+                  {batchMb} MB no total.
+                </p>
+              ) : (
+                <p className="text-xs text-ink-muted">
+                  Selecione uma ou mais imagens para enviar.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {error ? (
+            <p className="mt-3 text-sm text-danger" role="alert">
+              {error}
+            </p>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {files.length > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setFiles([]);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+              >
+                Limpar seleção
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              onClick={() => void submit()}
+              disabled={files.length === 0}
+            >
+              <Upload className="h-4 w-4" />
+              Enviar fotos
+            </Button>
+          </div>
+        </section>
+      ) : null}
+    </div>
   );
 }

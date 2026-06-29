@@ -15,7 +15,7 @@
 # 1) deps
 # =============================================================================
 FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat vips-dev
 
 WORKDIR /app
 
@@ -30,7 +30,7 @@ RUN npm ci --no-audit --no-fund --ignore-scripts
 # 2) builder
 # =============================================================================
 FROM node:20-alpine AS builder
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat vips-dev
 
 WORKDIR /app
 
@@ -54,6 +54,8 @@ RUN npm run build
 # 3) runner
 # =============================================================================
 FROM node:20-alpine AS runner
+
+RUN apk add --no-cache vips-cpp
 
 WORKDIR /app
 

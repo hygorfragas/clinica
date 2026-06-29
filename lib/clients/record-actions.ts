@@ -16,6 +16,10 @@ import {
 } from "@/lib/clinical/body-regions";
 import { assertPhotoFileSignature } from "@/lib/clinical/photo-file-validation";
 import {
+  generatePhotoThumb,
+  thumbStorageKey,
+} from "@/lib/clinical/photo-thumb";
+import {
   assertDocumentMime,
   assertPhotoMime,
   assertSignatureMime,
@@ -361,10 +365,11 @@ export async function getClinicalSignedUrl(
 
 async function preparePhotoUpload(
   file: File,
-  index?: number,
+  options?: { index?: number; skipSizeLimit?: boolean },
 ): Promise<{ buffer: Buffer } | { error: string }> {
+  const index = options?.index;
   const label = index != null ? `A foto ${index + 1} ` : "A imagem ";
-  if (file.size > MAX_PHOTO_BYTES) {
+  if (!options?.skipSizeLimit && file.size > MAX_PHOTO_BYTES) {
     return {
       error: `${label}excede o tamanho máximo (12 MB).`.replace("A imagem ", "Imagem "),
     };
@@ -573,7 +578,7 @@ export async function uploadClinicalPhotosBatch(
       };
     }
 
-    const prepared = await preparePhotoUpload(file, i);
+    const prepared = await preparePhotoUpload(file, { index: i });
     if ("error" in prepared) {
       return { ok: false, error: prepared.error };
     }
@@ -761,7 +766,7 @@ export async function uploadEvolutionSubmissionPhotos(
       };
     }
 
-    const prepared = await preparePhotoUpload(file, i);
+    const prepared = await preparePhotoUpload(file, { index: i });
     if ("error" in prepared) {
       return { ok: false, error: prepared.error };
     }
@@ -837,8 +842,136 @@ type LibraryPhotoMeta = {
   caption?: string | null;
 };
 
+type LibraryPhotoUploadOk = { ok: true; photoId: string };
+type LibraryPhotoUploadResult = LibraryPhotoUploadOk | ActionError;
+
 /**
- * Upload de fotos pela biblioteca da ficha (sem região/ângulo obrigatórios).
+ * Upload de uma foto pela biblioteca (1 arquivo por request).
+ * Gera miniatura WebP no storage; revalida apenas se skip_revalidate não for "1".
+ */
+export async function uploadPatientLibraryPhoto(
+  clientId: string,
+  formData: FormData,
+): Promise<LibraryPhotoUploadResult> {
+  const ctx = await requireClinicalContext();
+  if (!ctx.ok) return ctx;
+
+  const belongs = await assertClientInTenant(
+    ctx.supabase,
+    ctx.tenantId,
+    clientId,
+  );
+  if (!belongs) {
+    return { ok: false, error: "Paciente não encontrada." };
+  }
+
+  const capturedRaw = formData.get("captured_at");
+  const capturedParsed = z.string().datetime().safeParse(capturedRaw);
+  if (!capturedParsed.success) {
+    return { ok: false, error: "Informe a data e hora da captura." };
+  }
+  const captured_at = capturedParsed.data;
+  const taken_at = captured_at.slice(0, 10);
+
+  const file = formData.get("file");
+  if (!(file instanceof Blob) || file.size === 0) {
+    return { ok: false, error: "Selecione uma imagem." };
+  }
+
+  const prepared = await preparePhotoUpload(file as File, { skipSizeLimit: true });
+  if ("error" in prepared) {
+    return { ok: false, error: prepared.error };
+  }
+  const { buffer } = prepared;
+
+  const captionRaw = formData.get("caption");
+  const caption =
+    typeof captionRaw === "string" && captionRaw.trim() !== ""
+      ? captionRaw.trim().slice(0, 500)
+      : null;
+
+  const path = buildClinicalStoragePath({
+    tenantId: ctx.tenantId,
+    clientId,
+    category: "photos",
+    originalFileName: (file as File).name ?? "arquivo",
+  });
+
+  const { error: upErr } = await ctx.supabase.storage
+    .from(CLINICAL_BUCKET)
+    .upload(path, buffer, {
+      contentType: file.type,
+      upsert: false,
+    });
+
+  if (upErr) {
+    return {
+      ok: false,
+      error:
+        upErr.message ??
+        "Falha no upload. Confira o bucket clinical e as políticas de Storage.",
+    };
+  }
+
+  let thumbPath: string | null = null;
+  try {
+    const thumbBuffer = await generatePhotoThumb(buffer);
+    thumbPath = thumbStorageKey(path);
+    const { error: thumbErr } = await ctx.supabase.storage
+      .from(CLINICAL_BUCKET)
+      .upload(thumbPath, thumbBuffer, {
+        contentType: "image/webp",
+        upsert: false,
+      });
+    if (thumbErr) {
+      await ctx.supabase.storage.from(CLINICAL_BUCKET).remove([path]);
+      return {
+        ok: false,
+        error: thumbErr.message ?? "Falha ao gerar miniatura.",
+      };
+    }
+  } catch {
+    await ctx.supabase.storage.from(CLINICAL_BUCKET).remove([path]);
+    return { ok: false, error: "Falha ao processar a imagem." };
+  }
+
+  const { data: inserted, error: dbErr } = await ctx.supabase
+    .schema("clinic")
+    .from("photos")
+    .insert({
+      tenant_id: ctx.tenantId,
+      client_id: clientId,
+      storage_key: path,
+      caption,
+      taken_at,
+      captured_at,
+      body_region: BODY_REGIONS.other,
+      capture_angle: null,
+      purchase_id: null,
+      comparison_role: null,
+    })
+    .select("id")
+    .single();
+
+  if (dbErr || !inserted) {
+    const toRemove = thumbPath ? [path, thumbPath] : [path];
+    await ctx.supabase.storage.from(CLINICAL_BUCKET).remove(toRemove);
+    return {
+      ok: false,
+      error: dbErr?.message ?? "Erro ao registrar foto.",
+    };
+  }
+
+  const skipRevalidate = formData.get("skip_revalidate") === "1";
+  if (!skipRevalidate) {
+    revalidatePaciente(clientId);
+  }
+
+  return { ok: true, photoId: inserted.id };
+}
+
+/**
+ * Upload de fotos pela biblioteca da ficha (batch legado — preferir uploadPatientLibraryPhoto).
  * Processa arquivos em série no servidor; todos compartilham o mesmo captured_at.
  */
 export async function uploadPatientLibraryPhotos(
@@ -863,7 +996,6 @@ export async function uploadPatientLibraryPhotos(
     return { ok: false, error: "Informe a data e hora da captura." };
   }
   const captured_at = capturedParsed.data;
-  const taken_at = captured_at.slice(0, 10);
 
   const metaRaw = formData.get("meta");
   let meta: LibraryPhotoMeta[] = [];
@@ -898,67 +1030,21 @@ export async function uploadPatientLibraryPhotos(
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const item = meta[i] ?? {};
-
-    const prepared = await preparePhotoUpload(file, i);
-    if ("error" in prepared) {
-      return { ok: false, error: prepared.error };
+    const singleFd = new FormData();
+    singleFd.set("captured_at", captured_at);
+    singleFd.set("file", file);
+    if (typeof item.caption === "string" && item.caption.trim() !== "") {
+      singleFd.set("caption", item.caption.trim());
     }
-    const { buffer } = prepared;
-
-    const cap =
-      typeof item.caption === "string" && item.caption.trim() !== ""
-        ? item.caption.trim().slice(0, 500)
-        : null;
-
-    const path = buildClinicalStoragePath({
-      tenantId: ctx.tenantId,
-      clientId,
-      category: "photos",
-      originalFileName: file.name,
-    });
-
-    const { error: upErr } = await ctx.supabase.storage
-      .from(CLINICAL_BUCKET)
-      .upload(path, buffer, {
-        contentType: file.type,
-        upsert: false,
-      });
-
-    if (upErr) {
-      return {
-        ok: false,
-        error:
-          upErr.message ??
-          "Falha no upload. Confira o bucket clinical e as políticas de Storage.",
-      };
+    if (i < files.length - 1) {
+      singleFd.set("skip_revalidate", "1");
     }
-
-    const { error: dbErr } = await ctx.supabase
-      .schema("clinic")
-      .from("photos")
-      .insert({
-        tenant_id: ctx.tenantId,
-        client_id: clientId,
-        storage_key: path,
-        caption: cap,
-        taken_at,
-        captured_at,
-        body_region: BODY_REGIONS.other,
-        capture_angle: null,
-        purchase_id: null,
-        comparison_role: null,
-      });
-
-    if (dbErr) {
-      await ctx.supabase.storage.from(CLINICAL_BUCKET).remove([path]);
-      return {
-        ok: false,
-        error: dbErr.message ?? `Erro ao registrar a foto ${i + 1}.`,
-      };
+    const result = await uploadPatientLibraryPhoto(clientId, singleFd);
+    if (!result.ok) {
+      return result;
     }
   }
 
-  revalidatePaciente(clientId);
   return { ok: true };
 }
 
@@ -1291,6 +1377,40 @@ export async function registerSignature(
   return { ok: true };
 }
 
+export async function getClinicalPhotoFullUrl(
+  photoId: string,
+): Promise<{ ok: true; url: string } | ActionError> {
+  const ctx = await requireClinicalContext();
+  if (!ctx.ok) return ctx;
+
+  const { data: row } = await ctx.supabase
+    .schema("clinic")
+    .from("photos")
+    .select("storage_key")
+    .eq("id", photoId)
+    .eq("tenant_id", ctx.tenantId)
+    .maybeSingle();
+
+  if (!row?.storage_key) {
+    return { ok: false, error: "Foto não encontrada." };
+  }
+
+  const prefix = tenantPrefixFromStorageKey(row.storage_key);
+  if (prefix !== ctx.tenantId) {
+    return { ok: false, error: "Foto não encontrada." };
+  }
+
+  const { data, error } = await ctx.supabase.storage
+    .from(CLINICAL_BUCKET)
+    .createSignedUrl(row.storage_key, 3600);
+
+  if (error || !data?.signedUrl) {
+    return { ok: false, error: error?.message ?? "Não foi possível carregar a imagem." };
+  }
+
+  return { ok: true, url: data.signedUrl };
+}
+
 export async function deleteClinicalPhoto(
   clientId: string,
   photoId: string,
@@ -1311,7 +1431,8 @@ export async function deleteClinicalPhoto(
     return { ok: false, error: "Foto não encontrada." };
   }
 
-  await ctx.supabase.storage.from(CLINICAL_BUCKET).remove([row.storage_key]);
+  const keysToRemove = [row.storage_key, thumbStorageKey(row.storage_key)];
+  await ctx.supabase.storage.from(CLINICAL_BUCKET).remove(keysToRemove);
   await ctx.supabase
     .schema("clinic")
     .from("photos")

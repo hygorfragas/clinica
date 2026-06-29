@@ -162,7 +162,7 @@ export function PdfPageCanvas({
 
   return (
     <div
-      className="pointer-events-none absolute left-0 top-0"
+      className="relative"
       style={
         size
           ? { width: size.width, height: size.height }
@@ -175,7 +175,11 @@ export function PdfPageCanvas({
         style={
           size
             ? { width: size.width, height: size.height, display: "block" }
-            : { width: targetWidth, height: Math.round(targetWidth * 1.414), display: "block" }
+            : {
+                width: targetWidth,
+                height: Math.round(targetWidth * 1.414),
+                display: "block",
+              }
         }
       />
     </div>

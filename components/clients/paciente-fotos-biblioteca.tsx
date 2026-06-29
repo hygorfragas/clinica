@@ -1,15 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Eye, Trash2, X } from "lucide-react";
+import { Camera, Eye, Loader2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   formatPhotoCapturedAt,
   getPhotoDisplayAt,
 } from "@/lib/clinical/photo-display";
-import { deleteClinicalPhoto } from "@/lib/clients/record-actions";
+import {
+  deleteClinicalPhoto,
+  getClinicalPhotoFullUrl,
+} from "@/lib/clients/record-actions";
 import { notifyError, notifySuccess } from "@/lib/ui/notify";
 import { cn } from "@/lib/utils";
 import { PacienteFotoLibraryUploader } from "@/components/clients/paciente-foto-library-uploader";
@@ -19,7 +22,6 @@ export type FotoBibliotecaItem = {
   caption: string | null;
   captured_at: string | null;
   created_at: string;
-  url: string | null;
 };
 
 type Props = {
@@ -27,12 +29,19 @@ type Props = {
   fotos: FotoBibliotecaItem[];
 };
 
+function thumbUrl(photoId: string): string {
+  return `/api/clinical/photos/${photoId}/thumb?w=400`;
+}
+
 export function PacienteFotosBiblioteca({ clientId, fotos }: Props) {
   const router = useRouter();
   const { confirm, element: confirmDialog } = useConfirmDialog();
   const [activePhoto, setActivePhoto] = useState<FotoBibliotecaItem | null>(
     null,
   );
+  const [fullUrl, setFullUrl] = useState<string | null>(null);
+  const [fullUrlLoading, setFullUrlLoading] = useState(false);
+  const [fullUrlError, setFullUrlError] = useState<string | null>(null);
 
   const sorted = useMemo(() => {
     return [...fotos].sort((a, b) => {
@@ -41,6 +50,35 @@ export function PacienteFotosBiblioteca({ clientId, fotos }: Props) {
       return db.localeCompare(da);
     });
   }, [fotos]);
+
+  useEffect(() => {
+    if (!activePhoto) {
+      setFullUrl(null);
+      setFullUrlError(null);
+      setFullUrlLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setFullUrl(null);
+    setFullUrlError(null);
+    setFullUrlLoading(true);
+
+    void (async () => {
+      const result = await getClinicalPhotoFullUrl(activePhoto.id);
+      if (cancelled) return;
+      setFullUrlLoading(false);
+      if (result.ok) {
+        setFullUrl(result.url);
+        return;
+      }
+      setFullUrlError(result.error);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activePhoto]);
 
   function requestDelete(id: string) {
     confirm({
@@ -93,32 +131,24 @@ export function PacienteFotosBiblioteca({ clientId, fotos }: Props) {
                 key={foto.id}
                 className="group relative aspect-square overflow-hidden rounded-xl border border-line/60 bg-canvas shadow-[var(--shadow-lift)] transition hover:border-brand/40 hover:shadow-md"
               >
-                {foto.url ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={foto.url}
-                      alt={foto.caption ?? "Foto clínica"}
-                      loading="lazy"
-                      className="h-full w-full object-cover transition group-hover:scale-[1.02]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setActivePhoto(foto)}
-                      className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                      aria-label={`Visualizar ${foto.caption ?? "foto"}`}
-                    >
-                      <span className="inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[10px] font-medium text-ink shadow-md">
-                        <Eye className="h-3 w-3" />
-                        Visualizar
-                      </span>
-                    </button>
-                  </>
-                ) : (
-                  <div className="flex h-full items-center justify-center p-2 text-center text-xs text-ink-muted">
-                    Erro ao carregar imagem
-                  </div>
-                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={thumbUrl(foto.id)}
+                  alt={foto.caption ?? "Foto clínica"}
+                  loading="lazy"
+                  className="h-full w-full object-cover transition group-hover:scale-[1.02]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setActivePhoto(foto)}
+                  className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                  aria-label={`Visualizar ${foto.caption ?? "foto"}`}
+                >
+                  <span className="inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[10px] font-medium text-ink shadow-md">
+                    <Eye className="h-3 w-3" />
+                    Visualizar
+                  </span>
+                </button>
 
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-2 pt-6">
                   <p className="text-[10px] font-medium text-white">
@@ -164,16 +194,21 @@ export function PacienteFotosBiblioteca({ clientId, fotos }: Props) {
             </button>
 
             <div className="mt-6 flex aspect-[4/3] flex-1 items-center justify-center overflow-hidden rounded-xl bg-canvas">
-              {activePhoto.url ? (
+              {fullUrlLoading ? (
+                <div className="flex flex-col items-center gap-2 text-ink-muted">
+                  <Loader2 className="h-8 w-8 animate-spin" aria-hidden />
+                  <p className="text-sm">Carregando imagem original…</p>
+                </div>
+              ) : fullUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={activePhoto.url}
+                  src={fullUrl}
                   alt={activePhoto.caption ?? "Foto clínica ampliada"}
                   className="max-h-full max-w-full object-contain"
                 />
               ) : (
                 <p className="text-sm text-ink-muted">
-                  Não foi possível carregar a imagem.
+                  {fullUrlError ?? "Não foi possível carregar a imagem."}
                 </p>
               )}
             </div>

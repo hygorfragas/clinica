@@ -150,3 +150,40 @@ Memória de continuidade. Cada fase é marcada como concluída ao final.
 - Pinch-zoom (2 dedos, 0.5x–3x) e pan com 1 dedo quando zoom > 1 e dedo/mouse OFF.
 - Botão **Travar** na toolbar congela zoom/posição; desenho com Apple Pencil continua.
 - Hook `lib/anamnesis/use-pinch-pan.ts`; transform reset ao trocar de página.
+
+---
+
+# Release 1.0.6 — Biblioteca de fotos + PDF interativo (2026-06-27)
+
+## Biblioteca de fotos na ficha
+
+- Aba **Fotos** ao lado de **Anexos**; galeria unificada (`clinic.photos`).
+- Upload com data/hora (`captured_at`), validação de assinatura binária, `ClinicDateTimePicker`.
+- Imagem Docker: `hygorfragas/clinica:1.0.6` (`linux/amd64`).
+
+## Débito / melhoria registrada
+
+- **Performance da biblioteca:** grid carrega URL signed do original → aba do browser ~2 GB RAM com muitas fotos. Resolvido na **1.0.7** — ver release abaixo.
+
+---
+
+# Release 1.0.7 — Otimização da biblioteca de fotos (2026-06-29)
+
+## Upload
+
+- Toggle pill para envio (data/hora → seleção → enviar).
+- Lote até **400 MB** total (sem teto por arquivo na biblioteca).
+- Envio **1 a 1** com card de progresso animado (`motion`).
+- Miniatura WebP gerada no upload (`sharp`).
+
+## Galeria
+
+- SSR só com metadados (sem N signed URLs do original).
+- Grid via `GET /api/clinical/photos/[id]/thumb`.
+- Lightbox carrega original sob demanda (`getClinicalPhotoFullUrl`).
+- Fotos legadas sem thumb: proxy on-the-fly com cache HTTP.
+
+## Infra
+
+- Imagem Docker: `hygorfragas/clinica:1.0.7` (`linux/amd64`).
+- Dockerfile: `vips` para `sharp` no runner.

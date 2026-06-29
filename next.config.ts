@@ -8,9 +8,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   experimental: {
     serverActions: {
-      // Lotes de fotos clínicas: até MAX_PHOTOS_PER_BATCH × MAX_PHOTO_BYTES (15 × 12 MB).
+      // Biblioteca: 1 foto por request, até MAX_PHOTO_BATCH_BYTES (400 MB).
       // PDFs de template e branding continuam validados por tipo/tamanho no servidor.
-      bodySizeLimit: "200mb",
+      bodySizeLimit: "400mb",
     },
   },
 };

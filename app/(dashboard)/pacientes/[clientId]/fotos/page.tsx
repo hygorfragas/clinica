@@ -4,7 +4,6 @@ import {
   type FotoBibliotecaItem,
 } from "@/components/clients/paciente-fotos-biblioteca";
 import { getPhotoDisplayAt } from "@/lib/clinical/photo-display";
-import { CLINICAL_BUCKET } from "@/lib/clinical/storage";
 import { loadPacienteClinicContext } from "@/lib/clients/paciente-context";
 
 type PageProps = { params: Promise<{ clientId: string }> };
@@ -19,7 +18,7 @@ export default async function PacienteFotosPage({ params }: PageProps) {
   const photosRes = await ctx.supabase
     .schema("clinic")
     .from("photos")
-    .select("id, caption, captured_at, created_at, storage_key")
+    .select("id, caption, captured_at, created_at")
     .eq("client_id", clientId)
     .eq("tenant_id", ctx.tenantId);
 
@@ -35,20 +34,12 @@ export default async function PacienteFotosPage({ params }: PageProps) {
     return db.localeCompare(da);
   });
 
-  const fotos: FotoBibliotecaItem[] = await Promise.all(
-    list.map(async (p) => {
-      const { data } = await ctx.supabase.storage
-        .from(CLINICAL_BUCKET)
-        .createSignedUrl(p.storage_key, 3600);
-      return {
-        id: p.id,
-        caption: p.caption,
-        captured_at: p.captured_at,
-        created_at: p.created_at,
-        url: data?.signedUrl ?? null,
-      };
-    }),
-  );
+  const fotos: FotoBibliotecaItem[] = list.map((p) => ({
+    id: p.id,
+    caption: p.caption,
+    captured_at: p.captured_at,
+    created_at: p.created_at,
+  }));
 
   return (
     <div className="space-y-4">
