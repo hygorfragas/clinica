@@ -222,7 +222,7 @@ Quick wins de feature — Dashboard e Sistema (SaaS)
 
 ---
 
-## ~~Otimizações pendentes~~ — Biblioteca de fotos (`/pacientes/[id]/fotos`) — **Entregue em 1.0.7**
+## ~~Otimizações pendentes~~ — Biblioteca de fotos (`/pacientes/[id]/fotos`) — **Entregue em 1.0.8**
 
 **Problema observado (release 1.0.6):** aba do navegador com ~2 GB de RAM ao abrir a biblioteca com muitas fotos em alta resolução.
 

@@ -163,11 +163,13 @@ Memória de continuidade. Cada fase é marcada como concluída ao final.
 
 ## Débito / melhoria registrada
 
-- **Performance da biblioteca:** grid carrega URL signed do original → aba do browser ~2 GB RAM com muitas fotos. Resolvido na **1.0.7** — ver release abaixo.
+- **Performance da biblioteca:** grid carrega URL signed do original → aba do browser ~2 GB RAM com muitas fotos. Resolvido na **1.0.8** — ver release abaixo.
 
 ---
 
-# Release 1.0.7 — Otimização da biblioteca de fotos (2026-06-29)
+# Release 1.0.8 — Otimização da biblioteca de fotos (2026-06-29)
+
+> **Nota:** a tag `1.0.7` foi publicada por engano e **não deve ser usada** (conflito com release existente). Use `1.0.8`.
 
 ## Upload
 
@@ -185,5 +187,5 @@ Memória de continuidade. Cada fase é marcada como concluída ao final.
 
 ## Infra
 
-- Imagem Docker: `hygorfragas/clinica:1.0.7` (`linux/amd64`).
+- Imagem Docker: `hygorfragas/clinica:1.0.8` (`linux/amd64`).
 - Dockerfile: `vips` para `sharp` no runner.

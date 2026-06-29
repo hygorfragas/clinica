@@ -18,6 +18,10 @@ Se a tarefa tiver **task ClickUp** associada, seguir também **ClickUp e roadmap
 
 Ao preparar **nova versão** para build/push de container, seguir **`.cursor/rules/10-docker-image-versioning.mdc`**: tag semver (`hygorfragas/clinica:X.Y.Z`) **antes** de publicar ou depender de `latest`.
 
+## Criar PR (pipeline completa)
+
+Ao **criar PR** ou fechar entrega para produção, seguir **`.cursor/rules/11-release-pr-pipeline.mdc`**: typecheck → bump semver → commit → push → `npm run docker:push -- X.Y.Z` (linux/amd64) → `gh pr create`.
+
 ## Em mudanças estruturais
 Sempre considerar:
 - banco

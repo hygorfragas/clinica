@@ -15,6 +15,7 @@ Entregar um produto web seguro, simples e operacional para uso diário de uma pr
 6. Rodar typecheck sempre que alterar um arquivo
 7. Sempre fazer um commit quando necessario e criar versionamento.
 8. **Docker Hub:** imagem `hygorfragas/clinica`; release com **`npm run docker:push -- X.Y.Z`** (buildx `linux/amd64` no Mac ARM) — ver `.cursor/rules/10-docker-image-versioning.mdc` e `documentacao/docker-build-mac-arm.md`.
+9. **Criar PR:** pipeline completa em `.cursor/rules/11-release-pr-pipeline.mdc` (versionamento + git push + Docker + `gh pr create`).
 
 ## Stack base
 - Frontend: Next.js + React + TypeScript
