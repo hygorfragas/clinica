@@ -189,3 +189,15 @@ Memória de continuidade. Cada fase é marcada como concluída ao final.
 
 - Imagem Docker: `hygorfragas/clinica:1.0.8` (`linux/amd64`).
 - Dockerfile: `vips` para `sharp` no runner.
+
+---
+
+# Release 1.0.9 — Fix upload de fotos > 10 MB (2026-06-29)
+
+## Correção
+
+- `middlewareClientMaxBodySize: 400mb` em `next.config.ts` — o middleware truncava o body em 10 MB antes da Server Action, causando `Unexpected end of form` em fotos de iPhone.
+
+## Infra
+
+- Imagem Docker: `hygorfragas/clinica:1.0.9` (`linux/amd64`).
