@@ -215,3 +215,24 @@ Memória de continuidade. Cada fase é marcada como concluída ao final.
 ## Infra
 
 - Imagem Docker: `hygorfragas/clinica:1.1.0` (`linux/amd64`).
+
+---
+
+# Release 1.1.1 — Fix PDF interativo + upload de fotos (2026-07-04)
+
+## PDF interativo
+
+- Miniaturas: cancelamento de render, fila com máx. 2 concorrentes, raster só nas páginas ativas ±2.
+- Memória: cache principal reduzido; sem `ImageBitmap` durante gestos.
+- Gestos: `stopPropagation` no pinch/pan; desenho bloqueado com zoom ≠ 1.
+- `error.tsx` nas rotas interativas (anamnese, evolução, contratos).
+
+## Upload de fotos
+
+- Novo `POST /api/clinical/photos/upload` (evita crash da rota com Server Action).
+- Lógica extraída para `lib/clinical/library-photo-upload.ts`.
+- Datas inválidas na galeria não derrubam o grid.
+
+## Infra
+
+- Imagem Docker: `hygorfragas/clinica:1.1.1` (`linux/amd64`).

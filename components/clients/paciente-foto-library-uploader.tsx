@@ -11,7 +11,6 @@ import {
   PHOTO_ACCEPT,
 } from "@/lib/clinical/photo-file-validation";
 import { MAX_PHOTO_BATCH_BYTES } from "@/lib/clinical/storage";
-import { uploadPatientLibraryPhoto } from "@/lib/clients/record-actions";
 import {
   clinicDateTimeLocalToUtcIso,
   clinicNowDateTimeLocalValue,
@@ -33,6 +32,49 @@ function formatMegabytes(bytes: number): string {
 
 function totalBytes(files: File[]): number {
   return files.reduce((sum, f) => sum + f.size, 0);
+}
+
+type LibraryPhotoUploadResponse =
+  | { ok: true; photoId: string }
+  | { ok: false; error: string };
+
+async function uploadLibraryPhotoViaApi(
+  clientId: string,
+  capturedIso: string,
+  file: File,
+  skipRevalidate: boolean,
+): Promise<LibraryPhotoUploadResponse> {
+  const fd = new FormData();
+  fd.set("client_id", clientId);
+  fd.set("captured_at", capturedIso);
+  fd.set("file", file);
+  if (skipRevalidate) {
+    fd.set("skip_revalidate", "1");
+  }
+
+  let res: Response;
+  try {
+    res = await fetch("/api/clinical/photos/upload", {
+      method: "POST",
+      body: fd,
+      credentials: "same-origin",
+    });
+  } catch {
+    return {
+      ok: false,
+      error: "Falha no envio (arquivo grande demais ou conexão interrompida).",
+    };
+  }
+
+  const body = (await res.json().catch(() => null)) as
+    | LibraryPhotoUploadResponse
+    | null;
+
+  if (!body || typeof body.ok !== "boolean") {
+    return { ok: false, error: "Resposta inválida do servidor." };
+  }
+
+  return body;
 }
 
 export function PacienteFotoLibraryUploader({ clientId }: Props) {
@@ -135,16 +177,14 @@ export function PacienteFotoLibraryUploader({ clientId }: Props) {
         fileName: files[i].name,
       });
 
-      const fd = new FormData();
-      fd.set("captured_at", capturedIso);
-      fd.set("file", files[i]);
-      if (i < files.length - 1) {
-        fd.set("skip_revalidate", "1");
-      }
-
-      let result: Awaited<ReturnType<typeof uploadPatientLibraryPhoto>>;
+      let result: LibraryPhotoUploadResponse;
       try {
-        result = await uploadPatientLibraryPhoto(clientId, fd);
+        result = await uploadLibraryPhotoViaApi(
+          clientId,
+          capturedIso,
+          files[i],
+          i < files.length - 1,
+        );
       } catch {
         lastError =
           "Falha no envio (arquivo grande demais ou conexão interrompida).";

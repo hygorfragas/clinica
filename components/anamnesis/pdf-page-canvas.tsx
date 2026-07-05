@@ -19,6 +19,8 @@ type Props = {
    * desktop/designer mantêm o caminho original (sem cache) intacto.
    */
   enableCache?: boolean;
+  /** Evita alocar ImageBitmap durante gestos (pinch/pan) para poupar memória. */
+  deferBitmapCache?: boolean;
   onPageLoaded?: (info: {
     pageNumber: number;
     width: number;
@@ -43,6 +45,7 @@ export function PdfPageCanvas({
   pageNumber,
   targetWidth,
   enableCache,
+  deferBitmapCache,
   onPageLoaded,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -128,7 +131,11 @@ export function PdfPageCanvas({
           height: viewport.height,
         });
         // Guarda no cache APÓS exibir (não atrasa a pintura nem o InkLayer).
-        if (cacheKey && typeof createImageBitmap === "function") {
+        if (
+          cacheKey &&
+          !deferBitmapCache &&
+          typeof createImageBitmap === "function"
+        ) {
           try {
             const bitmap = await createImageBitmap(canvas);
             if (cancelled) {
@@ -158,7 +165,7 @@ export function PdfPageCanvas({
       cancelled = true;
       currentTask?.cancel();
     };
-  }, [pdf, pageNumber, targetWidth, enableCache, onPageLoaded]);
+  }, [pdf, pageNumber, targetWidth, enableCache, deferBitmapCache, onPageLoaded]);
 
   return (
     <div

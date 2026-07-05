@@ -145,6 +145,7 @@ export function usePinchPan(options: Options) {
 
       if (points.length === 2 && content) {
         e.preventDefault();
+        e.stopPropagation();
         setIsGesturing(true);
         const [a, b] = points;
         const mid = midpoint(a, b);
@@ -165,6 +166,7 @@ export function usePinchPan(options: Options) {
           originY: local.y,
         }));
       } else if (points.length === 1 && canPanWithFinger(e.pointerType)) {
+        e.stopPropagation();
         setIsGesturing(true);
         panRef.current = {
           startX: e.clientX,
@@ -189,6 +191,7 @@ export function usePinchPan(options: Options) {
           startScrollLeft: e.currentTarget.scrollLeft,
           startScrollTop: e.currentTarget.scrollTop,
         };
+        e.stopPropagation();
         pinchRef.current = null;
         panRef.current = null;
       }
@@ -213,6 +216,7 @@ export function usePinchPan(options: Options) {
 
       if (points.length === 1 && scrollRef.current) {
         e.preventDefault();
+        e.stopPropagation();
         const dx = e.clientX - scrollRef.current.startX;
         const dy = e.clientY - scrollRef.current.startY;
         e.currentTarget.scrollLeft = scrollRef.current.startScrollLeft - dx;
@@ -222,6 +226,7 @@ export function usePinchPan(options: Options) {
 
       if (points.length === 2 && pinchRef.current && content) {
         e.preventDefault();
+        e.stopPropagation();
         const [a, b] = points;
         const dist = distance(a, b);
         if (pinchRef.current.startDistance < 1) return;
@@ -242,6 +247,7 @@ export function usePinchPan(options: Options) {
 
       if (points.length === 1 && panRef.current && transformRef.current.scale > 1) {
         e.preventDefault();
+        e.stopPropagation();
         const dx = e.clientX - panRef.current.startX;
         const dy = e.clientY - panRef.current.startY;
         setTransform((prev) => ({

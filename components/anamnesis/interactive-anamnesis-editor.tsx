@@ -484,6 +484,8 @@ export function InteractiveAnamnesisEditor({
 
   const pageCount = pdf?.numPages ?? 1;
   const currentSize = tool === "highlighter" ? highlighterSize : penSize;
+  const isZoomed = transform.scale !== 1;
+  const inkDisabled = !canInteract || isGesturing || isZoomed;
   const strokeCountByPage = useMemo(() => {
     const map: Record<number, number> = {};
     for (const s of strokes) {
@@ -607,6 +609,11 @@ export function InteractiveAnamnesisEditor({
               {info}
             </p>
           ) : null}
+          {isZoomed && canInteract ? (
+            <p className="px-4 pt-2 text-xs text-ink-muted">
+              Redefina o zoom (botão Travar ou troque de página) para desenhar.
+            </p>
+          ) : null}
 
           <div
             ref={viewerRef}
@@ -654,6 +661,7 @@ export function InteractiveAnamnesisEditor({
                     pageNumber={activePage}
                     targetWidth={renderWidth}
                     enableCache
+                    deferBitmapCache={isGesturing}
                     onPageLoaded={handlePageLoaded}
                   />
                   {activeSize &&
@@ -667,7 +675,7 @@ export function InteractiveAnamnesisEditor({
                         color={color}
                         size={currentSize}
                         tool={tool}
-                        disabled={!canInteract || isGesturing}
+                        disabled={inkDisabled}
                         allowNonPen={allowNonPen}
                         strokes={strokes}
                         onStrokeCommit={handleStrokeCommit}

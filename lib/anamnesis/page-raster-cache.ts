@@ -31,7 +31,7 @@ export type RasterEntry = {
 export const THUMB_BUCKET = -1;
 
 // Páginas grandes: poucas entradas (memória). Miniaturas: muitas e leves.
-const MAX_MAIN_ENTRIES = 5;
+const MAX_MAIN_ENTRIES = 3;
 const MAX_THUMB_ENTRIES = 48;
 
 // Map preserva ordem de inserção → usamos como LRU: no hit, delete+set move a
