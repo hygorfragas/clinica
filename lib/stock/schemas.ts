@@ -13,8 +13,33 @@ export const productSchema = z.object({
 });
 export type ProductInput = z.infer<typeof productSchema>;
 
-export const productUpdateSchema = productSchema.partial();
+/** Edição de cadastro — estoque só via ajuste/baixa (auditoria). */
+export const productUpdateSchema = productSchema
+  .omit({ stock_quantity: true })
+  .partial();
 export type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
+
+/** Item do BOM (insumo padrão de um procedimento). */
+export const procedureBomItemSchema = z.object({
+  productId: z.string().uuid(),
+  quantity: z.number().finite().gt(0, "Quantidade deve ser maior que zero"),
+});
+export type ProcedureBomItemInput = z.infer<typeof procedureBomItemSchema>;
+
+export const consumeAppointmentStockSchema = z.object({
+  appointmentId: z.string().uuid(),
+  items: z
+    .array(
+      z.object({
+        productId: z.string().uuid(),
+        quantity: z.number().finite().gt(0),
+      }),
+    )
+    .min(1, "Informe ao menos um produto."),
+});
+export type ConsumeAppointmentStockInput = z.infer<
+  typeof consumeAppointmentStockSchema
+>;
 
 /** Procedimento (precificação + contrato). */
 export const procedureSchema = z.object({

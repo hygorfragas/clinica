@@ -10,7 +10,7 @@ import {
 } from "@/lib/auth/clinic-profile";
 import { pickPhraseForMoment } from "@/lib/dashboard/phrases";
 import { firstNameFromFullName, greetingForHour } from "@/lib/greeting";
-import { getDayBoundsUtcIso } from "@/lib/dates";
+import { getClinicLocalParts, getDayBoundsUtcIso } from "@/lib/dates";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -38,7 +38,8 @@ export default async function InicioPage() {
 
   const now = new Date();
   const { startIso, endIso } = getDayBoundsUtcIso(now);
-  const greet = greetingForHour(now.getHours());
+  const { hour: clinicHour } = getClinicLocalParts(now);
+  const greet = greetingForHour(clinicHour);
   const first = firstNameFromFullName(profile?.full_name ?? user.email);
 
   const [apptRes, clientsRes, draftBudgetsRes, sentBudgetsRes, phrase] =

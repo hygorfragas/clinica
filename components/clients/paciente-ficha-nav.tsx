@@ -43,6 +43,11 @@ export function PacienteFichaNav({ clientId }: { clientId: string }) {
         match: (p) => p.startsWith(`${base}/anexos`),
       },
       {
+        href: `${base}/fotos`,
+        label: "Fotos",
+        match: (p) => p.startsWith(`${base}/fotos`),
+      },
+      {
         href: `${base}/historico`,
         label: "Histórico",
         match: (p) => p.startsWith(`${base}/historico`),

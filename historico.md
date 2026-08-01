@@ -150,3 +150,110 @@ Memória de continuidade. Cada fase é marcada como concluída ao final.
 - Pinch-zoom (2 dedos, 0.5x–3x) e pan com 1 dedo quando zoom > 1 e dedo/mouse OFF.
 - Botão **Travar** na toolbar congela zoom/posição; desenho com Apple Pencil continua.
 - Hook `lib/anamnesis/use-pinch-pan.ts`; transform reset ao trocar de página.
+
+---
+
+# Release 1.0.6 — Biblioteca de fotos + PDF interativo (2026-06-27)
+
+## Biblioteca de fotos na ficha
+
+- Aba **Fotos** ao lado de **Anexos**; galeria unificada (`clinic.photos`).
+- Upload com data/hora (`captured_at`), validação de assinatura binária, `ClinicDateTimePicker`.
+- Imagem Docker: `hygorfragas/clinica:1.0.6` (`linux/amd64`).
+
+## Débito / melhoria registrada
+
+- **Performance da biblioteca:** grid carrega URL signed do original → aba do browser ~2 GB RAM com muitas fotos. Resolvido na **1.0.8** — ver release abaixo.
+
+---
+
+# Release 1.0.8 — Otimização da biblioteca de fotos (2026-06-29)
+
+> **Nota:** a tag `1.0.7` foi publicada por engano e **não deve ser usada** (conflito com release existente). Use `1.0.8`.
+
+## Upload
+
+- Toggle pill para envio (data/hora → seleção → enviar).
+- Lote até **400 MB** total (sem teto por arquivo na biblioteca).
+- Envio **1 a 1** com card de progresso animado (`motion`).
+- Miniatura WebP gerada no upload (`sharp`).
+
+## Galeria
+
+- SSR só com metadados (sem N signed URLs do original).
+- Grid via `GET /api/clinical/photos/[id]/thumb`.
+- Lightbox carrega original sob demanda (`getClinicalPhotoFullUrl`).
+- Fotos legadas sem thumb: proxy on-the-fly com cache HTTP.
+
+## Infra
+
+- Imagem Docker: `hygorfragas/clinica:1.0.8` (`linux/amd64`).
+- Dockerfile: `vips` para `sharp` no runner.
+
+---
+
+# Release 1.0.9 — Fix upload de fotos > 10 MB (2026-06-29)
+
+## Correção
+
+- `middlewareClientMaxBodySize: 400mb` em `next.config.ts` — o middleware truncava o body em 10 MB antes da Server Action, causando `Unexpected end of form` em fotos de iPhone.
+
+## Infra
+
+- Imagem Docker: `hygorfragas/clinica:1.0.9` (`linux/amd64`).
+
+---
+
+# Release 1.1.0 — Biblioteca de fotos: paginação, filtro e lightbox (2026-06-29)
+
+## Biblioteca de fotos
+
+- **Paginação:** 24 fotos por página com navegação Anterior/Próxima.
+- **Filtro por data** (de/até) pela data de captura ou envio.
+- **Lightbox:** original via `GET /api/clinical/photos/[id]/full` (corrige 404 da Server Action em produção).
+
+## Infra
+
+- Imagem Docker: `hygorfragas/clinica:1.1.0` (`linux/amd64`).
+
+---
+
+# Release 1.1.1 — Fix PDF interativo + upload de fotos (2026-07-04)
+
+## PDF interativo
+
+- Miniaturas: cancelamento de render, fila com máx. 2 concorrentes, raster só nas páginas ativas ±2.
+- Memória: cache principal reduzido; sem `ImageBitmap` durante gestos.
+- Gestos: `stopPropagation` no pinch/pan; desenho bloqueado com zoom ≠ 1.
+- `error.tsx` nas rotas interativas (anamnese, evolução, contratos).
+
+## Upload de fotos
+
+- Novo `POST /api/clinical/photos/upload` (evita crash da rota com Server Action).
+- Lógica extraída para `lib/clinical/library-photo-upload.ts`.
+- Datas inválidas na galeria não derrubam o grid.
+
+## Infra
+
+- Imagem Docker: `hygorfragas/clinica:1.1.1` (`linux/amd64`).
+
+---
+
+# Release 1.1.2 — CRUD de produtos, BOM e baixa de estoque (2026-08-01)
+
+## Estoque / Produtos
+
+- CRUD completo de produtos: criar, editar, ajustar estoque e excluir/restaurar (soft-delete via `is_archived`, UI como Excluir).
+- BOM de insumos por procedimento (`clinic.procedure_bom_items`) com override pontual na baixa.
+- Botão **Baixar estoque** no dialog do agendamento; RPC atômica `consume_appointment_stock` (sem parcial e sem race de consumo duplicado).
+
+## Correções relacionadas
+
+- `taken_at` da biblioteca de fotos usa data civil no fuso da clínica.
+- `ClinicDateTimePicker` trata o valor como horário civil da clínica.
+- Miniaturas clínicas com `Cache-Control: private`.
+
+## Infra
+
+- Imagem Docker: `hygorfragas/clinica:1.1.2` (`linux/amd64`).
+- Migrações: `20260801120000_procedure_bom_items.sql`, `20260801123000_consume_appointment_stock_atomic.sql`.

@@ -67,6 +67,9 @@ export function InkLayer({
   const drawingRef = useRef(false);
   const drawingPointerIdRef = useRef<number | null>(null);
 
+  const activeRef = useRef<AnamnesisStrokePoint[] | null>(null);
+  activeRef.current = active;
+
   const pageStrokes = useMemo(() => {
     const list: Array<{ index: number; stroke: AnamnesisStroke }> = [];
     strokes.forEach((s, index) => {
@@ -180,14 +183,15 @@ export function InkLayer({
     }
     drawingPointerIdRef.current = null;
     drawingRef.current = false;
-    if (active && active.length >= 2 && tool !== "eraser") {
+    const currentActive = activeRef.current;
+    if (currentActive && currentActive.length >= 2 && tool !== "eraser") {
       const finalized: AnamnesisStroke = {
         page,
         color,
         width: size,
         tool: tool === "highlighter" ? "highlighter" : "pen",
         opacity: tool === "highlighter" ? 0.32 : 1,
-        points: active,
+        points: currentActive,
       };
       onStrokeCommit(finalized);
     }

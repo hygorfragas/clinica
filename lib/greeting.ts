@@ -1,4 +1,4 @@
-/** Saudação em pt-BR conforme horário local (para uso em Server Components). */
+/** Saudação em pt-BR conforme hora civil (0–23) no fuso da clínica. */
 export function greetingForHour(hour: number): string {
   if (hour < 12) return "Bom dia";
   if (hour < 18) return "Boa tarde";

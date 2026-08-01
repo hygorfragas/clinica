@@ -218,5 +218,40 @@ Quick wins de feature — Dashboard e Sistema (SaaS)
  4. Performance: a página /inicio deve carregar em ≤ 1s mesmo com 500 agendamentos no dia. Todas as
  queries da dashboard ficam dentro de um único Promise.all no server component.
  5. Build & types: npx tsc --noEmit limpo + npm run build sem warnings.
- 6. Docker: subir versão 1.0.4 (ou próxima) seguindo o fluxo docker build → docker push → atualizar image:
-  no compose → re-pull no Portainer.
+ 6. Docker (Mac ARM): `npm run docker:push -- X.Y.Z` → atualizar `image:` no compose / Portainer.
+
+---
+
+## ~~Otimizações pendentes~~ — Biblioteca de fotos (`/pacientes/[id]/fotos`) — **Entregue em 1.0.8**
+
+**Problema observado (release 1.0.6):** aba do navegador com ~2 GB de RAM ao abrir a biblioteca com muitas fotos em alta resolução.
+
+**Causa atual:**
+- [`fotos/page.tsx`](app/(dashboard)/pacientes/[clientId]/fotos/page.tsx) gera `createSignedUrl` do **original** para cada foto no servidor.
+- [`paciente-fotos-biblioteca.tsx`](components/clients/paciente-fotos-biblioteca.tsx) usa a mesma URL no grid e no lightbox — o browser decodifica todas as imagens full size (mesmo com `loading="lazy"`, a memória acumula ao rolar).
+
+**Comportamento desejado:**
+1. **Grid / miniatura:** carregar apenas um **proxy** em resolução baixa (ex.: largura máx. 320–480 px, WebP ou JPEG q~75).
+2. **Lightbox (visualizar):** buscar **só aquela foto** em qualidade original, sob demanda, ao clicar.
+
+**Abordagens (escolher uma na implementação):**
+
+| Opção | Prós | Contras |
+|-------|------|---------|
+| **A) Thumb no upload** — ao salvar, gerar `{storage_key}-thumb.webp` no bucket `clinical` | Rápido na leitura; sem CPU no request | Migração/backfill para fotos antigas; mais storage |
+| **B) API proxy** — `GET /api/clinical/photos/[id]/thumb?w=400` com `sharp` redimensiona do Storage | Sem duplicar arquivo até ter thumb; funciona para legado | Dep `sharp`; CPU por request; cache HTTP |
+| **C) Paginação + lazy** — carregar 24 fotos por página, signed URL só do lote | Mudança menor | Ainda pesado se usuário abrir muitas páginas; não resolve lightbox |
+
+**Recomendação:** **A + B** — thumb no upload para novas fotos; API proxy com cache para fotos antigas sem thumb.
+
+**Arquivos a tocar:**
+- `app/(dashboard)/pacientes/[clientId]/fotos/page.tsx` — expor `thumbUrl` + `fullUrl` (ou só `id` e buscar URLs no client).
+- `components/clients/paciente-fotos-biblioteca.tsx` — grid usa `thumbUrl`; lightbox chama `getClinicalSignedUrl` / action só ao abrir.
+- `lib/clients/record-actions.ts` — gerar thumb no `uploadPatientLibraryPhotos` (e demais uploads de foto).
+- Opcional: `app/api/clinical/photos/[photoId]/thumb/route.ts`.
+
+**Critérios de pronto:**
+- Abrir biblioteca com 50+ fotos: uso de memória da aba estável (ordem de dezenas de MB, não GB).
+- Lightbox abre original nítido em ≤ 2 s.
+- Tenant/RLS inalterados; thumb nunca expõe paciente de outro tenant.
+- `npm run typecheck` limpo.

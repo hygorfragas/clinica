@@ -1,0 +1,78 @@
+---
+description: Pipeline completo ao criar PR — versionamento, git push e Docker linux/amd64
+alwaysApply: true
+---
+
+# Pipeline de release ao criar PR
+
+Quando o usuário pedir **criar PR**, **abrir PR**, **create PR** ou encerrar uma feature pronta para revisão com entrega em produção, executar **toda** a pipeline abaixo **antes** de `gh pr create` (salvo pedido explícito em contrário).
+
+## Pré-requisitos
+
+- `npm run typecheck` limpo.
+- Código da feature já implementado e testado localmente.
+
+## 1. Versionamento semver
+
+1. Ler versão atual em `package.json`.
+2. Incrementar **patch** (`X.Y.Z` → `X.Y.(Z+1)`), salvo o usuário indicar minor/major.
+3. Alinhar em:
+   - `package.json` e `package-lock.json` (raiz do projeto)
+   - `docker-compose.yml` → `image: hygorfragas/clinica:X.Y.Z`
+   - `historico.md` — entrada de release com data e resumo
+   - `Features-A-Fazer.md` ou roadmap, se a entrega fechar item documentado
+
+**Não** publicar tag que o usuário disser estar inválida ou em conflito; pular para a próxima patch disponível.
+
+## 2. Git
+
+1. `git status` + `git diff` — não commitar segredos (`.env`, credenciais).
+2. Commit com mensagem focada no **porquê** (feat/fix/chore + versão quando for release).
+3. `git push -u origin HEAD` na branch da feature.
+
+## 3. Docker (Mac ARM → produção linux/amd64)
+
+**Obrigatório** para releases com deploy em VPS/Portainer:
+
+```bash
+npm run docker:push -- X.Y.Z
+```
+
+Equivalente: `./scripts/docker-release.sh X.Y.Z` com buildx `--platform linux/amd64`.
+
+**Nunca** usar só `docker build` + `docker push` no Mac sem `--platform linux/amd64`.
+
+Validar:
+
+```bash
+docker buildx imagetools inspect hygorfragas/clinica:X.Y.Z
+```
+
+Deve listar `linux/amd64`.
+
+Se o Docker não estiver rodando: iniciar Docker Desktop, executar o push e **não** deixar o daemon aberto se o usuário pediu para fechar após a operação.
+
+## 4. Pull Request
+
+Usar `gh pr create` com:
+
+- **Summary:** o que mudou e versão `X.Y.Z`
+- **Test plan:** checklist objetivo
+- Mencionar imagem `hygorfragas/clinica:X.Y.Z` para Portainer
+
+Base branch: `main` (ou a default do repositório).
+
+## 5. Pós-PR
+
+Informar ao usuário:
+
+- URL do PR
+- Tag Git / versão `package.json`
+- Imagem Docker publicada
+- Lembrete: atualizar stack no Portainer com `image: hygorfragas/clinica:X.Y.Z`
+
+## Referências
+
+- `.cursor/rules/10-docker-image-versioning.mdc`
+- `documentacao/docker-build-mac-arm.md`
+- `scripts/docker-release.sh`

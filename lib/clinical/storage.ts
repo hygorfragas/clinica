@@ -24,6 +24,8 @@ const DOC_MIME = new Set([
 const SIGNATURE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export const MAX_PHOTO_BYTES = 12 * 1024 * 1024;
+/** Limite total por lote na biblioteca de fotos (sem teto por arquivo). */
+export const MAX_PHOTO_BATCH_BYTES = 400 * 1024 * 1024;
 export const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
 export const MAX_SIGNATURE_BYTES = 5 * 1024 * 1024;
 

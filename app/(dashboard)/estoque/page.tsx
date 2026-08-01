@@ -19,7 +19,7 @@ export default async function EstoquePage() {
       .schema("clinic")
       .from("products")
       .select(
-        "id, name, sku, unit, stock_quantity, low_stock_threshold, cost_cents, price_cents, is_archived",
+        "id, name, sku, description, unit, stock_quantity, low_stock_threshold, cost_cents, price_cents, is_archived",
       )
       .eq("tenant_id", tenantId)
       .order("is_archived", { ascending: true })

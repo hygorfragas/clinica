@@ -4,10 +4,9 @@
 # injection para NEXT_PUBLIC_*. Build "uma vez", configura no Portainer,
 # reinicia. Sem `--build-arg`.
 #
-# Build (sempre com versão primeiro — ver .cursor/rules/10-docker-image-versioning.mdc):
-#   docker build -t hygorfragas/clinica:1.0.4 .
-#   docker push hygorfragas/clinica:1.0.4
-# Opcional depois: docker tag hygorfragas/clinica:1.0.4 hygorfragas/clinica:latest && docker push hygorfragas/clinica:latest
+# Build (Mac ARM → produção linux/amd64 — ver documentacao/docker-build-mac-arm.md):
+#   npm run docker:push -- 1.0.5
+# Ou: ./scripts/docker-release.sh 1.0.5
 #
 # A substituição dos NEXT_PUBLIC_* acontece no entrypoint do container
 # (docker/entrypoint.sh) na primeira start, lendo do `environment:` da stack.
@@ -16,7 +15,7 @@
 # 1) deps
 # =============================================================================
 FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat vips-dev
 
 WORKDIR /app
 
@@ -31,7 +30,7 @@ RUN npm ci --no-audit --no-fund --ignore-scripts
 # 2) builder
 # =============================================================================
 FROM node:20-alpine AS builder
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat vips-dev
 
 WORKDIR /app
 
@@ -55,6 +54,8 @@ RUN npm run build
 # 3) runner
 # =============================================================================
 FROM node:20-alpine AS runner
+
+RUN apk add --no-cache vips-cpp
 
 WORKDIR /app
 

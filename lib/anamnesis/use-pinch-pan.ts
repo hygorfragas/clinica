@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type RefObject } from "react";
 
 export type ViewportTransform = {
   scale: number;
   offsetX: number;
   offsetY: number;
+  originX: number;
+  originY: number;
 };
 
 const MIN_SCALE = 0.5;
@@ -16,8 +18,8 @@ type PinchState = {
   startScale: number;
   startOffsetX: number;
   startOffsetY: number;
-  centerX: number;
-  centerY: number;
+  startOriginX: number;
+  startOriginY: number;
 };
 
 type PanState = {
@@ -25,6 +27,13 @@ type PanState = {
   startY: number;
   startOffsetX: number;
   startOffsetY: number;
+};
+
+type ScrollState = {
+  startX: number;
+  startY: number;
+  startScrollLeft: number;
+  startScrollTop: number;
 };
 
 function distance(
@@ -44,17 +53,46 @@ function clampScale(scale: number) {
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
 }
 
+/** Converte coordenada de tela para o espaço local do elemento (antes do transform). */
+function clientToLocal(
+  el: HTMLElement,
+  clientX: number,
+  clientY: number,
+): { x: number; y: number } {
+  const rect = el.getBoundingClientRect();
+  if (rect.width < 1 || rect.height < 1) {
+    return { x: 0, y: 0 };
+  }
+  const scaleX = el.offsetWidth / rect.width;
+  const scaleY = el.offsetHeight / rect.height;
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY,
+  };
+}
+
 type Options = {
   /** Quando true, dedo único desenha — pan com 1 dedo fica desabilitado. */
   allowFingerDraw?: boolean;
+  /** Elemento que recebe scale/translate — dimensões = página PDF. */
+  contentRef: RefObject<HTMLElement | null>;
+  /** Largura/altura da página para reset do transform-origin. */
+  pageWidth: number;
+  pageHeight: number;
 };
 
-export function usePinchPan(options: Options = {}) {
-  const { allowFingerDraw = false } = options;
+export function usePinchPan(options: Options) {
+  const { allowFingerDraw = false, contentRef, pageWidth, pageHeight } = options;
+
+  const defaultOriginX = Math.max(0, pageWidth / 2);
+  const defaultOriginY = Math.max(0, pageHeight / 2);
+
   const [transform, setTransform] = useState<ViewportTransform>({
     scale: 1,
     offsetX: 0,
     offsetY: 0,
+    originX: defaultOriginX,
+    originY: defaultOriginY,
   });
   const [locked, setLocked] = useState(false);
   const [isGesturing, setIsGesturing] = useState(false);
@@ -62,10 +100,21 @@ export function usePinchPan(options: Options = {}) {
   const activePointers = useRef(new Map<number, { x: number; y: number; type: string }>());
   const pinchRef = useRef<PinchState | null>(null);
   const panRef = useRef<PanState | null>(null);
+  const scrollRef = useRef<ScrollState | null>(null);
+  const transformRef = useRef(transform);
+  transformRef.current = transform;
 
   const resetTransform = useCallback(() => {
-    setTransform({ scale: 1, offsetX: 0, offsetY: 0 });
-  }, []);
+    const ox = Math.max(0, pageWidth / 2);
+    const oy = Math.max(0, pageHeight / 2);
+    setTransform({
+      scale: 1,
+      offsetX: 0,
+      offsetY: 0,
+      originX: ox,
+      originY: oy,
+    });
+  }, [pageWidth, pageHeight]);
 
   const toggleLock = useCallback(() => {
     setLocked((v) => !v);
@@ -73,15 +122,17 @@ export function usePinchPan(options: Options = {}) {
 
   const canPanWithFinger = useCallback(
     (pointerType: string) =>
-      !allowFingerDraw && pointerType === "touch" && transform.scale > 1,
-    [allowFingerDraw, transform.scale],
+      !allowFingerDraw && pointerType === "touch" && transformRef.current.scale > 1,
+    [allowFingerDraw],
   );
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (locked) return;
-      const el = e.currentTarget;
-      el.setPointerCapture(e.pointerId);
+      if (e.pointerType === "touch" && e.isPrimary === false) {
+        e.preventDefault();
+      }
+
       activePointers.current.set(e.pointerId, {
         x: e.clientX,
         y: e.clientY,
@@ -89,38 +140,70 @@ export function usePinchPan(options: Options = {}) {
       });
 
       const points = [...activePointers.current.values()];
-      if (points.length === 2) {
+      const content = contentRef.current;
+      const current = transformRef.current;
+
+      if (points.length === 2 && content) {
+        e.preventDefault();
+        e.stopPropagation();
         setIsGesturing(true);
         const [a, b] = points;
-        const center = midpoint(a, b);
-        const rect = el.getBoundingClientRect();
+        const mid = midpoint(a, b);
+        const local = clientToLocal(content, mid.x, mid.y);
         pinchRef.current = {
           startDistance: distance(a, b),
-          startScale: transform.scale,
-          startOffsetX: transform.offsetX,
-          startOffsetY: transform.offsetY,
-          centerX: center.x - rect.left,
-          centerY: center.y - rect.top,
+          startScale: current.scale,
+          startOffsetX: current.offsetX,
+          startOffsetY: current.offsetY,
+          startOriginX: local.x,
+          startOriginY: local.y,
         };
         panRef.current = null;
+        scrollRef.current = null;
+        setTransform((prev) => ({
+          ...prev,
+          originX: local.x,
+          originY: local.y,
+        }));
       } else if (points.length === 1 && canPanWithFinger(e.pointerType)) {
+        e.stopPropagation();
         setIsGesturing(true);
         panRef.current = {
           startX: e.clientX,
           startY: e.clientY,
-          startOffsetX: transform.offsetX,
-          startOffsetY: transform.offsetY,
+          startOffsetX: current.offsetX,
+          startOffsetY: current.offsetY,
         };
         pinchRef.current = null;
+        scrollRef.current = null;
+      } else if (
+        points.length === 1 &&
+        e.pointerType === "touch" &&
+        !allowFingerDraw &&
+        current.scale <= 1
+      ) {
+        // Sem zoom e em modo "dedo navega": rola a página com 1 dedo.
+        // Mantemos touch-action:none no overlay (pra o Pencil nunca rolar),
+        // então a rolagem nativa não acontece — fazemos manualmente aqui.
+        scrollRef.current = {
+          startX: e.clientX,
+          startY: e.clientY,
+          startScrollLeft: e.currentTarget.scrollLeft,
+          startScrollTop: e.currentTarget.scrollTop,
+        };
+        e.stopPropagation();
+        pinchRef.current = null;
+        panRef.current = null;
       }
     },
-    [canPanWithFinger, locked, transform.offsetX, transform.offsetY, transform.scale],
+    [allowFingerDraw, canPanWithFinger, contentRef, locked],
   );
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (locked) return;
       if (!activePointers.current.has(e.pointerId)) return;
+
       const prev = activePointers.current.get(e.pointerId);
       activePointers.current.set(e.pointerId, {
         x: e.clientX,
@@ -129,9 +212,21 @@ export function usePinchPan(options: Options = {}) {
       });
 
       const points = [...activePointers.current.values()];
+      const content = contentRef.current;
 
-      if (points.length === 2 && pinchRef.current) {
+      if (points.length === 1 && scrollRef.current) {
         e.preventDefault();
+        e.stopPropagation();
+        const dx = e.clientX - scrollRef.current.startX;
+        const dy = e.clientY - scrollRef.current.startY;
+        e.currentTarget.scrollLeft = scrollRef.current.startScrollLeft - dx;
+        e.currentTarget.scrollTop = scrollRef.current.startScrollTop - dy;
+        return;
+      }
+
+      if (points.length === 2 && pinchRef.current && content) {
+        e.preventDefault();
+        e.stopPropagation();
         const [a, b] = points;
         const dist = distance(a, b);
         if (pinchRef.current.startDistance < 1) return;
@@ -139,22 +234,20 @@ export function usePinchPan(options: Options = {}) {
         const nextScale = clampScale(
           pinchRef.current.startScale * (dist / pinchRef.current.startDistance),
         );
-        const scaleRatio = nextScale / pinchRef.current.startScale;
-        const cx = pinchRef.current.centerX;
-        const cy = pinchRef.current.centerY;
 
         setTransform({
           scale: nextScale,
-          offsetX:
-            cx - scaleRatio * (cx - pinchRef.current.startOffsetX),
-          offsetY:
-            cy - scaleRatio * (cy - pinchRef.current.startOffsetY),
+          offsetX: pinchRef.current.startOffsetX,
+          offsetY: pinchRef.current.startOffsetY,
+          originX: pinchRef.current.startOriginX,
+          originY: pinchRef.current.startOriginY,
         });
         return;
       }
 
-      if (points.length === 1 && panRef.current && transform.scale > 1) {
+      if (points.length === 1 && panRef.current && transformRef.current.scale > 1) {
         e.preventDefault();
+        e.stopPropagation();
         const dx = e.clientX - panRef.current.startX;
         const dy = e.clientY - panRef.current.startY;
         setTransform((prev) => ({
@@ -164,7 +257,7 @@ export function usePinchPan(options: Options = {}) {
         }));
       }
     },
-    [locked, transform.scale],
+    [contentRef, locked],
   );
 
   const clearGesture = useCallback(() => {
@@ -172,6 +265,7 @@ export function usePinchPan(options: Options = {}) {
       setIsGesturing(false);
       pinchRef.current = null;
       panRef.current = null;
+      scrollRef.current = null;
     } else if (activePointers.current.size === 1 && !panRef.current) {
       setIsGesturing(false);
       pinchRef.current = null;
@@ -182,14 +276,11 @@ export function usePinchPan(options: Options = {}) {
     (e: React.PointerEvent<HTMLDivElement>) => {
       activePointers.current.delete(e.pointerId);
       if (activePointers.current.size < 2) pinchRef.current = null;
-      if (activePointers.current.size < 1) panRef.current = null;
-      clearGesture();
-
-      try {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch {
-        // ignorado se capture já foi liberado
+      if (activePointers.current.size < 1) {
+        panRef.current = null;
+        scrollRef.current = null;
       }
+      clearGesture();
     },
     [clearGesture],
   );
@@ -198,7 +289,10 @@ export function usePinchPan(options: Options = {}) {
     (e: React.PointerEvent<HTMLDivElement>) => {
       activePointers.current.delete(e.pointerId);
       if (activePointers.current.size < 2) pinchRef.current = null;
-      if (activePointers.current.size < 1) panRef.current = null;
+      if (activePointers.current.size < 1) {
+        panRef.current = null;
+        scrollRef.current = null;
+      }
       clearGesture();
     },
     [clearGesture],
