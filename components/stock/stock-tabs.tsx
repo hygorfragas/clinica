@@ -47,6 +47,12 @@ export function StockTabs({
           <ProceduresPanel
             procedures={procedures}
             contractTemplates={contractTemplates}
+            products={products.map((p) => ({
+              id: p.id,
+              name: p.name,
+              unit: p.unit,
+              is_archived: p.is_archived,
+            }))}
           />
         )}
       </section>

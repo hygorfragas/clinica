@@ -1,4 +1,5 @@
 import type { ClinicSupabaseClient } from "@/lib/clients/clinical-tenant-context";
+import { getClinicLocalParts } from "@/lib/dates";
 
 export type PhraseCategory =
   | "motivational" // 💪 produtividade
@@ -72,10 +73,10 @@ const ROTATION: Record<number, Record<DayPeriod, PhraseCategory[]>> = {
   },
 };
 
-/** Retorna as categorias candidatas para uma data específica. */
+/** Retorna as categorias candidatas para uma data específica (fuso da clínica). */
 export function categoriesForMoment(date: Date): PhraseCategory[] {
-  const weekday = date.getDay();
-  const period = periodForHour(date.getHours());
+  const { hour, weekday } = getClinicLocalParts(date);
+  const period = periodForHour(hour);
   return ROTATION[weekday]?.[period] ?? ["motivational"];
 }
 

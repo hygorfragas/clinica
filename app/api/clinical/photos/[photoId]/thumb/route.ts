@@ -59,7 +59,7 @@ export async function GET(
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "image/webp",
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "private, max-age=3600",
       },
     });
   }
@@ -86,7 +86,7 @@ export async function GET(
   return new NextResponse(new Uint8Array(webpBuffer), {
     headers: {
       "Content-Type": "image/webp",
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": "private, max-age=3600",
     },
   });
 }

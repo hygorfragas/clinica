@@ -1124,6 +1124,58 @@ export type Database = {
         };
         Relationships: [];
       };
+      procedure_bom_items: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          procedure_id: string;
+          product_id: string;
+          quantity: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          procedure_id: string;
+          product_id: string;
+          quantity: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          procedure_id?: string;
+          product_id?: string;
+          quantity?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "procedure_bom_items_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "procedure_bom_items_procedure_id_fkey";
+            columns: ["procedure_id"];
+            isOneToOne: false;
+            referencedRelation: "procedures";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "procedure_bom_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       inventory_movements: {
         Row: {
           id: string;
@@ -2255,6 +2307,15 @@ export type Database = {
           p_profile_id: string | null;
         };
         Returns: Database["clinic"]["Tables"]["inventory_movements"]["Row"];
+      };
+      consume_appointment_stock: {
+        Args: {
+          p_tenant_id: string;
+          p_appointment_id: string;
+          p_items: Json;
+          p_profile_id: string | null;
+        };
+        Returns: undefined;
       };
     };
     Enums: {

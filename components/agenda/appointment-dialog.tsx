@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { AppointmentStockConsume } from "@/components/agenda/appointment-stock-consume";
 import { PatientSearchDialog } from "@/components/clients/patient-search-dialog";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -296,6 +297,14 @@ export function AppointmentDialog({
               <option value="no_show">Não compareceu</option>
             </select>
           </div>
+
+          {state.mode === "edit" ? (
+            <AppointmentStockConsume
+              appointmentId={state.appointment.id}
+              procedureId={form.procedureId || null}
+              savedProcedureId={state.appointment.procedureId}
+            />
+          ) : null}
         </div>
 
         {error && (

@@ -236,3 +236,24 @@ Memória de continuidade. Cada fase é marcada como concluída ao final.
 ## Infra
 
 - Imagem Docker: `hygorfragas/clinica:1.1.1` (`linux/amd64`).
+
+---
+
+# Release 1.1.2 — CRUD de produtos, BOM e baixa de estoque (2026-08-01)
+
+## Estoque / Produtos
+
+- CRUD completo de produtos: criar, editar, ajustar estoque e excluir/restaurar (soft-delete via `is_archived`, UI como Excluir).
+- BOM de insumos por procedimento (`clinic.procedure_bom_items`) com override pontual na baixa.
+- Botão **Baixar estoque** no dialog do agendamento; RPC atômica `consume_appointment_stock` (sem parcial e sem race de consumo duplicado).
+
+## Correções relacionadas
+
+- `taken_at` da biblioteca de fotos usa data civil no fuso da clínica.
+- `ClinicDateTimePicker` trata o valor como horário civil da clínica.
+- Miniaturas clínicas com `Cache-Control: private`.
+
+## Infra
+
+- Imagem Docker: `hygorfragas/clinica:1.1.2` (`linux/amd64`).
+- Migrações: `20260801120000_procedure_bom_items.sql`, `20260801123000_consume_appointment_stock_atomic.sql`.

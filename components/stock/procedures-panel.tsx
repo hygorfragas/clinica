@@ -1,14 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   createProcedure,
+  listProcedureBom,
+  removeProcedureBomItem,
   setProcedureArchived,
   updateProcedure,
+  upsertProcedureBomItem,
+  type ProcedureBomItemRow,
 } from "@/lib/stock/actions";
 import { computePriceCents } from "@/lib/stock/schemas";
 import { notifyError, notifySuccess } from "@/lib/ui/notify";
@@ -62,12 +66,21 @@ const emptyForm = {
   lockPriceFromMargin: true,
 };
 
+export type ProductOption = {
+  id: string;
+  name: string;
+  unit: string;
+  is_archived: boolean;
+};
+
 export function ProceduresPanel({
   procedures,
   contractTemplates,
+  products,
 }: {
   procedures: ProcedureRow[];
   contractTemplates: ContractTemplateOption[];
+  products: ProductOption[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -257,6 +270,7 @@ export function ProceduresPanel({
                   key={p.id}
                   row={p}
                   templates={contractTemplates}
+                  products={products}
                 />
               ))}
             </tbody>
@@ -270,13 +284,16 @@ export function ProceduresPanel({
 function ProcedureRowItem({
   row,
   templates,
+  products,
 }: {
   row: ProcedureRow;
   templates: ContractTemplateOption[];
+  products: ProductOption[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
+  const [bomOpen, setBomOpen] = useState(false);
   const [form, setForm] = useState({
     cost: centsToMoneyStr(row.cost_cents),
     margin: row.profit_margin_percent.toString().replace(".", ","),
@@ -390,6 +407,21 @@ function ProcedureRowItem({
     );
   }
 
+  if (bomOpen) {
+    return (
+      <tr className="border-t border-line bg-muted/30">
+        <td colSpan={6} className="px-4 py-3">
+          <ProcedureBomEditor
+            procedureId={row.id}
+            procedureName={row.name}
+            products={products}
+            onClose={() => setBomOpen(false)}
+          />
+        </td>
+      </tr>
+    );
+  }
+
   const margin = Math.round(row.profit_margin_percent);
 
   return (
@@ -414,16 +446,183 @@ function ProcedureRowItem({
         ) : null}
       </td>
       <td className="px-4 py-3">
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
             Editar
           </Button>
+          {!row.is_archived ? (
+            <Button size="sm" variant="secondary" onClick={() => setBomOpen(true)}>
+              Insumos
+            </Button>
+          ) : null}
           <Button size="sm" variant="ghost" onClick={toggleArchive} disabled={pending}>
             {row.is_archived ? "Reativar" : "Arquivar"}
           </Button>
         </div>
       </td>
     </tr>
+  );
+}
+
+function ProcedureBomEditor({
+  procedureId,
+  procedureName,
+  products,
+  onClose,
+}: {
+  procedureId: string;
+  procedureName: string;
+  products: ProductOption[];
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [items, setItems] = useState<ProcedureBomItemRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [productId, setProductId] = useState("");
+  const [quantity, setQuantity] = useState("1");
+
+  const activeProducts = products.filter((p) => !p.is_archived);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const res = await listProcedureBom(procedureId);
+      if (cancelled) return;
+      if (!res.ok) {
+        notifyError(null, res.error);
+        setLoading(false);
+        return;
+      }
+      setItems(res.items);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [procedureId]);
+
+  function addItem() {
+    if (!productId) {
+      notifyError(null, "Selecione um produto.");
+      return;
+    }
+    const qty = parseNumber(quantity);
+    if (qty <= 0) {
+      notifyError(null, "Quantidade deve ser maior que zero.");
+      return;
+    }
+    startTransition(async () => {
+      const res = await upsertProcedureBomItem(procedureId, {
+        productId,
+        quantity: qty,
+      });
+      if (!res.ok) {
+        notifyError(null, res.error);
+        return;
+      }
+      notifySuccess("Insumo salvo.");
+      setProductId("");
+      setQuantity("1");
+      const refreshed = await listProcedureBom(procedureId);
+      if (refreshed.ok) setItems(refreshed.items);
+      router.refresh();
+    });
+  }
+
+  function removeItem(pid: string) {
+    startTransition(async () => {
+      const res = await removeProcedureBomItem(procedureId, pid);
+      if (!res.ok) {
+        notifyError(null, res.error);
+        return;
+      }
+      notifySuccess("Insumo removido.");
+      setItems((prev) => prev.filter((i) => i.product_id !== pid));
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-medium text-ink">Insumos · {procedureName}</h3>
+          <p className="text-xs text-ink-muted">
+            Quantidades padrão usadas no botão “Baixar estoque” do agendamento.
+          </p>
+        </div>
+        <Button size="sm" variant="ghost" onClick={onClose} disabled={pending}>
+          Fechar
+        </Button>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-ink-muted">Carregando…</p>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-ink-muted">Nenhum insumo cadastrado.</p>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((item) => (
+            <li
+              key={item.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface px-3 py-2 ring-1 ring-line"
+            >
+              <div>
+                <div className="text-sm font-medium text-ink">
+                  {item.product_name}
+                </div>
+                <div className="text-xs text-ink-muted">
+                  {item.quantity} {item.product_unit}
+                  {item.product_is_archived ? " · produto excluído" : ""}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => removeItem(item.product_id)}
+                disabled={pending}
+                className="text-destructive hover:text-destructive"
+              >
+                Remover
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="grid gap-2 md:grid-cols-[1fr_120px_auto]">
+        <select
+          className="flex h-10 w-full rounded-md border border-line bg-[#f3f1ee] px-3 text-sm"
+          value={productId}
+          onChange={(e) => setProductId(e.target.value)}
+          disabled={pending || activeProducts.length === 0}
+        >
+          <option value="">Selecionar produto</option>
+          {activeProducts.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name} ({p.unit})
+            </option>
+          ))}
+        </select>
+        <Input
+          inputMode="decimal"
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+          placeholder="Qtd"
+          disabled={pending}
+        />
+        <Button onClick={addItem} loading={pending} loadingLabel="Salvando...">
+          Adicionar
+        </Button>
+      </div>
+      {activeProducts.length === 0 ? (
+        <p className="text-xs text-warn">
+          Cadastre produtos ativos na aba Produtos para montar o BOM.
+        </p>
+      ) : null}
+    </div>
   );
 }
 

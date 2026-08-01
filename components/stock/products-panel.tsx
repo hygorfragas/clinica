@@ -1,8 +1,10 @@
 "use client";
 
+import { RotateCcw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -22,6 +24,7 @@ export type ProductRow = {
   id: string;
   name: string;
   sku: string | null;
+  description?: string | null;
   unit: string;
   stock_quantity: number;
   low_stock_threshold: number;
@@ -45,6 +48,9 @@ function parseMoneyToCents(v: string): number {
   const clean = v.replace(/\./g, "").replace(",", ".");
   const n = Number.parseFloat(clean);
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
+}
+function centsToMoneyStr(cents: number): string {
+  return (cents / 100).toFixed(2).replace(".", ",");
 }
 function parseNumber(v: string): number {
   const n = Number.parseFloat(v.replace(",", "."));
@@ -209,8 +215,19 @@ export function ProductsPanel({ products }: { products: ProductRow[] }) {
 function ProductRowItem({ product }: { product: ProductRow }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [editing, setEditing] = useState(false);
   const [adjust, setAdjust] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [form, setForm] = useState({
+    name: product.name,
+    sku: product.sku ?? "",
+    description: product.description ?? "",
+    unit: product.unit,
+    low_stock_threshold: String(product.low_stock_threshold),
+    cost: centsToMoneyStr(product.cost_cents),
+    price: centsToMoneyStr(product.price_cents),
+  });
 
   const margin =
     product.cost_cents > 0
@@ -240,61 +257,225 @@ function ProductRowItem({ product }: { product: ProductRow }) {
     });
   }
 
-  function toggleArchive() {
+  function saveEdit() {
+    if (!form.name.trim()) {
+      notifyError(null, "Informe o nome do produto.");
+      return;
+    }
     startTransition(async () => {
-      await setProductArchived(product.id, !product.is_archived);
-      notifySuccess(product.is_archived ? "Produto reativado." : "Produto arquivado.");
+      const res = await updateProduct(product.id, {
+        name: form.name.trim(),
+        sku: form.sku.trim() || null,
+        description: form.description.trim() || null,
+        unit: form.unit.trim() || "un",
+        low_stock_threshold: parseNumber(form.low_stock_threshold),
+        cost_cents: parseMoneyToCents(form.cost),
+        price_cents: parseMoneyToCents(form.price),
+      });
+      if (!res.ok) {
+        notifyError(null, res.error);
+        return;
+      }
+      notifySuccess("Produto atualizado.");
+      setEditing(false);
       router.refresh();
     });
   }
 
+  async function confirmDelete() {
+    const res = await setProductArchived(product.id, true);
+    if (!res.ok) {
+      notifyError(null, res.error);
+      throw new Error(res.error);
+    }
+    notifySuccess("Produto excluído.");
+    router.refresh();
+  }
+
+  function restore() {
+    startTransition(async () => {
+      const res = await setProductArchived(product.id, false);
+      if (!res.ok) {
+        notifyError(null, res.error);
+        return;
+      }
+      notifySuccess("Produto restaurado.");
+      router.refresh();
+    });
+  }
+
+  if (editing) {
+    return (
+      <tr className="border-t border-line bg-muted/30">
+        <td colSpan={6} className="px-4 py-3">
+          <div className="grid gap-3 md:grid-cols-4">
+            <FormField label="Nome" className="md:col-span-2">
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </FormField>
+            <FormField label="SKU">
+              <Input
+                value={form.sku}
+                onChange={(e) => setForm({ ...form, sku: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Unidade">
+              <Input
+                value={form.unit}
+                onChange={(e) => setForm({ ...form, unit: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Alerta (mín.)">
+              <Input
+                inputMode="decimal"
+                value={form.low_stock_threshold}
+                onChange={(e) =>
+                  setForm({ ...form, low_stock_threshold: e.target.value })
+                }
+              />
+            </FormField>
+            <FormField label="Custo (R$)">
+              <Input
+                inputMode="decimal"
+                value={form.cost}
+                onChange={(e) => setForm({ ...form, cost: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Preço (R$)">
+              <Input
+                inputMode="decimal"
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+              />
+            </FormField>
+            <FormField label="Descrição" className="md:col-span-4">
+              <Input
+                value={form.description}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
+              />
+            </FormField>
+          </div>
+          <p className="mt-2 text-xs text-ink-muted">
+            Estoque atual ({product.stock_quantity} {product.unit}) só muda por
+            ajuste ou baixa no atendimento.
+          </p>
+          <div className="mt-3 flex justify-end gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setEditing(false)}
+              disabled={pending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={saveEdit}
+              loading={pending}
+              loadingLabel="Salvando..."
+            >
+              Salvar
+            </Button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
   return (
-    <tr className={`border-t border-line ${product.is_archived ? "opacity-60" : ""}`}>
-      <td className="px-4 py-3">
-        <div className="font-medium text-ink">{product.name}</div>
-        <div className="text-xs text-ink-muted">
-          {product.sku ? `SKU ${product.sku} · ` : ""}
-          {product.unit}
-          {product.is_archived ? " · arquivado" : ""}
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        <span className={low ? "font-semibold text-danger" : "text-ink"}>
-          {product.stock_quantity}
-        </span>
-        <div className="text-xs text-ink-subtle">mín {product.low_stock_threshold}</div>
-      </td>
-      <td className="px-4 py-3 text-ink">{BRL.format(product.cost_cents / 100)}</td>
-      <td className="px-4 py-3 text-ink">{BRL.format(product.price_cents / 100)}</td>
-      <td className="px-4 py-3 text-ink-muted">{margin.toFixed(0)}%</td>
-      <td className="px-4 py-3">
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Input
-            className="h-8 w-20 text-sm"
-            placeholder="±n"
-            value={adjust}
-            onChange={(e) => setAdjust(e.target.value)}
-          />
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={doAdjust}
-            loading={pending}
-          >
-            Ajustar
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={toggleArchive}
-            loading={pending}
-          >
-            {product.is_archived ? "Reativar" : "Arquivar"}
-          </Button>
-        </div>
-        {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
-      </td>
-    </tr>
+    <>
+      <tr
+        className={`border-t border-line ${product.is_archived ? "opacity-60" : ""}`}
+      >
+        <td className="px-4 py-3">
+          <div className="font-medium text-ink">{product.name}</div>
+          <div className="text-xs text-ink-muted">
+            {product.sku ? `SKU ${product.sku} · ` : ""}
+            {product.unit}
+            {product.is_archived ? " · excluído" : ""}
+          </div>
+        </td>
+        <td className="px-4 py-3">
+          <span className={low ? "font-semibold text-danger" : "text-ink"}>
+            {product.stock_quantity}
+          </span>
+          <div className="text-xs text-ink-subtle">
+            mín {product.low_stock_threshold}
+          </div>
+        </td>
+        <td className="px-4 py-3 text-ink">
+          {BRL.format(product.cost_cents / 100)}
+        </td>
+        <td className="px-4 py-3 text-ink">
+          {BRL.format(product.price_cents / 100)}
+        </td>
+        <td className="px-4 py-3 text-ink-muted">{margin.toFixed(0)}%</td>
+        <td className="px-4 py-3">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {!product.is_archived ? (
+              <>
+                <Input
+                  className="h-8 w-20 text-sm"
+                  placeholder="±n"
+                  value={adjust}
+                  onChange={(e) => setAdjust(e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={doAdjust}
+                  loading={pending}
+                >
+                  Ajustar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setEditing(true)}
+                  disabled={pending}
+                >
+                  Editar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setConfirmDeleteOpen(true)}
+                  disabled={pending}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden />
+                  Excluir
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={restore}
+                loading={pending}
+              >
+                <RotateCcw className="mr-1 h-3.5 w-3.5" aria-hidden />
+                Restaurar
+              </Button>
+            )}
+          </div>
+          {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
+        </td>
+      </tr>
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="Excluir produto"
+        description="O produto sai do catálogo e do BOM, mas o histórico de estoque é preservado. Você pode restaurar depois."
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={confirmDelete}
+      />
+    </>
   );
 }
 
@@ -314,6 +495,3 @@ function FormField({
     </div>
   );
 }
-
-// updateProduct is exported for future inline editing hooks; not used yet.
-export { updateProduct };

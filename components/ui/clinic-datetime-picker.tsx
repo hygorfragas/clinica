@@ -8,7 +8,6 @@ import {
   format,
   isSameDay,
   isSameMonth,
-  parse,
   startOfMonth,
   startOfWeek,
 } from "date-fns";
@@ -16,10 +15,13 @@ import { ptBR } from "date-fns/locale";
 import { Calendar, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { clinicNowDateTimeLocalValue } from "@/lib/dates";
+import {
+  clinicNowDateTimeLocalValue,
+  formatClinicDateTimeLocal,
+  parseClinicDateTimeLocal,
+  type ClinicDateTimeLocalParts,
+} from "@/lib/dates";
 import { cn } from "@/lib/utils";
-
-const LOCAL_PATTERN = "yyyy-MM-dd'T'HH:mm";
 
 type Props = {
   id?: string;
@@ -28,26 +30,42 @@ type Props = {
   disabled?: boolean;
 };
 
-function parseLocalValue(value: string): Date | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  try {
-    return parse(trimmed, LOCAL_PATTERN, new Date());
-  } catch {
-    return null;
-  }
-}
-
-function toLocalValue(date: Date): string {
-  return format(date, LOCAL_PATTERN);
-}
-
 function clampMinute(minute: number): number {
   return Math.min(59, Math.max(0, minute));
 }
 
 function clampHour(hour: number): number {
   return Math.min(23, Math.max(0, hour));
+}
+
+/** Date “naive” só para grade do calendário; o valor canônico é a string clinic-local. */
+function partsToCalendarDate(parts: ClinicDateTimeLocalParts): Date {
+  return new Date(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    0,
+    0,
+  );
+}
+
+function nowClinicParts(): ClinicDateTimeLocalParts {
+  return (
+    parseClinicDateTimeLocal(clinicNowDateTimeLocalValue()) ?? {
+      year: 1970,
+      month: 1,
+      day: 1,
+      hour: 0,
+      minute: 0,
+    }
+  );
+}
+
+function formatDisplay(parts: ClinicDateTimeLocalParts): string {
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${pad(parts.day)}/${pad(parts.month)}/${parts.year}, ${pad(parts.hour)}:${pad(parts.minute)}`;
 }
 
 export function ClinicDateTimePicker({
@@ -61,13 +79,15 @@ export function ClinicDateTimePicker({
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
 
-  const selected = parseLocalValue(value) ?? new Date();
+  const parsed = parseClinicDateTimeLocal(value);
+  const selectedParts = parsed ?? nowClinicParts();
+  const selected = partsToCalendarDate(selectedParts);
   const [viewMonth, setViewMonth] = useState(() => startOfMonth(selected));
 
   useEffect(() => {
     if (!open) return;
-    const d = parseLocalValue(value) ?? new Date();
-    setViewMonth(startOfMonth(d));
+    const parts = parseClinicDateTimeLocal(value) ?? nowClinicParts();
+    setViewMonth(startOfMonth(partsToCalendarDate(parts)));
   }, [open, value]);
 
   useEffect(() => {
@@ -87,9 +107,7 @@ export function ClinicDateTimePicker({
   }, [open]);
 
   const display =
-    parseLocalValue(value) != null
-      ? format(selected, "dd/MM/yyyy, HH:mm", { locale: ptBR })
-      : "Selecionar data e hora";
+    parsed != null ? formatDisplay(selectedParts) : "Selecionar data e hora";
 
   const monthStart = startOfMonth(viewMonth);
   const gridDays = eachDayOfInterval({
@@ -98,18 +116,26 @@ export function ClinicDateTimePicker({
   });
 
   function patchDate(day: Date) {
-    const next = new Date(selected);
-    next.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
-    onChange(toLocalValue(next));
+    onChange(
+      formatClinicDateTimeLocal({
+        ...selectedParts,
+        year: day.getFullYear(),
+        month: day.getMonth() + 1,
+        day: day.getDate(),
+      }),
+    );
   }
 
   function patchTime(part: "hour" | "minute", raw: string) {
     const n = Number.parseInt(raw, 10);
     if (Number.isNaN(n)) return;
-    const next = new Date(selected);
-    if (part === "hour") next.setHours(clampHour(n));
-    else next.setMinutes(clampMinute(n));
-    onChange(toLocalValue(next));
+    onChange(
+      formatClinicDateTimeLocal({
+        ...selectedParts,
+        hour: part === "hour" ? clampHour(n) : selectedParts.hour,
+        minute: part === "minute" ? clampMinute(n) : selectedParts.minute,
+      }),
+    );
   }
 
   function useToday() {
@@ -180,7 +206,7 @@ export function ClinicDateTimePicker({
               const isSelected = isSameDay(day, selected);
               return (
                 <button
-                  key={day.toISOString()}
+                  key={`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`}
                   type="button"
                   disabled={!inMonth}
                   onClick={() => patchDate(day)}
@@ -204,7 +230,7 @@ export function ClinicDateTimePicker({
             </label>
             <select
               id={`${fieldId}-hour`}
-              value={selected.getHours()}
+              value={selectedParts.hour}
               onChange={(e) => patchTime("hour", e.target.value)}
               className="h-9 flex-1 rounded-md border border-line bg-[#f3f1ee] px-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
             >
@@ -220,7 +246,7 @@ export function ClinicDateTimePicker({
             </label>
             <select
               id={`${fieldId}-minute`}
-              value={selected.getMinutes()}
+              value={selectedParts.minute}
               onChange={(e) => patchTime("minute", e.target.value)}
               className="h-9 flex-1 rounded-md border border-line bg-[#f3f1ee] px-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
             >

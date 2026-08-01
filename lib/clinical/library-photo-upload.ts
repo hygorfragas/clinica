@@ -12,6 +12,7 @@ import {
 } from "@/lib/clinical/storage";
 import type { ClinicalTenantContext } from "@/lib/clients/clinical-tenant-context";
 import type { ClinicSupabaseClient } from "@/lib/clients/clinical-tenant-context";
+import { clinicCalendarDateFromUtcIso } from "@/lib/dates";
 
 export type LibraryPhotoUploadOk = { ok: true; photoId: string };
 export type LibraryPhotoUploadErr = { ok: false; error: string };
@@ -78,7 +79,7 @@ export async function uploadPatientLibraryPhotoCore(
     return { ok: false, error: "Informe a data e hora da captura." };
   }
   const captured_at = capturedParsed.data;
-  const taken_at = captured_at.slice(0, 10);
+  const taken_at = clinicCalendarDateFromUtcIso(captured_at);
 
   if (!(input.file instanceof Blob) || input.file.size === 0) {
     return { ok: false, error: "Selecione uma imagem." };
