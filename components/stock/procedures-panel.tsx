@@ -74,7 +74,7 @@ export type ProductOption = {
 };
 
 export function ProceduresPanel({
-  procedures,
+  procedures: initialProcedures,
   contractTemplates,
   products,
 }: {
@@ -83,10 +83,36 @@ export function ProceduresPanel({
   products: ProductOption[];
 }) {
   const router = useRouter();
+  const [procedures, setProcedures] = useState(initialProcedures);
+  const [showArchived, setShowArchived] = useState(false);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setProcedures(initialProcedures);
+  }, [initialProcedures]);
+
+  const visibleProcedures = useMemo(
+    () =>
+      showArchived
+        ? procedures
+        : procedures.filter((procedure) => !procedure.is_archived),
+    [procedures, showArchived],
+  );
+  const archivedCount = useMemo(
+    () => procedures.filter((procedure) => procedure.is_archived).length,
+    [procedures],
+  );
+
+  function patchProcedure(id: string, patch: Partial<ProcedureRow>) {
+    setProcedures((prev) =>
+      prev.map((procedure) =>
+        procedure.id === id ? { ...procedure, ...patch } : procedure,
+      ),
+    );
+  }
 
   const computedPrice = useMemo(() => {
     if (!form.lockPriceFromMargin) return parseMoneyToCents(form.price);
@@ -101,7 +127,7 @@ export function ProceduresPanel({
     }
     setError(null);
     startTransition(async () => {
-      const res = await createProcedure({
+      const payload = {
         name: form.name.trim(),
         description: form.description.trim() || null,
         duration_minutes: form.duration ? Math.max(1, parseNumber(form.duration)) : null,
@@ -110,12 +136,33 @@ export function ProceduresPanel({
         price_cents: computedPrice,
         contract_template_id: form.contract_template_id || null,
         requires_signed_contract: form.requires_signed_contract,
-      });
+      };
+      const res = await createProcedure(payload);
       if (!res.ok) {
         setError(res.error);
         notifyError(null, res.error);
         return;
       }
+      setProcedures((prev) =>
+        [
+          {
+            id: res.id,
+            name: payload.name,
+            description: payload.description,
+            duration_minutes: payload.duration_minutes,
+            cost_cents: payload.cost_cents,
+            profit_margin_percent: payload.profit_margin_percent,
+            price_cents: payload.price_cents,
+            contract_template_id: payload.contract_template_id,
+            requires_signed_contract: payload.requires_signed_contract,
+            is_archived: false,
+          },
+          ...prev,
+        ].sort((a, b) => {
+          if (a.is_archived !== b.is_archived) return a.is_archived ? 1 : -1;
+          return a.name.localeCompare(b.name, "pt-BR");
+        }),
+      );
       setForm(emptyForm);
       setOpen(false);
       notifySuccess("Procedimento criado.");
@@ -125,7 +172,7 @@ export function ProceduresPanel({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-ink">Procedimentos</h2>
           <p className="text-sm text-ink-muted">
@@ -133,9 +180,23 @@ export function ProceduresPanel({
             contrato específico.
           </p>
         </div>
-        <Button onClick={() => setOpen((v) => !v)}>
-          {open ? "Fechar" : "Novo procedimento"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {archivedCount > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowArchived((v) => !v)}
+            >
+              {showArchived
+                ? "Ocultar arquivados"
+                : `Ver arquivados (${archivedCount})`}
+            </Button>
+          ) : null}
+          <Button type="button" onClick={() => setOpen((v) => !v)}>
+            {open ? "Fechar" : "Novo procedimento"}
+          </Button>
+        </div>
       </div>
 
       {contractTemplates.length === 0 ? (
@@ -247,9 +308,11 @@ export function ProceduresPanel({
         </form>
       ) : null}
 
-      {procedures.length === 0 ? (
+      {visibleProcedures.length === 0 ? (
         <p className="text-sm text-ink-muted">
-          Nenhum procedimento cadastrado ainda.
+          {procedures.length === 0
+            ? "Nenhum procedimento cadastrado ainda."
+            : "Nenhum procedimento ativo. Use “Ver arquivados” para reativar."}
         </p>
       ) : (
         <div className="overflow-hidden rounded-2xl ring-1 ring-line">
@@ -265,12 +328,13 @@ export function ProceduresPanel({
               </tr>
             </thead>
             <tbody>
-              {procedures.map((p) => (
+              {visibleProcedures.map((p) => (
                 <ProcedureRowItem
                   key={p.id}
                   row={p}
                   templates={contractTemplates}
                   products={products}
+                  onPatched={patchProcedure}
                 />
               ))}
             </tbody>
@@ -285,16 +349,21 @@ function ProcedureRowItem({
   row,
   templates,
   products,
+  onPatched,
 }: {
   row: ProcedureRow;
   templates: ContractTemplateOption[];
   products: ProductOption[];
+  onPatched: (id: string, patch: Partial<ProcedureRow>) => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const [bomOpen, setBomOpen] = useState(false);
   const [form, setForm] = useState({
+    name: row.name,
+    description: row.description ?? "",
+    duration: row.duration_minutes != null ? String(row.duration_minutes) : "",
     cost: centsToMoneyStr(row.cost_cents),
     margin: row.profit_margin_percent.toString().replace(".", ","),
     price: centsToMoneyStr(row.price_cents),
@@ -304,34 +373,62 @@ function ProcedureRowItem({
   const templateName =
     templates.find((t) => t.id === row.contract_template_id)?.title ?? null;
 
-  async function save() {
+  useEffect(() => {
+    if (editing) return;
+    setForm({
+      name: row.name,
+      description: row.description ?? "",
+      duration: row.duration_minutes != null ? String(row.duration_minutes) : "",
+      cost: centsToMoneyStr(row.cost_cents),
+      margin: row.profit_margin_percent.toString().replace(".", ","),
+      price: centsToMoneyStr(row.price_cents),
+      contract: row.contract_template_id ?? "",
+      requires: row.requires_signed_contract,
+    });
+  }, [row, editing]);
+
+  function save() {
+    const name = form.name.trim();
+    if (name.length < 2) {
+      notifyError(null, "Informe o nome do procedimento (mín. 2 caracteres).");
+      return;
+    }
+    const next = {
+      name,
+      description: form.description.trim() || null,
+      duration_minutes: form.duration
+        ? Math.max(1, Math.round(parseNumber(form.duration)))
+        : null,
+      cost_cents: parseMoneyToCents(form.cost),
+      profit_margin_percent: parseNumber(form.margin),
+      price_cents: parseMoneyToCents(form.price),
+      contract_template_id: form.contract || null,
+      requires_signed_contract: form.requires,
+    };
     startTransition(async () => {
-      const res = await updateProcedure(row.id, {
-        cost_cents: parseMoneyToCents(form.cost),
-        profit_margin_percent: parseNumber(form.margin),
-        price_cents: parseMoneyToCents(form.price),
-        contract_template_id: form.contract || null,
-        requires_signed_contract: form.requires,
-      });
+      const res = await updateProcedure(row.id, next);
       if (!res.ok) {
         notifyError(null, res.error);
         return;
       }
+      onPatched(row.id, next);
       notifySuccess("Procedimento atualizado.");
       setEditing(false);
       router.refresh();
     });
   }
 
-  async function toggleArchive() {
+  function toggleArchive() {
+    const nextArchived = !row.is_archived;
     startTransition(async () => {
-      const result = await setProcedureArchived(row.id, !row.is_archived);
+      const result = await setProcedureArchived(row.id, nextArchived);
       if (!result.ok) {
         notifyError(null, result.error);
         return;
       }
+      onPatched(row.id, { is_archived: nextArchived });
       notifySuccess(
-        row.is_archived ? "Procedimento reativado." : "Procedimento arquivado.",
+        nextArchived ? "Procedimento arquivado." : "Procedimento reativado.",
       );
       router.refresh();
     });
@@ -341,7 +438,21 @@ function ProcedureRowItem({
     return (
       <tr className="border-t border-line bg-muted/30">
         <td colSpan={6} className="px-4 py-3">
-          <div className="grid gap-3 md:grid-cols-5">
+          <div className="grid gap-3 md:grid-cols-4">
+            <Field label="Nome" className="md:col-span-2">
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                autoFocus
+              />
+            </Field>
+            <Field label="Duração (min)">
+              <Input
+                inputMode="numeric"
+                value={form.duration}
+                onChange={(e) => setForm({ ...form, duration: e.target.value })}
+              />
+            </Field>
             <Field label="Custo (R$)">
               <Input
                 value={form.cost}
@@ -388,9 +499,18 @@ function ProcedureRowItem({
                 assinatura
               </label>
             </Field>
+            <Field label="Descrição" className="md:col-span-4">
+              <Input
+                value={form.description}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
+              />
+            </Field>
           </div>
           <div className="mt-3 flex justify-end gap-2">
             <Button
+              type="button"
               size="sm"
               variant="ghost"
               onClick={() => setEditing(false)}
@@ -398,7 +518,13 @@ function ProcedureRowItem({
             >
               Cancelar
             </Button>
-            <Button size="sm" onClick={save} loading={pending} loadingLabel="Salvando...">
+            <Button
+              type="button"
+              size="sm"
+              onClick={save}
+              loading={pending}
+              loadingLabel="Salvando..."
+            >
               Salvar
             </Button>
           </div>
@@ -431,6 +557,9 @@ function ProcedureRowItem({
         {row.duration_minutes ? (
           <div className="text-xs text-ink-muted">{row.duration_minutes} min</div>
         ) : null}
+        {row.is_archived ? (
+          <div className="text-xs text-ink-muted">arquivado</div>
+        ) : null}
       </td>
       <td className="px-4 py-3 text-ink">{BRL.format(row.cost_cents / 100)}</td>
       <td className="px-4 py-3 text-ink-muted">{margin}%</td>
@@ -447,15 +576,33 @@ function ProcedureRowItem({
       </td>
       <td className="px-4 py-3">
         <div className="flex flex-wrap justify-end gap-2">
-          <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
-            Editar
-          </Button>
           {!row.is_archived ? (
-            <Button size="sm" variant="secondary" onClick={() => setBomOpen(true)}>
-              Insumos
-            </Button>
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => setEditing(true)}
+              >
+                Editar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => setBomOpen(true)}
+              >
+                Insumos
+              </Button>
+            </>
           ) : null}
-          <Button size="sm" variant="ghost" onClick={toggleArchive} disabled={pending}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={toggleArchive}
+            disabled={pending}
+          >
             {row.is_archived ? "Reativar" : "Arquivar"}
           </Button>
         </div>

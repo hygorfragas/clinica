@@ -2,6 +2,29 @@
 
 Memória de continuidade. Cada fase é marcada como concluída ao final.
 
+---
+
+# Release 1.1.3 — Fix CRUD estoque: renomear e arquivar (2026-08-04)
+
+## Problema
+
+- Editar/renomear produto (e procedimento) parecia não gravar na tela.
+- Arquivar/excluir só deixava o item cinza/bloqueado na lista em vez de sumir.
+
+## Correção
+
+- Update/archive no servidor agora confirmam linha afetada (evita falso sucesso com 0 rows).
+- Lista de produtos e procedimentos: arquivados **somem** por padrão; restauração via “Ver excluídos/arquivados”.
+- Estado local otimista após salvar/arquivar (UI atualiza na hora).
+- Edição de procedimento passa a incluir **nome**, duração e descrição.
+- `/estoque` com `force-dynamic` para refresh confiável.
+
+## Infra
+
+- Imagem Docker: `hygorfragas/clinica:1.1.3` (`linux/amd64`).
+
+---
+
 ## Escopo
 
 - **Configurações → Evolução** (nova aba): gerencia fichas de evolução em PDF (mesmo fluxo do Anamnese).

@@ -2,7 +2,7 @@
 
 import { RotateCcw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
@@ -57,12 +57,34 @@ function parseNumber(v: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function ProductsPanel({ products }: { products: ProductRow[] }) {
+export function ProductsPanel({ products: initialProducts }: { products: ProductRow[] }) {
   const router = useRouter();
+  const [products, setProducts] = useState(initialProducts);
+  const [showArchived, setShowArchived] = useState(false);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setProducts(initialProducts);
+  }, [initialProducts]);
+
+  const visibleProducts = useMemo(
+    () =>
+      showArchived ? products : products.filter((product) => !product.is_archived),
+    [products, showArchived],
+  );
+  const archivedCount = useMemo(
+    () => products.filter((product) => product.is_archived).length,
+    [products],
+  );
+
+  function patchProduct(id: string, patch: Partial<ProductRow>) {
+    setProducts((prev) =>
+      prev.map((product) => (product.id === id ? { ...product, ...patch } : product)),
+    );
+  }
 
   function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -74,7 +96,7 @@ export function ProductsPanel({ products }: { products: ProductRow[] }) {
     }
     setError(null);
     startTransition(async () => {
-      const res = await createProduct({
+      const payload = {
         name: form.name.trim(),
         sku: form.sku.trim() || null,
         description: form.description.trim() || null,
@@ -83,12 +105,33 @@ export function ProductsPanel({ products }: { products: ProductRow[] }) {
         low_stock_threshold: parseNumber(form.low_stock_threshold),
         cost_cents: parseMoneyToCents(form.cost),
         price_cents: parseMoneyToCents(form.price),
-      });
+      };
+      const res = await createProduct(payload);
       if (!res.ok) {
         setError(res.error);
         notifyError(null, res.error);
         return;
       }
+      setProducts((prev) =>
+        [
+          {
+            id: res.id,
+            name: payload.name,
+            sku: payload.sku,
+            description: payload.description,
+            unit: payload.unit,
+            stock_quantity: payload.stock_quantity,
+            low_stock_threshold: payload.low_stock_threshold,
+            cost_cents: payload.cost_cents,
+            price_cents: payload.price_cents,
+            is_archived: false,
+          },
+          ...prev,
+        ].sort((a, b) => {
+          if (a.is_archived !== b.is_archived) return a.is_archived ? 1 : -1;
+          return a.name.localeCompare(b.name, "pt-BR");
+        }),
+      );
       notifySuccess("Produto cadastrado.");
       setForm(initialForm);
       setOpen(false);
@@ -98,16 +141,30 @@ export function ProductsPanel({ products }: { products: ProductRow[] }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-ink">Produtos</h2>
           <p className="text-sm text-ink-muted">
             Insumos, retail e qualquer SKU com controle de quantidade.
           </p>
         </div>
-        <Button onClick={() => setOpen((v) => !v)}>
-          {open ? "Fechar" : "Novo produto"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {archivedCount > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowArchived((v) => !v)}
+            >
+              {showArchived
+                ? "Ocultar excluídos"
+                : `Ver excluídos (${archivedCount})`}
+            </Button>
+          ) : null}
+          <Button type="button" onClick={() => setOpen((v) => !v)}>
+            {open ? "Fechar" : "Novo produto"}
+          </Button>
+        </div>
       </div>
 
       {open ? (
@@ -185,8 +242,12 @@ export function ProductsPanel({ products }: { products: ProductRow[] }) {
         </form>
       ) : null}
 
-      {products.length === 0 ? (
-        <p className="text-sm text-ink-muted">Nenhum produto cadastrado.</p>
+      {visibleProducts.length === 0 ? (
+        <p className="text-sm text-ink-muted">
+          {products.length === 0
+            ? "Nenhum produto cadastrado."
+            : "Nenhum produto ativo. Use “Ver excluídos” para restaurar."}
+        </p>
       ) : (
         <div className="overflow-hidden rounded-2xl ring-1 ring-line">
           <table className="w-full text-sm">
@@ -201,8 +262,12 @@ export function ProductsPanel({ products }: { products: ProductRow[] }) {
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => (
-                <ProductRowItem key={p.id} product={p} />
+              {visibleProducts.map((p) => (
+                <ProductRowItem
+                  key={p.id}
+                  product={p}
+                  onPatched={patchProduct}
+                />
               ))}
             </tbody>
           </table>
@@ -212,7 +277,13 @@ export function ProductsPanel({ products }: { products: ProductRow[] }) {
   );
 }
 
-function ProductRowItem({ product }: { product: ProductRow }) {
+function ProductRowItem({
+  product,
+  onPatched,
+}: {
+  product: ProductRow;
+  onPatched: (id: string, patch: Partial<ProductRow>) => void;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
@@ -228,6 +299,19 @@ function ProductRowItem({ product }: { product: ProductRow }) {
     cost: centsToMoneyStr(product.cost_cents),
     price: centsToMoneyStr(product.price_cents),
   });
+
+  useEffect(() => {
+    if (editing) return;
+    setForm({
+      name: product.name,
+      sku: product.sku ?? "",
+      description: product.description ?? "",
+      unit: product.unit,
+      low_stock_threshold: String(product.low_stock_threshold),
+      cost: centsToMoneyStr(product.cost_cents),
+      price: centsToMoneyStr(product.price_cents),
+    });
+  }, [product, editing]);
 
   const margin =
     product.cost_cents > 0
@@ -251,6 +335,9 @@ function ProductRowItem({ product }: { product: ProductRow }) {
         notifyError(null, res.error);
         return;
       }
+      onPatched(product.id, {
+        stock_quantity: Number((product.stock_quantity + delta).toFixed(3)),
+      });
       notifySuccess("Estoque ajustado.");
       setAdjust("");
       router.refresh();
@@ -258,24 +345,27 @@ function ProductRowItem({ product }: { product: ProductRow }) {
   }
 
   function saveEdit() {
-    if (!form.name.trim()) {
-      notifyError(null, "Informe o nome do produto.");
+    const name = form.name.trim();
+    if (name.length < 2) {
+      notifyError(null, "Informe o nome do produto (mín. 2 caracteres).");
       return;
     }
+    const next = {
+      name,
+      sku: form.sku.trim() || null,
+      description: form.description.trim() || null,
+      unit: form.unit.trim() || "un",
+      low_stock_threshold: parseNumber(form.low_stock_threshold),
+      cost_cents: parseMoneyToCents(form.cost),
+      price_cents: parseMoneyToCents(form.price),
+    };
     startTransition(async () => {
-      const res = await updateProduct(product.id, {
-        name: form.name.trim(),
-        sku: form.sku.trim() || null,
-        description: form.description.trim() || null,
-        unit: form.unit.trim() || "un",
-        low_stock_threshold: parseNumber(form.low_stock_threshold),
-        cost_cents: parseMoneyToCents(form.cost),
-        price_cents: parseMoneyToCents(form.price),
-      });
+      const res = await updateProduct(product.id, next);
       if (!res.ok) {
         notifyError(null, res.error);
         return;
       }
+      onPatched(product.id, next);
       notifySuccess("Produto atualizado.");
       setEditing(false);
       router.refresh();
@@ -288,6 +378,7 @@ function ProductRowItem({ product }: { product: ProductRow }) {
       notifyError(null, res.error);
       throw new Error(res.error);
     }
+    onPatched(product.id, { is_archived: true });
     notifySuccess("Produto excluído.");
     router.refresh();
   }
@@ -299,6 +390,7 @@ function ProductRowItem({ product }: { product: ProductRow }) {
         notifyError(null, res.error);
         return;
       }
+      onPatched(product.id, { is_archived: false });
       notifySuccess("Produto restaurado.");
       router.refresh();
     });
@@ -313,6 +405,7 @@ function ProductRowItem({ product }: { product: ProductRow }) {
               <Input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
+                autoFocus
               />
             </FormField>
             <FormField label="SKU">
@@ -365,6 +458,7 @@ function ProductRowItem({ product }: { product: ProductRow }) {
           </p>
           <div className="mt-3 flex justify-end gap-2">
             <Button
+              type="button"
               size="sm"
               variant="ghost"
               onClick={() => setEditing(false)}
@@ -373,6 +467,7 @@ function ProductRowItem({ product }: { product: ProductRow }) {
               Cancelar
             </Button>
             <Button
+              type="button"
               size="sm"
               onClick={saveEdit}
               loading={pending}
@@ -425,6 +520,7 @@ function ProductRowItem({ product }: { product: ProductRow }) {
                   onChange={(e) => setAdjust(e.target.value)}
                 />
                 <Button
+                  type="button"
                   size="sm"
                   variant="secondary"
                   onClick={doAdjust}
@@ -433,6 +529,7 @@ function ProductRowItem({ product }: { product: ProductRow }) {
                   Ajustar
                 </Button>
                 <Button
+                  type="button"
                   size="sm"
                   variant="secondary"
                   onClick={() => setEditing(true)}
@@ -441,6 +538,7 @@ function ProductRowItem({ product }: { product: ProductRow }) {
                   Editar
                 </Button>
                 <Button
+                  type="button"
                   size="sm"
                   variant="ghost"
                   onClick={() => setConfirmDeleteOpen(true)}
@@ -453,6 +551,7 @@ function ProductRowItem({ product }: { product: ProductRow }) {
               </>
             ) : (
               <Button
+                type="button"
                 size="sm"
                 variant="ghost"
                 onClick={restore}
@@ -470,7 +569,7 @@ function ProductRowItem({ product }: { product: ProductRow }) {
         open={confirmDeleteOpen}
         onOpenChange={setConfirmDeleteOpen}
         title="Excluir produto"
-        description="O produto sai do catálogo e do BOM, mas o histórico de estoque é preservado. Você pode restaurar depois."
+        description="O produto some do catálogo e do BOM, mas o histórico de estoque é preservado. Você pode restaurar em “Ver excluídos”."
         confirmLabel="Excluir"
         destructive
         onConfirm={confirmDelete}
