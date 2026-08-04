@@ -3,6 +3,8 @@ import { StockTabs } from "@/components/stock/stock-tabs";
 import { fetchClinicProfile } from "@/lib/auth/clinic-profile";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 export default async function EstoquePage() {
   const supabase = await createServerSupabaseClient();
   const {

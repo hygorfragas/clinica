@@ -93,14 +93,24 @@ export async function updateProduct(
   if (p.cost_cents !== undefined) patch.cost_cents = p.cost_cents;
   if (p.price_cents !== undefined) patch.price_cents = p.price_cents;
 
-  const { error } = await ctx.supabase
+  if (Object.keys(patch).length === 0) {
+    return { ok: false, error: "Nada para atualizar." };
+  }
+
+  // `.select()` garante falha explícita se RLS/tenant impedir o update (0 linhas).
+  const { data: updated, error } = await ctx.supabase
     .schema("clinic")
     .from("products")
     .update(patch)
     .eq("id", id.data)
-    .eq("tenant_id", ctx.tenantId);
+    .eq("tenant_id", ctx.tenantId)
+    .select("id")
+    .maybeSingle();
 
   if (error) return { ok: false, error: error.message };
+  if (!updated) {
+    return { ok: false, error: "Produto não encontrado ou sem permissão para editar." };
+  }
 
   revalidatePath("/estoque");
   return { ok: true };
@@ -116,14 +126,24 @@ export async function setProductArchived(
   const id = uuidSchema.safeParse(productId);
   if (!id.success) return { ok: false, error: "ID inválido." };
 
-  const { error } = await ctx.supabase
+  const { data: updated, error } = await ctx.supabase
     .schema("clinic")
     .from("products")
     .update({ is_archived: archived })
     .eq("id", id.data)
-    .eq("tenant_id", ctx.tenantId);
+    .eq("tenant_id", ctx.tenantId)
+    .select("id")
+    .maybeSingle();
 
   if (error) return { ok: false, error: error.message };
+  if (!updated) {
+    return {
+      ok: false,
+      error: archived
+        ? "Não foi possível arquivar o produto."
+        : "Não foi possível restaurar o produto.",
+    };
+  }
   revalidatePath("/estoque");
   return { ok: true };
 }
@@ -247,14 +267,26 @@ export async function updateProcedure(
   if (p.requires_signed_contract !== undefined)
     patch.requires_signed_contract = p.requires_signed_contract;
 
-  const { error } = await ctx.supabase
+  if (Object.keys(patch).length === 0) {
+    return { ok: false, error: "Nada para atualizar." };
+  }
+
+  const { data: updated, error } = await ctx.supabase
     .schema("clinic")
     .from("procedures")
     .update(patch)
     .eq("id", id.data)
-    .eq("tenant_id", ctx.tenantId);
+    .eq("tenant_id", ctx.tenantId)
+    .select("id")
+    .maybeSingle();
 
   if (error) return { ok: false, error: error.message };
+  if (!updated) {
+    return {
+      ok: false,
+      error: "Procedimento não encontrado ou sem permissão para editar.",
+    };
+  }
 
   revalidatePath("/estoque");
   return { ok: true };
@@ -270,14 +302,24 @@ export async function setProcedureArchived(
   const id = uuidSchema.safeParse(procedureId);
   if (!id.success) return { ok: false, error: "ID inválido." };
 
-  const { error } = await ctx.supabase
+  const { data: updated, error } = await ctx.supabase
     .schema("clinic")
     .from("procedures")
     .update({ is_archived: archived })
     .eq("id", id.data)
-    .eq("tenant_id", ctx.tenantId);
+    .eq("tenant_id", ctx.tenantId)
+    .select("id")
+    .maybeSingle();
 
   if (error) return { ok: false, error: error.message };
+  if (!updated) {
+    return {
+      ok: false,
+      error: archived
+        ? "Não foi possível arquivar o procedimento."
+        : "Não foi possível reativar o procedimento.",
+    };
+  }
   revalidatePath("/estoque");
   return { ok: true };
 }
