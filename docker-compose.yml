@@ -21,7 +21,7 @@
 services:
   app:
     # Ex.: hygorfragas/clinica:1.1.1 — fixe a versão em produção; evite só :latest.
-    image: hygorfragas/clinica:1.1.2
+    image: hygorfragas/clinica:1.1.3
     container_name: clinica-app
     restart: unless-stopped
 
