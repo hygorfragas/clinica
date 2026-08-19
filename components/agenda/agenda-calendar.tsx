@@ -45,9 +45,15 @@ function appointmentToEvent(
   a: AppointmentDto,
   timezone: string,
 ): CalendarEventExternal {
-  const displayTitle =
+  const procedureLabel =
+    a.procedureNames.length > 0
+      ? a.procedureNames.join(", ")
+      : a.procedureName;
+  const fullTitle =
     a.title ??
-    [a.clientName ?? "Paciente", a.procedureName].filter(Boolean).join(" • ");
+    [a.clientName ?? "Paciente", procedureLabel].filter(Boolean).join(" • ");
+  const displayTitle =
+    fullTitle.length > 72 ? `${fullTitle.slice(0, 69)}…` : fullTitle;
   return {
     id: a.id,
     title: displayTitle,
@@ -542,6 +548,7 @@ export type CreateAppointmentPayload = {
   endsAt: string;
   notes?: string;
   procedureId?: string;
+  procedureIds?: string[];
   location?: string;
   color?: string;
   status?:

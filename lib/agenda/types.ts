@@ -8,8 +8,12 @@ export type AppointmentDto = {
   endsAt: string;
   status: string;
   notes: string | null;
+  /** Primeiro procedimento (compatibilidade / espelho legado). */
   procedureId: string | null;
+  /** Nomes unidos por vírgula para exibição rápida. */
   procedureName: string | null;
+  procedureIds: string[];
+  procedureNames: string[];
   location: string | null;
   color: string | null;
   source: string;

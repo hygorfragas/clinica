@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { Plus } from "lucide-react";
 import { AppointmentStockConsume } from "@/components/agenda/appointment-stock-consume";
 import { PatientSearchDialog } from "@/components/clients/patient-search-dialog";
 import { Button } from "@/components/ui/button";
@@ -16,11 +17,22 @@ type DialogState =
   | { mode: "create"; startsAt: string; endsAt: string }
   | { mode: "edit"; appointment: AppointmentDto };
 
+type ProcedureOption = {
+  id: string;
+  name: string;
+  duration_minutes: number | null;
+};
+
+type ProcedureRow = {
+  localId: string;
+  procedureId: string;
+};
+
 type Props = {
   state: DialogState;
   onClose: () => void;
   clients: { id: string; full_name: string; cpf?: string | null }[];
-  procedures: { id: string; name: string; duration_minutes: number | null }[];
+  procedures: ProcedureOption[];
   onCreate: (
     input: CreateAppointmentPayload,
   ) => Promise<{ ok: boolean; error?: string }>;
@@ -41,6 +53,33 @@ function fromInputValue(v: string): string {
   return new Date(v).toISOString();
 }
 
+function makeRow(procedureId = ""): ProcedureRow {
+  return { localId: crypto.randomUUID(), procedureId };
+}
+
+function sumDurationMinutes(
+  rows: ProcedureRow[],
+  procedures: ProcedureOption[],
+): number {
+  return rows.reduce((sum, row) => {
+    if (!row.procedureId) return sum;
+    const proc = procedures.find((p) => p.id === row.procedureId);
+    return sum + (proc?.duration_minutes ?? 0);
+  }, 0);
+}
+
+function applyDurationToEndsAt(
+  startsAt: string,
+  rows: ProcedureRow[],
+  procedures: ProcedureOption[],
+): string | null {
+  const total = sumDurationMinutes(rows, procedures);
+  if (!total || !startsAt) return null;
+  const start = new Date(startsAt);
+  if (Number.isNaN(start.getTime())) return null;
+  return toInputValue(new Date(start.getTime() + total * 60_000).toISOString());
+}
+
 export function AppointmentDialog({
   state,
   onClose,
@@ -53,10 +92,16 @@ export function AppointmentDialog({
   const initial = useMemo(() => {
     if (state.mode === "edit") {
       const a = state.appointment;
+      const ids =
+        a.procedureIds.length > 0
+          ? a.procedureIds
+          : a.procedureId
+            ? [a.procedureId]
+            : [];
       return {
         clientId: a.clientId ?? "",
         title: a.title ?? "",
-        procedureId: a.procedureId ?? "",
+        procedureRows: ids.length > 0 ? ids.map((id) => makeRow(id)) : [],
         startsAt: toInputValue(a.startsAt),
         endsAt: toInputValue(a.endsAt),
         notes: a.notes ?? "",
@@ -67,7 +112,7 @@ export function AppointmentDialog({
     return {
       clientId: "",
       title: "",
-      procedureId: "",
+      procedureRows: [] as ProcedureRow[],
       startsAt: toInputValue(state.startsAt),
       endsAt: toInputValue(state.endsAt),
       notes: "",
@@ -85,6 +130,37 @@ export function AppointmentDialog({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  const selectedProcedureIds = useMemo(
+    () => form.procedureRows.map((row) => row.procedureId).filter(Boolean),
+    [form.procedureRows],
+  );
+
+  function updateProcedureRows(nextRows: ProcedureRow[]) {
+    setForm((f) => {
+      const next = { ...f, procedureRows: nextRows };
+      const endsAt = applyDurationToEndsAt(f.startsAt, nextRows, procedures);
+      if (endsAt) next.endsAt = endsAt;
+      return next;
+    });
+  }
+
+  function addProcedureRow() {
+    if (form.procedureRows.length >= 10) return;
+    updateProcedureRows([...form.procedureRows, makeRow()]);
+  }
+
+  function removeProcedureRow(localId: string) {
+    updateProcedureRows(form.procedureRows.filter((r) => r.localId !== localId));
+  }
+
+  function changeProcedureRow(localId: string, procedureId: string) {
+    updateProcedureRows(
+      form.procedureRows.map((row) =>
+        row.localId === localId ? { ...row, procedureId } : row,
+      ),
+    );
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.clientId) {
@@ -95,10 +171,14 @@ export function AppointmentDialog({
     }
     setSubmitting(true);
     setError(null);
+    const procedureIds = form.procedureRows
+      .map((row) => row.procedureId)
+      .filter(Boolean);
     const payload: CreateAppointmentPayload = {
       clientId: form.clientId || undefined,
       title: form.title.trim() || undefined,
-      procedureId: form.procedureId || undefined,
+      procedureIds,
+      procedureId: procedureIds[0],
       startsAt: fromInputValue(form.startsAt),
       endsAt: fromInputValue(form.endsAt),
       notes: form.notes.trim() || undefined,
@@ -137,20 +217,6 @@ export function AppointmentDialog({
     }
     notifySuccess("Agendamento excluído.");
     onClose();
-  }
-
-  function onProcedureChange(pid: string) {
-    const proc = procedures.find((p) => p.id === pid);
-    const duration = proc?.duration_minutes ?? null;
-    setForm((f) => {
-      const next = { ...f, procedureId: pid };
-      if (duration && f.startsAt) {
-        const start = new Date(f.startsAt);
-        const end = new Date(start.getTime() + duration * 60_000);
-        next.endsAt = toInputValue(end.toISOString());
-      }
-      return next;
-    });
   }
 
   if (!mounted) return null;
@@ -195,22 +261,63 @@ export function AppointmentDialog({
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="procedure">Procedimento (opcional)</Label>
-            <select
-              id="procedure"
-              value={form.procedureId}
-              onChange={(e) => onProcedureChange(e.target.value)}
-              className="mt-1 flex h-10 w-full rounded-md border border-line bg-[#f3f1ee] px-3 text-sm"
+          <div className="space-y-2">
+            <Label>Procedimentos do atendimento</Label>
+            <p className="text-xs text-ink-muted">
+              Inclua Botox, preenchimentos e demais itens do catálogo, um abaixo
+              do outro.
+            </p>
+            {form.procedureRows.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-line bg-muted/20 px-3 py-3 text-sm text-ink-muted">
+                Nenhum procedimento ainda. Adicione os que serão feitos neste
+                horário.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {form.procedureRows.map((row, index) => (
+                  <div
+                    key={row.localId}
+                    className="flex flex-wrap items-center gap-2 rounded-xl border border-line/70 bg-muted/20 p-3"
+                  >
+                    <select
+                      className="flex h-10 min-w-[12rem] flex-1 rounded-md border border-line bg-[#f3f1ee] px-3 text-sm"
+                      value={row.procedureId}
+                      onChange={(e) =>
+                        changeProcedureRow(row.localId, e.target.value)
+                      }
+                      aria-label={`Procedimento ${index + 1}`}
+                    >
+                      <option value="">Selecionar procedimento</option>
+                      {procedures.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                          {p.duration_minutes ? ` (${p.duration_minutes} min)` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-danger"
+                      onClick={() => removeProcedureRow(row.localId)}
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              className="gap-2"
+              onClick={addProcedureRow}
+              disabled={form.procedureRows.length >= 10}
             >
-              <option value="">—</option>
-              {procedures.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                  {p.duration_minutes ? ` (${p.duration_minutes} min)` : ""}
-                </option>
-              ))}
-            </select>
+              <Plus className="h-4 w-4" aria-hidden />
+              Adicionar procedimento
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -222,7 +329,19 @@ export function AppointmentDialog({
                 required
                 value={form.startsAt}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, startsAt: e.target.value }))
+                  setForm((f) => {
+                    const startsAt = e.target.value;
+                    const endsAt = applyDurationToEndsAt(
+                      startsAt,
+                      f.procedureRows,
+                      procedures,
+                    );
+                    return {
+                      ...f,
+                      startsAt,
+                      endsAt: endsAt ?? f.endsAt,
+                    };
+                  })
                 }
               />
             </div>
@@ -248,7 +367,7 @@ export function AppointmentDialog({
               onChange={(e) =>
                 setForm((f) => ({ ...f, title: e.target.value }))
               }
-              placeholder="Se vazio, usa paciente + procedimento"
+              placeholder="Se vazio, usa paciente + procedimentos"
             />
           </div>
 
@@ -301,8 +420,14 @@ export function AppointmentDialog({
           {state.mode === "edit" ? (
             <AppointmentStockConsume
               appointmentId={state.appointment.id}
-              procedureId={form.procedureId || null}
-              savedProcedureId={state.appointment.procedureId}
+              procedureIds={selectedProcedureIds}
+              savedProcedureIds={
+                state.appointment.procedureIds.length > 0
+                  ? state.appointment.procedureIds
+                  : state.appointment.procedureId
+                    ? [state.appointment.procedureId]
+                    : []
+              }
             />
           ) : null}
         </div>

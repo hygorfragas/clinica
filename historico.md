@@ -271,3 +271,18 @@ Memória de continuidade. Cada fase é marcada como concluída ao final.
 
 - Imagem Docker: `hygorfragas/clinica:1.1.3` (`linux/amd64`).
 - Migração: `20260819120000_update_budget_atomic.sql`.
+
+---
+
+# Release 1.1.4 — Múltiplos procedimentos na Agenda (2026-08-19)
+
+## Agenda
+
+- Múltiplos procedimentos por agendamento (`clinic.appointment_procedures`), lista no dialog e exibição no calendário/banner/ficha.
+- RPC `clinic.set_appointment_procedures` (replace-all atômico); update aplica procedimentos antes do patch com rollback.
+- Baixa de estoque com BOM agregado de todos os procedimentos do atendimento.
+
+## Infra
+
+- Imagem Docker: `hygorfragas/clinica:1.1.4` (`linux/amd64`).
+- Migração: `20260819130000_appointment_procedures.sql`.
