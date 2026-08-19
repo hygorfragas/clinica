@@ -48,7 +48,7 @@ export default async function OrcamentosPage() {
     supabase
       .schema("clinic")
       .from("budget_items")
-      .select("id, budget_id, description, quantity, unit_price_cents, line_total_cents, display_order")
+      .select("id, budget_id, procedure_id, description, quantity, unit_price_cents, line_total_cents, display_order")
       .eq("tenant_id", tenantId)
       .order("display_order", { ascending: true }),
   ]);

@@ -16,6 +16,7 @@ function invalidateAgendaCaches() {
 }
 import {
   createAppointmentSchema,
+  normalizeProcedureIds,
   updateAppointmentSchema,
   type CreateAppointmentInput,
   type UpdateAppointmentInput,
@@ -112,7 +113,7 @@ async function fetchClientTitleSummary(
   supabase: ClinicDbClient,
   tenantId: string,
   clientId: string | null | undefined,
-  procedureId: string | null | undefined,
+  procedureIds: string[],
   fallbackTitle: string | null,
 ): Promise<string> {
   if (fallbackTitle && fallbackTitle.trim().length > 0) {
@@ -129,17 +130,58 @@ async function fetchClientTitleSummary(
       .maybeSingle();
     if (c?.full_name) parts.push(c.full_name);
   }
-  if (procedureId) {
-    const { data: p } = await supabase
+  if (procedureIds.length > 0) {
+    const { data: procedures } = await supabase
       .schema("clinic")
       .from("procedures")
-      .select("name")
-      .eq("id", procedureId)
+      .select("id, name")
       .eq("tenant_id", tenantId)
-      .maybeSingle();
-    if (p?.name) parts.push(p.name);
+      .in("id", procedureIds);
+    const nameById = new Map((procedures ?? []).map((p) => [p.id, p.name]));
+    const names = procedureIds
+      .map((id) => nameById.get(id))
+      .filter((name): name is string => !!name);
+    if (names.length > 0) parts.push(names.join(", "));
   }
   return parts.length > 0 ? parts.join(" • ") : "Agendamento";
+}
+
+async function setAppointmentProcedures(
+  supabase: ClinicDbClient,
+  tenantId: string,
+  appointmentId: string,
+  procedureIds: string[],
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.schema("clinic").rpc(
+    "set_appointment_procedures",
+    {
+      p_tenant_id: tenantId,
+      p_appointment_id: appointmentId,
+      p_procedure_ids: procedureIds,
+    },
+  );
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+async function reloadAppointment(
+  supabase: ClinicDbClient,
+  tenantId: string,
+  appointmentId: string,
+): Promise<AppointmentDto | null> {
+  const { data, error } = await supabase
+    .schema("clinic")
+    .from("appointments")
+    .select(APPOINTMENT_SELECT)
+    .eq("id", appointmentId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return mapAppointmentRow(
+    data as unknown as Parameters<typeof mapAppointmentRow>[0],
+  );
 }
 
 export async function listAppointments(params: {
@@ -198,6 +240,8 @@ export async function createAppointment(
     };
   }
 
+  const procedureIds = normalizeProcedureIds(parsed.data) ?? [];
+
   const { data: inserted, error } = await auth.supabase
     .schema("clinic")
     .from("appointments")
@@ -211,28 +255,49 @@ export async function createAppointment(
       title: parsed.data.title ?? null,
       color: parsed.data.color ?? null,
       location: parsed.data.location ?? null,
-      procedure_id: parsed.data.procedureId ?? null,
+      procedure_id: procedureIds[0] ?? null,
       source: "system",
       google_sync_status: "pending",
       created_by_profile_id: auth.profileId,
     })
-    .select(APPOINTMENT_SELECT)
+    .select("id")
     .single();
 
   if (error || !inserted) {
     return { ok: false, error: error?.message ?? "Falha ao criar agendamento." };
   }
 
-  const appointment = mapAppointmentRow(
-    inserted as unknown as Parameters<typeof mapAppointmentRow>[0],
+  const setProcs = await setAppointmentProcedures(
+    auth.supabase,
+    auth.tenantId,
+    inserted.id,
+    procedureIds,
   );
+  if (!setProcs.ok) {
+    await auth.supabase
+      .schema("clinic")
+      .from("appointments")
+      .delete()
+      .eq("id", inserted.id)
+      .eq("tenant_id", auth.tenantId);
+    return setProcs;
+  }
+
+  const appointment = await reloadAppointment(
+    auth.supabase,
+    auth.tenantId,
+    inserted.id,
+  );
+  if (!appointment) {
+    return { ok: false, error: "Agendamento criado, mas falhou ao recarregar." };
+  }
 
   const tz = await fetchTimezone(auth.supabase, auth.tenantId);
   const summary = await fetchClientTitleSummary(
     auth.supabase,
     auth.tenantId,
     appointment.clientId,
-    appointment.procedureId,
+    appointment.procedureIds,
     appointment.title,
   );
 
@@ -336,9 +401,20 @@ export async function updateAppointment(
   if (parsed.data.title !== undefined) patch.title = parsed.data.title ?? null;
   if (parsed.data.color !== undefined) patch.color = parsed.data.color ?? null;
   if (parsed.data.location !== undefined) patch.location = parsed.data.location ?? null;
-  if (parsed.data.procedureId !== undefined)
-    patch.procedure_id = parsed.data.procedureId ?? null;
   patch.google_sync_status = "pending";
+
+  // Procedimentos primeiro: se o RPC falhar, o patch ainda não foi aplicado.
+  const nextProcedureIds = normalizeProcedureIds(parsed.data);
+  const previousProcedureIds = existing.procedureIds;
+  if (nextProcedureIds !== undefined) {
+    const setProcs = await setAppointmentProcedures(
+      auth.supabase,
+      auth.tenantId,
+      id,
+      nextProcedureIds,
+    );
+    if (!setProcs.ok) return setProcs;
+  }
 
   const { data: updated, error } = await auth.supabase
     .schema("clinic")
@@ -346,21 +422,31 @@ export async function updateAppointment(
     .update(patch)
     .eq("id", id)
     .eq("tenant_id", auth.tenantId)
-    .select(APPOINTMENT_SELECT)
+    .select("id")
     .single();
   if (error || !updated) {
+    if (nextProcedureIds !== undefined) {
+      await setAppointmentProcedures(
+        auth.supabase,
+        auth.tenantId,
+        id,
+        previousProcedureIds,
+      );
+    }
     return { ok: false, error: error?.message ?? "Falha ao atualizar agendamento." };
   }
-  const next = mapAppointmentRow(
-    updated as unknown as Parameters<typeof mapAppointmentRow>[0],
-  );
+
+  const next = await reloadAppointment(auth.supabase, auth.tenantId, id);
+  if (!next) {
+    return { ok: false, error: "Agendamento atualizado, mas falhou ao recarregar." };
+  }
 
   const tz = await fetchTimezone(auth.supabase, auth.tenantId);
   const summary = await fetchClientTitleSummary(
     auth.supabase,
     auth.tenantId,
     next.clientId,
-    next.procedureId,
+    next.procedureIds,
     next.title,
   );
 

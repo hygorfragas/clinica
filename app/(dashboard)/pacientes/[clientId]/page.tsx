@@ -28,7 +28,9 @@ export default async function PacienteResumoPage({ params }: PageProps) {
       ctx.supabase
         .schema("clinic")
         .from("appointments")
-        .select("id, starts_at, title, status")
+        .select(
+          "id, starts_at, title, status, procedure_id, appointment_procedures(procedure_id, display_order, procedures:procedures(name))",
+        )
         .eq("client_id", clientId)
         .eq("tenant_id", ctx.tenantId)
         .gte("starts_at", nowIso)
@@ -59,6 +61,25 @@ export default async function PacienteResumoPage({ params }: PageProps) {
   const purchases = purchasesRes.data ?? [];
   const totalInvestidoCents = purchases.reduce((s, p) => s + p.total_cents, 0);
   const nextAppointment = nextAppointmentRes.data ?? null;
+  const nextProcedureNames = (
+    nextAppointment?.appointment_procedures ?? []
+  )
+    .slice()
+    .sort(
+      (a, b) =>
+        (a.display_order ?? 0) - (b.display_order ?? 0),
+    )
+    .map((row) => {
+      const proc = Array.isArray(row.procedures)
+        ? row.procedures[0]
+        : row.procedures;
+      return proc?.name ?? null;
+    })
+    .filter((name): name is string => !!name);
+  const nextAppointmentHint =
+    nextProcedureNames.length > 0
+      ? nextProcedureNames.join(", ")
+      : (nextAppointment?.title ?? "");
   const lastEvolution = lastEvolutionRes.data ?? null;
   const lastSubmission = lastSubmissionRes.data ?? null;
 
@@ -90,7 +111,7 @@ export default async function PacienteResumoPage({ params }: PageProps) {
                 })
               : "—"
           }
-          hint={nextAppointment?.title ?? ""}
+          hint={nextAppointmentHint}
         />
         <StatCard
           title="Última evolução"

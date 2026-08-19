@@ -13,14 +13,19 @@ import { notifyError, notifySuccess } from "@/lib/ui/notify";
 
 type QtyDraft = Record<string, string>;
 
+function sameIds(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((id, index) => id === b[index]);
+}
+
 export function AppointmentStockConsume({
   appointmentId,
-  procedureId,
-  savedProcedureId,
+  procedureIds,
+  savedProcedureIds,
 }: {
   appointmentId: string;
-  procedureId: string | null | undefined;
-  savedProcedureId: string | null | undefined;
+  procedureIds: string[];
+  savedProcedureIds: string[];
 }) {
   const [pending, startTransition] = useTransition();
   const [preview, setPreview] = useState<AppointmentConsumptionPreview | null>(
@@ -31,10 +36,10 @@ export function AppointmentStockConsume({
   const [qtys, setQtys] = useState<QtyDraft>({});
   const [loading, setLoading] = useState(false);
   const procedureSynced =
-    Boolean(procedureId) && procedureId === (savedProcedureId ?? "");
+    procedureIds.length > 0 && sameIds(procedureIds, savedProcedureIds);
 
   useEffect(() => {
-    if (!procedureId || !procedureSynced) {
+    if (procedureIds.length === 0 || !procedureSynced) {
       setVisible(false);
       setPreview(null);
       setOpen(false);
@@ -46,7 +51,7 @@ export function AppointmentStockConsume({
       setLoading(true);
       const res = await getAppointmentConsumptionPreview(
         appointmentId,
-        procedureId,
+        procedureIds,
       );
       if (cancelled) return;
       setLoading(false);
@@ -71,101 +76,70 @@ export function AppointmentStockConsume({
     return () => {
       cancelled = true;
     };
-  }, [appointmentId, procedureId, procedureSynced]);
+  }, [appointmentId, procedureIds, procedureSynced]);
 
-  if (!procedureId) return null;
-
+  if (procedureIds.length === 0) return null;
   if (!procedureSynced) {
     return (
-      <div className="rounded-xl bg-muted/40 px-3 py-3 text-sm text-ink-muted ring-1 ring-line">
-        Salve o agendamento com o procedimento atual para baixar o estoque.
-      </div>
+      <p className="rounded-xl border border-dashed border-line bg-muted/20 px-3 py-2 text-xs text-ink-muted">
+        Salve os procedimentos do atendimento para liberar a baixa de estoque.
+      </p>
     );
   }
-
-  if (!visible || !preview) return null;
-
-  function confirmConsume() {
-    if (!preview) return;
-    const items = preview.items.map((item) => {
-      const raw = qtys[item.productId] ?? String(item.quantity);
-      const quantity = Number.parseFloat(raw.replace(",", "."));
-      return { productId: item.productId, quantity };
-    });
-
-    for (const item of items) {
-      if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
-        notifyError(null, "Quantidades devem ser maiores que zero.");
-        return;
-      }
+  if (!visible || !preview) {
+    if (loading) {
+      return (
+        <p className="text-xs text-ink-muted">Carregando insumos do BOM…</p>
+      );
     }
-
-    startTransition(async () => {
-      const res = await consumeAppointmentStock({
-        appointmentId,
-        items,
-      });
-      if (!res.ok) {
-        notifyError(null, res.error);
-        return;
-      }
-      notifySuccess("Estoque baixado.");
-      setOpen(false);
-      setPreview({ ...preview, alreadyConsumed: true });
-    });
+    return null;
   }
 
   return (
-    <div className="rounded-xl bg-muted/40 px-3 py-3 ring-1 ring-line">
+    <div className="rounded-2xl border border-line/70 bg-muted/15 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-medium text-ink">Estoque do procedimento</p>
+          <p className="text-sm font-semibold text-ink">Baixa de estoque</p>
           <p className="text-xs text-ink-muted">
-            {preview.procedureName}
-            {preview.alreadyConsumed ? " · baixa já registrada" : ""}
+            BOM agregado: {preview.procedureNames.join(", ")}
           </p>
         </div>
-        {!preview.alreadyConsumed ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => setOpen((v) => !v)}
-            disabled={loading || pending}
-          >
-            <PackageMinus className="mr-1 h-3.5 w-3.5" aria-hidden />
-            {open ? "Fechar" : "Baixar estoque"}
-          </Button>
-        ) : (
-          <span className="text-xs font-medium text-ink-muted">Já baixado</span>
-        )}
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="gap-1.5"
+          onClick={() => setOpen((v) => !v)}
+        >
+          <PackageMinus className="h-3.5 w-3.5" aria-hidden />
+          {open ? "Fechar" : "Baixar estoque"}
+        </Button>
       </div>
 
-      {open && !preview.alreadyConsumed ? (
-        <div className="mt-3 space-y-3">
-          <ul className="space-y-2">
-            {preview.items.map((item) => {
-              const insufficient =
-                item.isArchived ||
-                item.stockQuantity <
-                  (Number.parseFloat(
-                    (qtys[item.productId] ?? "0").replace(",", "."),
-                  ) || 0);
-              return (
-                <li
+      {open ? (
+        <div className="mt-3 space-y-2">
+          {preview.alreadyConsumed ? (
+            <p className="text-sm text-warn">
+              Estoque deste atendimento já foi baixado.
+            </p>
+          ) : (
+            <>
+              {preview.items.map((item) => (
+                <div
                   key={item.productId}
-                  className="grid gap-2 rounded-lg bg-surface px-3 py-2 ring-1 ring-line sm:grid-cols-[1fr_100px]"
+                  className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl bg-surface px-3 py-2 ring-1 ring-line/60"
                 >
                   <div>
-                    <div className="text-sm text-ink">{item.productName}</div>
-                    <div
-                      className={`text-xs ${insufficient ? "text-danger" : "text-ink-muted"}`}
-                    >
+                    <p className="text-sm font-medium text-ink">
+                      {item.productName}
+                    </p>
+                    <p className="text-xs text-ink-muted">
                       Estoque: {item.stockQuantity} {item.unit}
                       {item.isArchived ? " · excluído" : ""}
-                    </div>
+                    </p>
                   </div>
                   <Input
+                    className="h-8 w-24"
                     inputMode="decimal"
                     value={qtys[item.productId] ?? ""}
                     onChange={(e) =>
@@ -175,22 +149,50 @@ export function AppointmentStockConsume({
                       }))
                     }
                     disabled={pending || item.isArchived}
-                    aria-label={`Quantidade de ${item.productName}`}
                   />
-                </li>
-              );
-            })}
-          </ul>
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              onClick={confirmConsume}
-              loading={pending}
-              loadingLabel="Baixando..."
-            >
-              Confirmar baixa
-            </Button>
-          </div>
+                </div>
+              ))}
+              <Button
+                type="button"
+                size="sm"
+                loading={pending}
+                loadingLabel="Baixando..."
+                disabled={preview.items.some((item) => item.isArchived)}
+                onClick={() => {
+                  startTransition(async () => {
+                    const items = preview.items
+                      .map((item) => ({
+                        productId: item.productId,
+                        quantity: Number.parseFloat(
+                          (qtys[item.productId] ?? "").replace(",", "."),
+                        ),
+                      }))
+                      .filter(
+                        (item) =>
+                          Number.isFinite(item.quantity) && item.quantity > 0,
+                      );
+                    if (items.length === 0) {
+                      notifyError(null, "Informe ao menos uma quantidade.");
+                      return;
+                    }
+                    const result = await consumeAppointmentStock({
+                      appointmentId,
+                      items,
+                    });
+                    if (!result.ok) {
+                      notifyError(null, result.error);
+                      return;
+                    }
+                    notifySuccess("Estoque baixado para o atendimento.");
+                    setPreview({ ...preview, alreadyConsumed: true });
+                    setOpen(false);
+                  });
+                }}
+              >
+                Confirmar baixa
+              </Button>
+            </>
+          )}
         </div>
       ) : null}
     </div>

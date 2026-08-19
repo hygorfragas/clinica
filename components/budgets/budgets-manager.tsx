@@ -1,8 +1,8 @@
 "use client";
 
-import { useId, useMemo, useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MessageCircle, Plus, Share2, Trash2 } from "lucide-react";
+import { MessageCircle, Pencil, Plus, Share2, Trash2, X } from "lucide-react";
 import { PatientSearchDialog } from "@/components/clients/patient-search-dialog";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -15,6 +15,7 @@ import {
   createBudget,
   deleteBudget,
   generateBudgetPdf,
+  updateBudget,
 } from "@/lib/budgets/actions";
 
 type ClientOption = { id: string; full_name: string; cpf: string | null };
@@ -23,6 +24,7 @@ type ProductOption = { id: string; name: string; price_cents: number };
 type BrandingProfileOption = { id: string; name: string; is_default: boolean };
 type BudgetItemView = {
   id: string;
+  procedure_id?: string | null;
   description: string;
   quantity: number;
   unit_price_cents: number;
@@ -82,6 +84,21 @@ function centsToInput(cents: number): string {
   return (cents / 100).toFixed(2).replace(".", ",");
 }
 
+function canEditBudget(status: string): boolean {
+  return status === "draft" || status === "sent";
+}
+
+function budgetToDraftItems(budget: BudgetView): DraftItem[] {
+  if (budget.items.length === 0) return [makeItem()];
+  return budget.items.map((item) => ({
+    localId: item.id,
+    procedureId: item.procedure_id ?? null,
+    description: item.description,
+    quantity: item.quantity,
+    unitPrice: centsToInput(item.unit_price_cents),
+  }));
+}
+
 function makeItem(localId?: string): DraftItem {
   return {
     localId: localId ?? crypto.randomUUID(),
@@ -121,6 +138,11 @@ export function BudgetsManager({
   const [selectedBrandingByBudget, setSelectedBrandingByBudget] = useState<
     Record<string, string>
   >({});
+  const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editValidUntil, setEditValidUntil] = useState("");
+  const [editDiscount, setEditDiscount] = useState("0,00");
+  const [editItems, setEditItems] = useState<DraftItem[]>([]);
 
   function updateItem(localId: string, patch: Partial<DraftItem>) {
     setItems((prev) =>
@@ -164,6 +186,107 @@ export function BudgetsManager({
       (sum, item) => sum + item.quantity * moneyToCents(item.unitPrice),
       0,
     );
+  }
+
+  function editSubtotalCents(): number {
+    return editItems.reduce(
+      (sum, item) => sum + item.quantity * moneyToCents(item.unitPrice),
+      0,
+    );
+  }
+
+  function updateEditItem(localId: string, patch: Partial<DraftItem>) {
+    setEditItems((prev) =>
+      prev.map((item) => (item.localId === localId ? { ...item, ...patch } : item)),
+    );
+  }
+
+  function addEditItem() {
+    setEditItems((prev) => [...prev, makeItem()]);
+  }
+
+  function removeEditItem(localId: string) {
+    setEditItems((prev) =>
+      prev.length <= 1 ? prev : prev.filter((x) => x.localId !== localId),
+    );
+  }
+
+  function applyEditProcedure(localId: string, procedureId: string) {
+    const proc = procedures.find((p) => p.id === procedureId);
+    if (!proc) {
+      updateEditItem(localId, { procedureId: null });
+      return;
+    }
+    updateEditItem(localId, {
+      procedureId: proc.id,
+      description: proc.name,
+      unitPrice: centsToInput(proc.price_cents),
+    });
+  }
+
+  function applyEditProduct(localId: string, productId: string) {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+    updateEditItem(localId, {
+      procedureId: null,
+      description: product.name,
+      unitPrice: centsToInput(product.price_cents),
+    });
+  }
+
+  function startEdit(budget: BudgetView) {
+    setEditingBudgetId(budget.id);
+    setEditTitle(budget.title?.trim() ?? "");
+    setEditValidUntil(budget.valid_until ?? "");
+    setEditDiscount(centsToInput(budget.discount_cents ?? 0));
+    setEditItems(budgetToDraftItems(budget));
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingBudgetId(null);
+    setEditTitle("");
+    setEditValidUntil("");
+    setEditDiscount("0,00");
+    setEditItems([]);
+    setError(null);
+  }
+
+  function saveEdit(budgetId: string) {
+    setError(null);
+    const payloadItems = editItems
+      .map((item) => ({
+        procedureId: item.procedureId,
+        description: item.description.trim(),
+        quantity: item.quantity,
+        unitPriceCents: moneyToCents(item.unitPrice),
+      }))
+      .filter((item) => item.description.length > 0);
+
+    if (payloadItems.length === 0) {
+      const msg = "Adicione pelo menos um item com descrição.";
+      setError(msg);
+      notifyError(null, msg);
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await updateBudget({
+        budgetId,
+        title: editTitle.trim() || null,
+        validUntil: editValidUntil || null,
+        discountCents: moneyToCents(editDiscount),
+        items: payloadItems,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        notifyError(null, result.error);
+        return;
+      }
+      cancelEdit();
+      notifySuccess("Orçamento atualizado.");
+      router.refresh();
+    });
   }
 
   function whatsappText(budget: BudgetView): string {
@@ -490,20 +613,45 @@ export function BudgetsManager({
           </p>
         ) : (
           <div className="space-y-4">
-            {budgets.map((budget) => (
+            {budgets.map((budget) => {
+              const isEditing = editingBudgetId === budget.id;
+              return (
               <article
                 key={budget.id}
                 className="rounded-[1.5rem] bg-surface p-5 shadow-lift ring-1 ring-line"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-base font-semibold text-ink">
-                      {budget.title?.trim() || "Orçamento sem título"}
-                    </h3>
-                    <p className="mt-1 text-sm text-ink-muted">
-                      {budget.client_name} · criado em{" "}
-                      {new Date(budget.created_at).toLocaleDateString("pt-BR")}
-                    </p>
+                  <div className="min-w-0 flex-1">
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label>Título do orçamento</Label>
+                          <Input
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            placeholder="Ex.: Protocolo facial premium"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Validade</Label>
+                          <Input
+                            type="date"
+                            value={editValidUntil}
+                            onChange={(e) => setEditValidUntil(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <h3 className="text-base font-semibold text-ink">
+                          {budget.title?.trim() || "Orçamento sem título"}
+                        </h3>
+                        <p className="mt-1 text-sm text-ink-muted">
+                          {budget.client_name} · criado em{" "}
+                          {new Date(budget.created_at).toLocaleDateString("pt-BR")}
+                        </p>
+                      </>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span
@@ -527,58 +675,237 @@ export function BudgetsManager({
                         ? " · vencido"
                         : ""}
                     </span>
-                    <select
-                      className="h-8 rounded-md border border-line bg-[#f3f1ee] px-2 text-xs"
-                      value={budget.status}
-                      onChange={(e) =>
-                        setStatus(
-                          budget.id,
-                          e.target.value as "draft" | "sent" | "approved" | "cancelled",
-                        )
-                      }
-                    >
-                      <option value="draft">Rascunho</option>
-                      <option value="sent">Enviado</option>
-                      <option value="approved">Aprovado</option>
-                      <option value="cancelled">Cancelado</option>
-                    </select>
+                    {!isEditing ? (
+                      <select
+                        className="h-8 rounded-md border border-line bg-[#f3f1ee] px-2 text-xs"
+                        value={budget.status}
+                        onChange={(e) =>
+                          setStatus(
+                            budget.id,
+                            e.target.value as "draft" | "sent" | "approved" | "cancelled",
+                          )
+                        }
+                      >
+                        <option value="draft">Rascunho</option>
+                        <option value="sent">Enviado</option>
+                        <option value="approved">Aprovado</option>
+                        <option value="cancelled">Cancelado</option>
+                      </select>
+                    ) : null}
                   </div>
                 </div>
 
-                <ul className="mt-4 space-y-1 text-sm text-ink-muted">
-                  {budget.items.map((item) => (
-                    <li key={item.id}>
-                      {item.quantity}x {item.description} ·{" "}
-                      {BRL.format(
-                        (item.line_total_cents ??
-                          item.quantity * item.unit_price_cents) / 100,
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                {isEditing ? (
+                  <div className="mt-4 space-y-3">
+                    {editItems.map((item, index) => (
+                      <div
+                        key={item.localId}
+                        className="grid gap-3 rounded-2xl border border-line/70 bg-muted/20 p-4 md:grid-cols-12"
+                      >
+                        <div className="space-y-2 md:col-span-4">
+                          <Label>Procedimento (catálogo)</Label>
+                          <select
+                            className="flex h-10 w-full rounded-md border border-line bg-[#f3f1ee] px-3 text-sm"
+                            value={item.procedureId ?? ""}
+                            onChange={(e) =>
+                              applyEditProcedure(item.localId, e.target.value)
+                            }
+                          >
+                            <option value="">Item livre</option>
+                            {procedures.map((proc) => (
+                              <option key={proc.id} value={proc.id}>
+                                {proc.name} · {BRL.format(proc.price_cents / 100)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2 md:col-span-4">
+                          <Label>Produto (estoque)</Label>
+                          <select
+                            className="flex h-10 w-full rounded-md border border-line bg-[#f3f1ee] px-3 text-sm"
+                            defaultValue=""
+                            onChange={(e) => {
+                              if (e.target.value) applyEditProduct(item.localId, e.target.value);
+                            }}
+                          >
+                            <option value="">Selecionar produto</option>
+                            {products.map((product) => (
+                              <option key={product.id} value={product.id}>
+                                {product.name} · {BRL.format(product.price_cents / 100)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2 md:col-span-4">
+                          <Label>Descrição</Label>
+                          <Input
+                            value={item.description}
+                            onChange={(e) =>
+                              updateEditItem(item.localId, { description: e.target.value })
+                            }
+                            placeholder={`Item ${index + 1}`}
+                          />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <Label>Qtd</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={30}
+                            value={item.quantity}
+                            onChange={(e) =>
+                              updateEditItem(item.localId, {
+                                quantity: Number.parseInt(e.target.value || "1", 10),
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <Label>Unitário (R$)</Label>
+                          <Input
+                            inputMode="decimal"
+                            value={item.unitPrice}
+                            onChange={(e) =>
+                              updateEditItem(item.localId, { unitPrice: e.target.value })
+                            }
+                          />
+                        </div>
+                        <div className="md:col-span-12 flex justify-between">
+                          <p className="text-sm text-ink-muted">
+                            Total do item:{" "}
+                            <strong className="font-semibold text-ink">
+                              {BRL.format(
+                                (item.quantity * moneyToCents(item.unitPrice)) / 100,
+                              )}
+                            </strong>
+                          </p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-danger"
+                            onClick={() => removeEditItem(item.localId)}
+                          >
+                            Remover
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="gap-2"
+                      onClick={addEditItem}
+                    >
+                      <Plus className="h-4 w-4" aria-hidden />
+                      Adicionar item
+                    </Button>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl bg-muted/30 p-4 ring-1 ring-line/70">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+                          Subtotal
+                        </p>
+                        <p className="mt-1 text-xl font-semibold text-ink">
+                          {BRL.format(editSubtotalCents() / 100)}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl bg-muted/30 p-4 ring-1 ring-line/70">
+                        <Label>Desconto (R$)</Label>
+                        <Input
+                          inputMode="decimal"
+                          value={editDiscount}
+                          onChange={(e) => setEditDiscount(e.target.value)}
+                        />
+                      </div>
+                      <div className="rounded-2xl bg-brand/8 p-4 ring-1 ring-brand/20">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-brand">
+                          Total final
+                        </p>
+                        <p className="mt-1 text-xl font-semibold text-brand">
+                          {BRL.format(
+                            Math.max(0, editSubtotalCents() - moneyToCents(editDiscount)) /
+                              100,
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <ul className="mt-4 space-y-1 text-sm text-ink-muted">
+                      {budget.items.map((item) => (
+                        <li key={item.id}>
+                          {item.quantity}x {item.description} ·{" "}
+                          {BRL.format(
+                            (item.line_total_cents ??
+                              item.quantity * item.unit_price_cents) / 100,
+                          )}
+                        </li>
+                      ))}
+                    </ul>
 
-                <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
-                  <p>
-                    Subtotal:{" "}
-                    <strong className="font-semibold text-ink">
-                      {BRL.format((budget.subtotal_cents ?? 0) / 100)}
-                    </strong>
-                  </p>
-                  <p>
-                    Desconto:{" "}
-                    <strong className="font-semibold text-ink">
-                      {BRL.format((budget.discount_cents ?? 0) / 100)}
-                    </strong>
-                  </p>
-                  <p>
-                    Total:{" "}
-                    <strong className="font-semibold text-brand">
-                      {BRL.format((budget.total_cents ?? 0) / 100)}
-                    </strong>
-                  </p>
-                </div>
+                    <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
+                      <p>
+                        Subtotal:{" "}
+                        <strong className="font-semibold text-ink">
+                          {BRL.format((budget.subtotal_cents ?? 0) / 100)}
+                        </strong>
+                      </p>
+                      <p>
+                        Desconto:{" "}
+                        <strong className="font-semibold text-ink">
+                          {BRL.format((budget.discount_cents ?? 0) / 100)}
+                        </strong>
+                      </p>
+                      <p>
+                        Total:{" "}
+                        <strong className="font-semibold text-brand">
+                          {BRL.format((budget.total_cents ?? 0) / 100)}
+                        </strong>
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {isEditing ? (
+                    <>
+                      <Button
+                        type="button"
+                        size="sm"
+                        loading={pending}
+                        loadingLabel="Salvando..."
+                        onClick={() => saveEdit(budget.id)}
+                      >
+                        Salvar alterações
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="gap-1.5"
+                        disabled={pending}
+                        onClick={cancelEdit}
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden />
+                        Cancelar
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                  {canEditBudget(budget.status) ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="gap-1.5"
+                      disabled={pending || editingBudgetId !== null}
+                      onClick={() => startEdit(budget)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" aria-hidden />
+                      Editar
+                    </Button>
+                  ) : null}
                   {brandingProfiles.length > 0 ? (
                     <label className="flex items-center gap-1.5 text-xs text-ink-muted">
                       Layout:
@@ -644,9 +971,12 @@ export function BudgetsManager({
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
+                    </>
+                  )}
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

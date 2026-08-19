@@ -39,6 +39,18 @@ const createBudgetSchema = z.object({
 
 export type CreateBudgetInput = z.infer<typeof createBudgetSchema>;
 
+const updateBudgetSchema = z.object({
+  budgetId: z.string().uuid(),
+  title: z.string().trim().max(200).nullable().optional(),
+  validUntil: z.string().date().nullable().optional(),
+  discountCents: z.number().int().min(0).default(0),
+  items: z.array(itemSchema).min(1, "Adicione ao menos um item."),
+});
+
+export type UpdateBudgetInput = z.infer<typeof updateBudgetSchema>;
+
+const EDITABLE_BUDGET_STATUSES = new Set(["draft", "sent"]);
+
 function budgetStatusLabel(status: string): string {
   if (status === "approved") return "Aprovado";
   if (status === "sent") return "Enviado";
@@ -165,6 +177,135 @@ export async function createBudget(input: CreateBudgetInput): Promise<Ok<{ id: s
   revalidatePath("/orcamentos");
   revalidatePath(`/pacientes/${data.clientId}`, "layout");
   return { ok: true, id: budget.id };
+}
+
+async function assertBudgetEditable(
+  supabase: ClinicSupabaseClient,
+  tenantId: string,
+  budgetId: string,
+): Promise<
+  | Err
+  | {
+      ok: true;
+      budget: {
+        id: string;
+        client_id: string;
+        status: string;
+      };
+    }
+> {
+  const { data: budget } = await supabase
+    .schema("clinic")
+    .from("budgets")
+    .select("id, client_id, status")
+    .eq("id", budgetId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  if (!budget) {
+    return { ok: false, error: "Orçamento não encontrado." };
+  }
+
+  if (!EDITABLE_BUDGET_STATUSES.has(budget.status)) {
+    return {
+      ok: false,
+      error: "Só é possível editar orçamentos em rascunho ou enviados.",
+    };
+  }
+
+  const { data: purchase } = await supabase
+    .schema("clinic")
+    .from("client_procedure_purchases")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("budget_id", budgetId)
+    .maybeSingle();
+
+  if (purchase?.id) {
+    return {
+      ok: false,
+      error: "Este orçamento já foi lançado no financeiro e não pode ser editado.",
+    };
+  }
+
+  return { ok: true, budget };
+}
+
+function mapUpdateBudgetRpcError(message: string, code?: string): string {
+  if (code === "NTFND") return "Orçamento não encontrado.";
+  if (code === "NTEDT") {
+    return "Só é possível editar orçamentos em rascunho ou enviados.";
+  }
+  if (code === "FINLK") {
+    return "Este orçamento já foi lançado no financeiro e não pode ser editado.";
+  }
+  if (code === "P0001" && message.trim()) return message;
+  return message || "Falha ao atualizar orçamento.";
+}
+
+export async function updateBudget(input: UpdateBudgetInput): Promise<Ok | Err> {
+  const ctx = await requireClinicalTenantContext();
+  if (!ctx.ok) return ctx;
+
+  const parsed = updateBudgetSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const data = parsed.data;
+  const editable = await assertBudgetEditable(
+    ctx.supabase,
+    ctx.tenantId,
+    data.budgetId,
+  );
+  if (!editable.ok) return editable;
+
+  const procedureIds = data.items
+    .map((item) => item.procedureId ?? null)
+    .filter((id): id is string => !!id);
+
+  if (procedureIds.length > 0) {
+    const { data: procedures } = await ctx.supabase
+      .schema("clinic")
+      .from("procedures")
+      .select("id")
+      .eq("tenant_id", ctx.tenantId)
+      .in("id", procedureIds);
+
+    const allowed = new Set((procedures ?? []).map((p) => p.id));
+    const hasInvalid = procedureIds.some((id) => !allowed.has(id));
+    if (hasInvalid) {
+      return { ok: false, error: "Um ou mais procedimentos não pertencem à clínica." };
+    }
+  }
+
+  const rpcItems = data.items.map((item) => ({
+    procedure_id: item.procedureId ?? null,
+    description: item.description,
+    quantity: item.quantity,
+    unit_price_cents: item.unitPriceCents,
+  }));
+
+  const { error } = await ctx.supabase.schema("clinic").rpc("update_budget", {
+    p_tenant_id: ctx.tenantId,
+    p_budget_id: data.budgetId,
+    p_title: data.title?.trim() ?? "",
+    p_valid_until: data.validUntil ?? null,
+    p_discount_cents: data.discountCents,
+    p_items: rpcItems,
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      error: mapUpdateBudgetRpcError(error.message, error.code),
+    };
+  }
+
+  revalidatePath("/orcamentos");
+  revalidatePath("/financeiro");
+  revalidatePath(`/pacientes/${editable.budget.client_id}`, "layout");
+  return { ok: true };
 }
 
 const budgetIdSchema = z.string().uuid();

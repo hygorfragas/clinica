@@ -433,15 +433,15 @@ export type AppointmentConsumptionItem = {
 
 export type AppointmentConsumptionPreview = {
   appointmentId: string;
-  procedureId: string;
-  procedureName: string;
+  procedureIds: string[];
+  procedureNames: string[];
   alreadyConsumed: boolean;
   items: AppointmentConsumptionItem[];
 };
 
 export async function getAppointmentConsumptionPreview(
   appointmentId: string,
-  procedureId?: string | null,
+  procedureIds?: string[] | null,
 ): Promise<Ok<{ preview: AppointmentConsumptionPreview | null }> | Err> {
   const ctx = await requireClinicalTenantContext();
   if (!ctx.ok) return ctx;
@@ -460,19 +460,40 @@ export async function getAppointmentConsumptionPreview(
   if (appointmentError) return { ok: false, error: appointmentError.message };
   if (!appointment) return { ok: false, error: "Agendamento não encontrado." };
 
-  const resolvedProcedureId = procedureId || appointment.procedure_id;
-  if (!resolvedProcedureId) return { ok: true, preview: null };
+  const { data: linkedRows } = await ctx.supabase
+    .schema("clinic")
+    .from("appointment_procedures")
+    .select("procedure_id, display_order")
+    .eq("tenant_id", ctx.tenantId)
+    .eq("appointment_id", id.data)
+    .order("display_order", { ascending: true });
 
-  const { data: procedure, error: procedureError } = await ctx.supabase
+  const linkedIds = (linkedRows ?? []).map((row) => row.procedure_id);
+  const resolvedProcedureIds =
+    procedureIds && procedureIds.length > 0
+      ? procedureIds
+      : linkedIds.length > 0
+        ? linkedIds
+        : appointment.procedure_id
+          ? [appointment.procedure_id]
+          : [];
+
+  if (resolvedProcedureIds.length === 0) return { ok: true, preview: null };
+
+  const { data: procedures, error: procedureError } = await ctx.supabase
     .schema("clinic")
     .from("procedures")
     .select("id, name")
-    .eq("id", resolvedProcedureId)
     .eq("tenant_id", ctx.tenantId)
-    .maybeSingle();
+    .in("id", resolvedProcedureIds);
 
   if (procedureError) return { ok: false, error: procedureError.message };
-  if (!procedure) return { ok: true, preview: null };
+  if (!procedures || procedures.length === 0) return { ok: true, preview: null };
+
+  const nameById = new Map(procedures.map((p) => [p.id, p.name]));
+  const procedureNames = resolvedProcedureIds
+    .map((procId) => nameById.get(procId))
+    .filter((name): name is string => !!name);
 
   const { data: bomRows, error: bomError } = await ctx.supabase
     .schema("clinic")
@@ -481,7 +502,7 @@ export async function getAppointmentConsumptionPreview(
       "product_id, quantity, products:products(name, unit, is_archived, stock_quantity)",
     )
     .eq("tenant_id", ctx.tenantId)
-    .eq("procedure_id", resolvedProcedureId);
+    .in("procedure_id", resolvedProcedureIds);
 
   if (bomError) return { ok: false, error: bomError.message };
   if (!bomRows || bomRows.length === 0) return { ok: true, preview: null };
@@ -497,24 +518,33 @@ export async function getAppointmentConsumptionPreview(
 
   if (movError) return { ok: false, error: movError.message };
 
-  const items: AppointmentConsumptionItem[] = bomRows.map((row) => {
+  const aggregated = new Map<string, AppointmentConsumptionItem>();
+  for (const row of bomRows) {
     const product = Array.isArray(row.products) ? row.products[0] : row.products;
-    return {
+    const existing = aggregated.get(row.product_id);
+    const qty = Number(row.quantity);
+    if (existing) {
+      existing.quantity += qty;
+      continue;
+    }
+    aggregated.set(row.product_id, {
       productId: row.product_id,
       productName: product?.name ?? "Produto",
       unit: product?.unit ?? "un",
-      quantity: Number(row.quantity),
+      quantity: qty,
       stockQuantity: Number(product?.stock_quantity ?? 0),
       isArchived: Boolean(product?.is_archived),
-    };
-  });
+    });
+  }
+
+  const items = [...aggregated.values()];
 
   return {
     ok: true,
     preview: {
       appointmentId: id.data,
-      procedureId: resolvedProcedureId,
-      procedureName: procedure.name,
+      procedureIds: resolvedProcedureIds,
+      procedureNames,
       alreadyConsumed: (count ?? 0) > 0,
       items,
     },
