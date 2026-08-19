@@ -2317,6 +2317,17 @@ export type Database = {
         };
         Returns: undefined;
       };
+      update_budget: {
+        Args: {
+          p_tenant_id: string;
+          p_budget_id: string;
+          p_title: string;
+          p_valid_until: string | null;
+          p_discount_cents: number;
+          p_items: Json;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       inventory_movement_reason:
