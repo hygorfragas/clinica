@@ -22,7 +22,9 @@ const appointmentFieldsSchema = z.object({
   startsAt: isoDateTime,
   endsAt: isoDateTime,
   notes: z.string().trim().max(2000).optional(),
+  /** @deprecated Preferir procedureIds. Mantido para compatibilidade. */
   procedureId: z.string().uuid().optional(),
+  procedureIds: z.array(z.string().uuid()).max(10).optional(),
   location: z.string().trim().max(160).optional(),
   color: z
     .string()
@@ -31,6 +33,15 @@ const appointmentFieldsSchema = z.object({
     .optional(),
   status: z.enum(APPOINTMENT_STATUSES).default("scheduled"),
 });
+
+export function normalizeProcedureIds(input: {
+  procedureIds?: string[];
+  procedureId?: string;
+}): string[] | undefined {
+  if (input.procedureIds !== undefined) return input.procedureIds;
+  if (input.procedureId !== undefined) return [input.procedureId];
+  return undefined;
+}
 
 export const createAppointmentSchema = appointmentFieldsSchema.refine(
   (v) => new Date(v.endsAt) > new Date(v.startsAt),

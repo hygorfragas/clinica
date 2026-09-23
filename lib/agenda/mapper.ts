@@ -1,5 +1,11 @@
 import type { AppointmentDto } from "./types";
 
+export type RawAppointmentProcedure = {
+  procedure_id: string;
+  display_order: number;
+  procedures?: { name: string } | null | Array<{ name: string }>;
+};
+
 export type RawAppointment = {
   id: string;
   tenant_id: string;
@@ -21,9 +27,36 @@ export type RawAppointment = {
   updated_at: string;
   clients?: { full_name: string } | null;
   procedures?: { name: string } | null;
+  appointment_procedures?: RawAppointmentProcedure[] | null;
 };
 
+function procedureNameFromJoin(
+  value: RawAppointmentProcedure["procedures"],
+): string | null {
+  if (!value) return null;
+  if (Array.isArray(value)) return value[0]?.name ?? null;
+  return value.name ?? null;
+}
+
 export function mapAppointmentRow(row: RawAppointment): AppointmentDto {
+  const linked = [...(row.appointment_procedures ?? [])].sort(
+    (a, b) => a.display_order - b.display_order,
+  );
+  const procedureIds =
+    linked.length > 0
+      ? linked.map((item) => item.procedure_id)
+      : row.procedure_id
+        ? [row.procedure_id]
+        : [];
+  const procedureNames =
+    linked.length > 0
+      ? linked
+          .map((item) => procedureNameFromJoin(item.procedures))
+          .filter((name): name is string => !!name)
+      : row.procedures?.name
+        ? [row.procedures.name]
+        : [];
+
   return {
     id: row.id,
     tenantId: row.tenant_id,
@@ -34,8 +67,10 @@ export function mapAppointmentRow(row: RawAppointment): AppointmentDto {
     endsAt: row.ends_at,
     status: row.status,
     notes: row.notes,
-    procedureId: row.procedure_id,
-    procedureName: row.procedures?.name ?? null,
+    procedureId: procedureIds[0] ?? row.procedure_id ?? null,
+    procedureName: procedureNames.join(", ") || null,
+    procedureIds,
+    procedureNames,
     location: row.location,
     color: row.color,
     source: row.source ?? "system",
@@ -49,4 +84,4 @@ export function mapAppointmentRow(row: RawAppointment): AppointmentDto {
 }
 
 export const APPOINTMENT_SELECT =
-  "id, tenant_id, client_id, starts_at, ends_at, status, notes, title, color, location, source, procedure_id, google_event_id, google_calendar_id, google_sync_status, created_by_profile_id, created_at, updated_at, clients:clients(full_name), procedures:procedures(name)";
+  "id, tenant_id, client_id, starts_at, ends_at, status, notes, title, color, location, source, procedure_id, google_event_id, google_calendar_id, google_sync_status, created_by_profile_id, created_at, updated_at, clients:clients(full_name), procedures:procedures(name), appointment_procedures(procedure_id, display_order, procedures:procedures(name))";

@@ -159,6 +159,14 @@ export function AppointmentQuickActions({
             {appointment.clientName ?? "Paciente"} •{" "}
             {new Date(appointment.startsAt).toLocaleString("pt-BR")}
           </p>
+          {appointment.procedureNames.length > 0 || appointment.procedureName ? (
+            <p className="text-xs text-ink-muted">
+              Procedimentos:{" "}
+              {appointment.procedureNames.length > 0
+                ? appointment.procedureNames.join(", ")
+                : appointment.procedureName}
+            </p>
+          ) : null}
         </header>
 
         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">

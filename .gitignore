@@ -34,3 +34,12 @@ Thumbs.db
 
 # Backup local de artefatos Docker recuperados — não versionar
 recuperado-docker/
+
+.optmem/
+
+# Artefatos locais de análise e lock do CLI skills (o lock canônico é .specsfy/skills-lock.json)
+graphify-out/
+/skills-lock.json
+
+# Skill do monorepo Specsfy; não faz parte do projeto consumidor
+.agents/skills/specsfy-monorepo-documentator/

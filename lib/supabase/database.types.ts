@@ -553,6 +553,55 @@ export type Database = {
           },
         ];
       };
+      appointment_procedures: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          appointment_id: string;
+          procedure_id: string;
+          display_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          appointment_id: string;
+          procedure_id: string;
+          display_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          appointment_id?: string;
+          procedure_id?: string;
+          display_order?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "appointment_procedures_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "appointment_procedures_appointment_id_fkey";
+            columns: ["appointment_id"];
+            isOneToOne: false;
+            referencedRelation: "appointments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "appointment_procedures_procedure_id_fkey";
+            columns: ["procedure_id"];
+            isOneToOne: false;
+            referencedRelation: "procedures";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       calendar_settings: {
         Row: {
           tenant_id: string;
@@ -2314,6 +2363,25 @@ export type Database = {
           p_appointment_id: string;
           p_items: Json;
           p_profile_id: string | null;
+        };
+        Returns: undefined;
+      };
+      set_appointment_procedures: {
+        Args: {
+          p_tenant_id: string;
+          p_appointment_id: string;
+          p_procedure_ids: string[];
+        };
+        Returns: undefined;
+      };
+      update_budget: {
+        Args: {
+          p_tenant_id: string;
+          p_budget_id: string;
+          p_title: string;
+          p_valid_until: string | null;
+          p_discount_cents: number;
+          p_items: Json;
         };
         Returns: undefined;
       };
