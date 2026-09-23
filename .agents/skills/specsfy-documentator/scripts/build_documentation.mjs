@@ -6,24 +6,7 @@ import { dirname, extname, join, relative, resolve } from "node:path";
 
 const START = "<!-- specsfy:documentator:start -->";
 const END = "<!-- specsfy:documentator:end -->";
-const ignored = new Set([
-  ".agents",
-  ".claude",
-  ".cursor",
-  ".git",
-  ".next",
-  ".specsfy",
-  ".venv",
-  "build",
-  "coverage",
-  "dist",
-  "docs",
-  "graphify-out",
-  "node_modules",
-  "recuperado-docker",
-  "storage",
-  "vendor",
-]);
+const ignored = new Set([".git", ".venv", "build", "coverage", "dist", "docs", "node_modules", "storage", "vendor"]);
 const args = process.argv.slice(2);
 const project = resolve(args.includes("--project") ? args[args.indexOf("--project") + 1] : process.cwd());
 const check = args.includes("--check");
@@ -117,7 +100,7 @@ if (!existsSync(project)) {
   const frontendFiles = code.filter((path) => /\.(?:tsx|jsx|vue|astro|css)$/.test(path) || /tailwind\.config/.test(path));
   const frontendContent = await Promise.all(frontendFiles.map(text));
   const tailwind = declared.includes("tailwindcss") || frontendFiles.some((path) => /tailwind\.config/.test(path)) || frontendContent.some((item) => item.includes("tailwindcss"));
-  const tokens = [...new Set(frontendContent.flatMap((item) => [...item.matchAll(/(?:^|[;{]\s*)(--[\w-]+)\s*:/gm)].map((match) => match[1])))];
+  const tokens = [...new Set(frontendContent.flatMap((item) => [...item.matchAll(/--[\w-]+/g)].map((match) => match[0])))];
   const docData = {
     "README.md": ["Documentação técnica", `## Visão geral\n\n- Frameworks detectados: ${frameworks.join(", ") || "não identificados"}.\n- Arquivos de código: ${code.length}.\n- Arquivos de teste: ${testFiles.length}.\n\n## Roteiro\n\n- [Arquitetura](architecture.md)\n- [Aplicação](application.md)\n- [Banco de dados](database.md)\n- [Testes](testing.md)\n- [Pacotes](packages.md)`],
     "architecture.md": ["Arquitetura", `## Componentes\n\n${table(["Tipo", "Quantidade"], [["Código", code.length], ["Testes", testFiles.length]])}\n\n## Diagramas\n\n\`\`\`mermaid\nflowchart TD\n  Application[Aplicação]\n\`\`\`\n\n\`\`\`mermaid\nclassDiagram\n  class Application\n\`\`\``],
@@ -130,7 +113,7 @@ if (!existsSync(project)) {
     "integrations.md": ["Integrações", "## Configuração\n\nValores de ambiente e integrações são documentados apenas pelos nomes declarados localmente, sem segredos."],
     "decisions.md": ["Decisões técnicas", "## Política\n\nDecisões explícitas em `PROJECT.md` e `.specsfy/` prevalecem sobre inferências deste documento."],
   };
-  const targets = {...Object.fromEntries(Object.entries(docData).map(([name, [title]]) => [join(project, "docs", name), [title, docData[name][1]]])), [join(project, ".specsfy", "PACKAGES.md")]: ["Pacotes e bibliotecas", table(["Gerenciador", "Escopo", "Pacote", "Versão", "Finalidade", "Fonte"], packages)]};
+  const targets = {...Object.fromEntries(Object.entries(docData).map(([name, [title]]) => [join(project, "docs", name), [title, docData[name][1]]])), [join(project, ".specsfy", "PACKAGES.md")]: ["Pacotes e bibliotecas", `# Pacotes e bibliotecas\n\n${table(["Gerenciador", "Escopo", "Pacote", "Versão", "Finalidade", "Fonte"], packages)}`]};
   const stale = [];
   for (const [path, [title, generated]] of Object.entries(targets)) {
     const current = await text(path);

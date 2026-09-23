@@ -51,6 +51,14 @@ hidratação definidos pelo framework hospedeiro.
   criação e edição, Dialog ou Sheet para ações contextuais e Alert/Badge para
   retorno e status. Não crie uma alternativa manual quando o catálogo gratuito
   já atender a interação.
+- Em listas com detalhe, o Data Grid torna a linha inteira clicável e acessível
+  por teclado. Botões, checkboxes e menus internos ficam em uma camada de ação
+  própria, como `TableRowAction`, para não abrir o detalhe por engano.
+- Em criar e editar, use Form em seções: contexto à esquerda e painel de campos
+  à direita, com duas colunas nos breakpoints largos e uma no mobile.
+- Toda tela tem `Breadcrumb` com o nome da equipe ativa, o módulo e o título
+  atual. Em Laravel, reutilize o `Breadcrumb` ou `Breadcrumbs` já existente no
+  layout e a tipagem usada pelas rotas.
 - Registre `@reui` em `components.json` com
   `https://reui.io/r/{style}/{name}.json`; itens `c-*` são gratuitos.
 - Preserve a biblioteca de primitives já presente: Base UI e Radix têm APIs

@@ -23,7 +23,7 @@ variante correspondente ao projeto.
 
 | Parte do CRUD | Primeiro recurso ReUI a consultar |
 | --- | --- |
-| Lista, ordenação, seleção e edição em linha | Data Grid |
+| Lista, ordenação, seleção, edição em linha e detalhe por clique na linha | Data Grid |
 | Filtro simples ou composto | Filters |
 | Criar e editar | Form, campos e Stepper quando houver etapas |
 | Abrir ação sem sair da tela | Dialog ou Sheet |
@@ -34,5 +34,13 @@ variante correspondente ao projeto.
 Se a necessidade não aparecer nesse mapa, pesquise o catálogo antes de criar
 um componente manual. O resultado final preserva o fluxo e as convenções do
 sistema atual.
+
+Para o Data Grid, escolha a variante que permita link de detalhe na linha inteira
+com equivalente de teclado. Registre como ações internas, seleção e menus ficam
+acima dessa área sem propagar a navegação.
+
+O `Breadcrumb` pertence ao shell de toda tela. Em Laravel, procure o componente
+shadcn/ui ou a composição existente no layout antes de instalar ou criar outro;
+insira a equipe ativa, o módulo e a tela atual reaproveitando a API local.
 
 Fonte: <https://reui.io/components>.

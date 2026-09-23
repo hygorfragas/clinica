@@ -68,14 +68,19 @@ ou pendente.
 - `INTERFACE.md`, na raiz, é o mapa canônico do design system: stack de
   interface, tokens, primitives shadcn/ui, composições ReUI, arquivos-fonte,
   componentes reutilizáveis e telas que os consomem.
+- `DESIGNSYSTEM.MD`, na raiz, mantém os defaults macro de interface, padrões
+  comuns de CRUD e dashboard, estados e exceções com alcance.
 - `.specsfy/PACKAGES.md` mantém o inventário npm e Composer derivado dos
   manifests, lockfiles e metadados locais, com uma finalidade curta por pacote.
+- `.specsfy/USER-PROFILE.md` mantém o nível de conhecimento confirmado, as
+  respostas já dadas durante o setup e as fontes dessas respostas. O setup lê
+  esse arquivo antes de perguntar e não repete assuntos já confirmados.
 - `.specsfy/SPECKIT.md` aparece quando o projeto possui
   `.specify/memory/constitution.md`. Essa projeção lista a constituição e todos
   os arquivos regulares encontrados em `specs/`, sem alterar as fontes do
   GitHub Spec Kit.
 - Antes de iniciar qualquer skill do framework, executar obrigatoriamente
-  `$specsfy-setup` para verificar e reconciliar os cinco contextos iniciais e
+  `$specsfy-setup` para verificar e reconciliar os contextos iniciais e
   os blocos reservados em `AGENTS.md` e `CLAUDE.md`. A única exceção é a própria
   `$specsfy-setup`, que não se chama recursivamente. Em uma transição automática,
   executar novamente o setup com a mesma raiz já confirmada antes de carregar a
@@ -87,6 +92,10 @@ ou pendente.
 - Executar `$specsfy-aux-stack` após mudanças estruturais de tecnologia,
   `$specsfy-aux-rules` para regras confirmadas e `$specsfy-aux-database` sempre
   que banco, schema, tabela, campo, relação ou migration mudar.
+- Toda tarefa que cria ou altera a estrutura do banco inclui uma tarefa
+  `[MIGRATION]` com arquivo
+  versionado. A implementação aplica a migration no banco de teste e registra
+  uma consulta de estado antes de concluir a tarefa ou o Delivery Gate.
 - Executar
   `.agents/skills/specsfy-setup/scripts/monitor_context.mjs --project . --check`
   no início, após cada tarefa de implementação e antes do Delivery Gate.
@@ -113,7 +122,7 @@ input → inbox → backlog → spec → validate → tasks → TDD/BDD → impl
    `specs/inbox/`, sem fazer perguntas.
 2. Use `specsfy-02-backlog` para buscar material relacionado, registrar o item
    e aprofundar decisões por perguntas adaptativas. Quando a origem for um
-   `MVP.md`, o refinamento lê a milestone, a Inbox e as evidências importadas,
+   `MVP.md`, o refinamento lê a milestone, o backlog e as evidências importadas,
    registra automaticamente as respostas já declaradas e pergunta somente por
    lacuna, ambiguidade ou contradição aplicável.
 3. Use `specsfy-03-specify` para criar e consolidar a spec normativa inicial.
@@ -139,6 +148,14 @@ input → inbox → backlog → spec → validate → tasks → TDD/BDD → impl
     linguagem cotidiana e registra respostas confirmadas em
     `.specsfy/DATABASE.md`.
 
+## Contrato de runtime Laravel
+
+Toda aplicação Laravel usa Laravel Octane como servidor de aplicação. O pacote
+`laravel/octane` é obrigatório com Open Swoole. O Octane usa o identificador
+`swoole` para esse servidor. Código executado por workers persistentes não pode manter
+estado de uma requisição para a seguinte. Build, healthcheck, reload e deploy
+devem exercitar o processo Octane que atende o tráfego real.
+
 ## Contrato de experiência de interface
 
 Quando a entrega criar ou mudar uma interface usada por pessoas, a descoberta
@@ -156,6 +173,43 @@ definição, a conversa deve esclarecer, somente nas lacunas reais:
 6. como conteúdo, ações e dados se distribuem na tela em desktop e mobile;
 7. como aparecem loading, vazio, erro, sucesso, permissão insuficiente e
    acessibilidade por teclado.
+
+### Contrato CRUD
+
+Quando a entrega incluir um CRUD, use os mesmos componentes em todas as telas
+da superfície. O `PageHeader` deve ser um componente único e reutilizável para
+lista, detalhe, criação e edição, com variações recebidas por props ou
+configuração. Não replique o markup do cabeçalho em cada página.
+
+- A listagem usa um `DataGrid` que ocupa toda a largura disponível.
+- A coluna `ID` fica visível em toda listagem, inclusive quando a tela também
+  mostra nome, status ou outras informações do registro.
+- A linha inteira funciona como link para o detalhe por mouse e teclado.
+- Cada linha oferece ações independentes de editar e apagar. O botão de apagar
+  respeita a permissão e confirma a consequência antes de executar.
+- Componentes recorrentes de cabeçalho, tabela, linha, ações, formulário,
+  estados e feedback são registrados em `INTERFACE.md` e reaproveitados antes
+  de uma nova implementação.
+
+### Revisão visual durante o desenvolvimento
+
+A revisão visual é obrigatória em toda tarefa de desenvolvimento que possa
+alterar uma interface, mesmo sem pedido da pessoa. O item `VISUAL` da tarefa
+fica entre `VERIFY` e `EVIDENCE` para impedir o registro da entrega sem a
+conferência.
+
+Leia `DESIGNSYSTEM.MD`, `INTERFACE.md` e os componentes afetados. Compare a
+interface renderizada ou inspecionada nos viewports e estados relevantes com o
+sistema do projeto. A conferência precisa cobrir bordas, espaçamentos, margens,
+padding e tipografia, incluindo família, peso, tamanho, altura de linha e
+quebra de texto. Confira também alinhamento, overflow, foco, conteúdo curto e
+conteúdo longo.
+
+Registre na tarefa o método usado, o viewport, os estados percorridos, os
+ajustes aplicados e o resultado. Quando a tarefa não tiver superfície visual,
+marque o item `VISUAL` com `Não aplicável` e o motivo concreto. Essa análise
+ocorre durante a implementação e novamente no fechamento do Delivery Gate;
+pedido do usuário não é condição para acioná-la.
 
 Antes da primeira pergunta dessa área, leia `.specsfy/STACK.md`,
 `.specsfy/PACKAGES.md` quando existir, manifests, configurações e telas já
@@ -319,6 +373,22 @@ gates para contornar a etapa responsável. Após cada
 handoff, reavalie o estado canônico; se origem, destino e pendência se repetirem
 sem mudança observável, pare o ciclo e relate o impasse.
 
+### Proteção do banco de desenvolvimento
+
+Nenhuma etapa executa testes usando o banco de desenvolvimento. Em Laravel, o
+setup e cada skill que roda testes exigem `.env.testing`, `APP_ENV=testing` e
+um destino de banco explicitamente diferente do `.env`. Enquanto essa
+separação não estiver comprovada, nenhum teste focal, suíte ou regressão pode
+ser executado.
+
+Comandos que apagam, recriam ou zeram banco e schema são sempre ignorados. A
+recusa inclui `migrate:fresh`, `migrate:refresh`, `migrate:reset`,
+`migrate:rollback`, `db:wipe`, `schema:drop`, `prisma migrate reset`,
+`DROP DATABASE`, `DROP SCHEMA`, `DROP TABLE`, `TRUNCATE`,
+`RefreshDatabase`, `DatabaseMigrations` e equivalentes. Autorização da pessoa
+não remove essa proteção. Em Laravel, use `DatabaseTransactions` e factories
+restritas aos registros do caso.
+
 ## Três atos e estado
 
 - **Ato I — Definir:** intenção, requisitos e Gherkin; termina em
@@ -353,6 +423,10 @@ os Atos II–III. Gate posterior não permanece aprovado sobre entrada invalidad
 - Materialize no mínimo três casos TDD executáveis para a feature inteira e
   para cada `US`, `FR` e `NFR`. Cada caso declara seu próprio marcador
 `SPECSFY:`; um marcador compartilhado é considerado como um caso.
+- Toda tarefa mantém o checklist `PREP`, `EXECUTE`, `VERIFY`, `VISUAL`,
+  `EVIDENCE` e `IMPROVE`, nessa ordem. O item `VISUAL` registra a conferência
+  de bordas, espaçamentos, margens, padding e tipografia ou a justificativa
+  concreta para uma tarefa sem interface.
 - Em projeto PHP, execute os testes derivados com Pest. Em projeto Node sem PHP,
   pergunte qual runner de testes adotar e recomende Vitest; não instale nem
   escolha silenciosamente. Em projeto misto PHP + Node, prevalece Pest.

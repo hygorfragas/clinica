@@ -3,6 +3,10 @@
 Em Laravel com React, use shadcn/ui e ReUI juntos. shadcn/ui fornece
 primitives; ReUI fornece composições gratuitas para fluxos completos.
 
+Toda tela deve renderizar `Breadcrumb` com o nome da equipe ativa, o módulo e a
+tela atual. Em Laravel, reaproveite o componente existente do layout e passe os
+itens pelas rotas e pela tipagem local.
+
 | Necessidade | shadcn/ui | ReUI |
 | --- | --- | --- |
 | Ação | Button, Button Group, Toggle, Toggle Group | Button e ações compostas |

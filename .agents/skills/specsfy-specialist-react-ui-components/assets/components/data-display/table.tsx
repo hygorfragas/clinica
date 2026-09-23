@@ -48,11 +48,16 @@ const TableRowContext = createContext<{ href?: string; target?: string; title?: 
   title: undefined,
 })
 
+/**
+ * Compartilha o destino com cada célula para cobrir a área inteira da linha.
+ * Controles próprios da linha devem ficar dentro de TableRowAction.
+ */
 export function TableRow({
   href,
   target,
   title,
   className,
+  children,
   ...props
 }: { href?: string; target?: string; title?: string } & React.ComponentPropsWithoutRef<'tr'>) {
   let { striped } = useContext(TableContext)
@@ -69,9 +74,16 @@ export function TableRow({
           href && striped && 'hover:bg-zinc-950/5 dark:hover:bg-white/5',
           href && !striped && 'hover:bg-zinc-950/2.5 dark:hover:bg-white/2.5'
         )}
-      />
+      >
+        {children}
+      </tr>
     </TableRowContext.Provider>
   )
+}
+
+/** Mantém ações internas acima do link invisível que torna a linha navegável. */
+export function TableRowAction({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
+  return <div {...props} data-row-action className={clsx(className, 'relative z-10')} />
 }
 
 export function TableHeader({ className, ...props }: React.ComponentPropsWithoutRef<'th'>) {
@@ -113,9 +125,9 @@ export function TableCell({ className, children, ...props }: React.ComponentProp
           data-row-link
           href={href}
           target={target}
-          aria-label={title}
+          aria-label={title ?? 'Abrir registro'}
           tabIndex={cellRef?.previousElementSibling === null ? 0 : -1}
-          className="absolute inset-0 focus:outline-hidden"
+          className="absolute inset-0 z-0 focus:outline-hidden"
         />
       )}
       {children}

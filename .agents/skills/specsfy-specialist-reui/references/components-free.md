@@ -25,6 +25,10 @@ famílias técnicas de todos esses blocos.
 | Comércio | Category Card, Checkout, Comparison, Coupon, Filter Sidebar, Product Card, Product Detail, Product Grid, Receipt, Review, Shopping Cart e Wishlist |
 | Marketing | Blog, Contact, CTA, FAQ e Hero |
 
+O shell inclui `Breadcrumb` em todas as telas, com equipe, módulo e título atual.
+Em Laravel, use o `Breadcrumb` ou `Breadcrumbs` existente no layout antes de
+instalar uma alternativa.
+
 ## Primitives próprias do ReUI
 
 | Primitive | Usar para |
@@ -33,7 +37,7 @@ famílias técnicas de todos esses blocos.
 | Autocomplete | busca assíncrona com escolha por teclado |
 | Badge | estado, contagem, etiqueta e prioridade |
 | Cascader | seleção hierárquica de vários níveis |
-| Data Grid | dados densos, ordenação, seleção, edição e virtualização |
+| Data Grid | dados densos, ordenação, seleção, edição, virtualização e detalhe por linha clicável |
 | Date Selector | data ou intervalo com atalhos |
 | Event Calendar | agenda, recorrência e edição de eventos |
 | File Upload | anexos, arrastar e soltar e prévia |
@@ -58,7 +62,8 @@ famílias técnicas de todos esses blocos.
 2. Confirme que o item pertence ao catálogo gratuito e usa prefixo `c-*`.
 3. Leia a página da API, as dependências e exemplos reais.
 4. Instale com `npx shadcn@latest add @reui/<nome-c->`.
-5. Troque dados demonstrativos por dados do produto e cubra todos os estados.
+5. Troque dados demonstrativos por dados do produto, torne a linha de detalhe
+   clicável por mouse e teclado e cubra todos os estados.
 
 Itens premium, blocks pagos, templates e ícones pagos não entram nesta skill.
 O registry público resolve primitives públicas necessárias aos componentes

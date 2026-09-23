@@ -86,17 +86,17 @@
 | Terceiro | transitiva | @img/sharp-libvips-linux-ppc64 | 1.3.1 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-libvips-linux-riscv64 | 1.3.1 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-libvips-linux-s390x | 1.3.1 | Finalidade não descrita nos metadados locais. |  | — |
-| Terceiro | transitiva | @img/sharp-libvips-linux-x64 | 1.3.1 | Finalidade não descrita nos metadados locais. |  | — |
+| Terceiro | transitiva | @img/sharp-libvips-linux-x64 | 1.3.1 | Prebuilt libvips and dependencies for use with sharp on Linux (glibc) x64 | https://github.com/lovell/sharp-libvips | https://github.com/lovell/sharp-libvips |
 | Terceiro | transitiva | @img/sharp-libvips-linuxmusl-arm64 | 1.3.1 | Finalidade não descrita nos metadados locais. |  | — |
-| Terceiro | transitiva | @img/sharp-libvips-linuxmusl-x64 | 1.3.1 | Finalidade não descrita nos metadados locais. |  | — |
+| Terceiro | transitiva | @img/sharp-libvips-linuxmusl-x64 | 1.3.1 | Prebuilt libvips and dependencies for use with sharp on Linux (musl) x64 | https://github.com/lovell/sharp-libvips | https://github.com/lovell/sharp-libvips |
 | Terceiro | transitiva | @img/sharp-linux-arm | 0.35.2 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-linux-arm64 | 0.35.2 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-linux-ppc64 | 0.35.2 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-linux-riscv64 | 0.35.2 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-linux-s390x | 0.35.2 | Finalidade não descrita nos metadados locais. |  | — |
-| Terceiro | transitiva | @img/sharp-linux-x64 | 0.35.2 | Finalidade não descrita nos metadados locais. |  | — |
+| Terceiro | transitiva | @img/sharp-linux-x64 | 0.35.2 | Prebuilt sharp for use with Linux (glibc) x64 | https://github.com/lovell/sharp | https://github.com/lovell/sharp |
 | Terceiro | transitiva | @img/sharp-linuxmusl-arm64 | 0.35.2 | Finalidade não descrita nos metadados locais. |  | — |
-| Terceiro | transitiva | @img/sharp-linuxmusl-x64 | 0.35.2 | Finalidade não descrita nos metadados locais. |  | — |
+| Terceiro | transitiva | @img/sharp-linuxmusl-x64 | 0.35.2 | Prebuilt sharp for use with Linux (musl) x64 | https://github.com/lovell/sharp | https://github.com/lovell/sharp |
 | Terceiro | transitiva | @img/sharp-wasm32 | 0.35.2 | Prebuilt sharp for use with WebAssembly | https://github.com/lovell/sharp | https://github.com/lovell/sharp |
 | Terceiro | transitiva | @img/sharp-webcontainers-wasm32 | 0.35.2 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-win32-arm64 | 0.35.2 | Finalidade não descrita nos metadados locais. |  | — |
@@ -325,17 +325,17 @@
 | Terceiro | transitiva | @img/sharp-libvips-linux-ppc64 | 1.2.4 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-libvips-linux-riscv64 | 1.2.4 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-libvips-linux-s390x | 1.2.4 | Finalidade não descrita nos metadados locais. |  | — |
-| Terceiro | transitiva | @img/sharp-libvips-linux-x64 | 1.2.4 | Finalidade não descrita nos metadados locais. |  | — |
+| Terceiro | transitiva | @img/sharp-libvips-linux-x64 | 1.2.4 | Prebuilt libvips and dependencies for use with sharp on Linux (glibc) x64 | https://github.com/lovell/sharp-libvips | https://github.com/lovell/sharp-libvips |
 | Terceiro | transitiva | @img/sharp-libvips-linuxmusl-arm64 | 1.2.4 | Finalidade não descrita nos metadados locais. |  | — |
-| Terceiro | transitiva | @img/sharp-libvips-linuxmusl-x64 | 1.2.4 | Finalidade não descrita nos metadados locais. |  | — |
+| Terceiro | transitiva | @img/sharp-libvips-linuxmusl-x64 | 1.2.4 | Prebuilt libvips and dependencies for use with sharp on Linux (musl) x64 | https://github.com/lovell/sharp-libvips | https://github.com/lovell/sharp-libvips |
 | Terceiro | transitiva | @img/sharp-linux-arm | 0.34.5 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-linux-arm64 | 0.34.5 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-linux-ppc64 | 0.34.5 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-linux-riscv64 | 0.34.5 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-linux-s390x | 0.34.5 | Finalidade não descrita nos metadados locais. |  | — |
-| Terceiro | transitiva | @img/sharp-linux-x64 | 0.34.5 | Finalidade não descrita nos metadados locais. |  | — |
+| Terceiro | transitiva | @img/sharp-linux-x64 | 0.34.5 | Prebuilt sharp for use with Linux (glibc) x64 | https://github.com/lovell/sharp | https://github.com/lovell/sharp |
 | Terceiro | transitiva | @img/sharp-linuxmusl-arm64 | 0.34.5 | Finalidade não descrita nos metadados locais. |  | — |
-| Terceiro | transitiva | @img/sharp-linuxmusl-x64 | 0.34.5 | Finalidade não descrita nos metadados locais. |  | — |
+| Terceiro | transitiva | @img/sharp-linuxmusl-x64 | 0.34.5 | Prebuilt sharp for use with Linux (musl) x64 | https://github.com/lovell/sharp | https://github.com/lovell/sharp |
 | Terceiro | transitiva | @img/sharp-wasm32 | 0.34.5 | Prebuilt sharp for use with WebAssembly | https://github.com/lovell/sharp | https://github.com/lovell/sharp |
 | Terceiro | transitiva | @img/sharp-win32-arm64 | 0.34.5 | Finalidade não descrita nos metadados locais. |  | — |
 | Terceiro | transitiva | @img/sharp-win32-ia32 | 0.34.5 | Finalidade não descrita nos metadados locais. |  | — |

@@ -83,14 +83,47 @@ antecipado.
 Sequência comum:
 
 1. `ui-layout-navigation`: `sidebar-layout` ou `stacked-layout`.
-2. `ui-data-display`: tabela, selos, avatares e detalhes.
-3. `ui-forms`: filtros, busca e edição.
-4. `ui-actions-feedback`: menus suspensos, diálogos, alertas e estados
+2. `PageHeader`: um componente compartilhado de contexto, título, descrição e
+   ação principal da tela, configurado por props ou configuração.
+3. Lista: `ui-data-display` com `DataGrid` em largura total, coluna `ID`,
+   resumo, busca, filtros, ordenação, paginação e ações de editar e apagar por
+   registro.
+4. Detalhe: `ui-data-display` com `DetailLists`, status, atributos agrupados,
+   atividade e relações quando o domínio pedir.
+5. Criar ou editar: seções com coluna de contexto e painel em duas colunas nos
+   breakpoints largos, uma coluna no mobile, labels acima dos campos, ajuda
+   contextual e feedback por campo.
+6. `ui-actions-feedback`: menus suspensos, diálogos, alertas e estados
    vazios.
-5. `ui-typography`: título, descrição e divisores.
+7. `ui-typography`: títulos, descrições, labels, mensagens e divisores.
+
+Regras do fluxo:
+
+- `DESIGNSYSTEM.MD` define a composição macro antes da seleção de assets.
+- O erro de campo aparece em vermelho abaixo do campo e leva foco ao primeiro
+  erro sem apagar os valores já preenchidos.
+- A linha inteira do DataGrid abre o detalhe por clique e teclado; controles de
+  editar e apagar usam uma camada acima do link da linha e não propagam o
+  clique.
+- A personalidade vem do domínio, dos dados, da linguagem e dos estados, não
+  de uma sequência genérica de cards.
 
 Evite `ui-hero` e seções de marketing dentro de painéis, salvo em telas
 públicas ou de integração inicial.
+
+### Dashboard autenticado
+
+Sequência comum:
+
+1. `PageHeader` com pergunta operacional, período ou escopo e filtros.
+2. Indicadores `KPI` com valor, unidade, período, comparação e fonte.
+3. Tendência ou distribuição principal com alternativa textual ou tabular.
+4. Lista ou `DataGrid` para investigar os registros que explicam os números.
+5. Estados de loading, vazio, erro e atualização próximos da área afetada.
+
+Use primitives shadcn/ui para controles fundamentais e blocos gratuitos ReUI
+para acelerar a composição. Adapte os dados, tokens, permissões e textos ao
+projeto e registre os blocos em `INTERFACE.md`.
 
 ## Formulário público
 
@@ -130,3 +163,7 @@ Escolha a skill pelo papel do componente:
 - título, link, divisor ou texto → `ui-typography`;
 - rodapé, barra de navegação, barra lateral ou paginação →
   `ui-layout-navigation`.
+
+O shell de cada tela também renderiza `Breadcrumb` com equipe, módulo e tela
+atual. Em Laravel, reutilize o `Breadcrumb` ou `Breadcrumbs` já presente no
+layout e sua tipagem de rotas.

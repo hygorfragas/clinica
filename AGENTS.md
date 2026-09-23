@@ -72,9 +72,13 @@ arquivo contém o fluxo, os caminhos canônicos e os gates do framework.
   em toda leitura e escrita posterior. Se ele estiver dentro de um Hub, não
   promova o trabalho para a raiz Git nem crie contexto, specs ou código fora
   desse caminho.
-- Leia `PROJECT.md`, `.specsfy/STACK.md`, `.specsfy/RULES.md`,
-  `.specsfy/DATABASE.md` e `.specsfy/PACKAGES.md` como contexto persistente
-  antes de planejar mudanças.
+- Leia `PROJECT.md`, `DESIGNSYSTEM.MD`, `.specsfy/STACK.md`,
+  `.specsfy/RULES.md`, `.specsfy/DATABASE.md`, `.specsfy/PACKAGES.md` e
+  `.specsfy/USER-PROFILE.md` como contexto persistente antes de planejar
+  mudanças.
+- Antes de perguntar, consulte `.specsfy/USER-PROFILE.md`, a conversa atual e
+  as fontes do projeto. Não repita uma pergunta cuja resposta já esteja
+  confirmada; registre respostas novas no perfil com a fonte e o alcance.
 - Quando `.specsfy/SPECKIT.md` existir, leia
   `.specify/memory/constitution.md` e cada fonte do GitHub Spec Kit listada na
   projeção. Preserve `.specify/` e os artefatos já existentes em `specs/`; o
@@ -89,6 +93,10 @@ arquivo contém o fluxo, os caminhos canônicos e os gates do framework.
   a entrega; resolva todo resultado `PENDING`.
 - Use as skills `specsfy-aux-*` para manter stack, regras e banco sem apagar
   conteúdo humano.
+- Toda tarefa que cria ou altera a estrutura do banco inclui uma tarefa
+  `[MIGRATION]` com arquivo
+  versionado. A implementação aplica a migration no banco de teste e consulta
+  seu estado antes de concluir a tarefa ou o Delivery Gate.
 - Execute `$specsfy-documentator` depois de cada implementação para reconstruir
   a documentação técnica completa em `docs/` e o registro de dependências em
   `.specsfy/PACKAGES.md`.
