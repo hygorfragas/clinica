@@ -1,0 +1,4 @@
+interface:
+  display_name: "Specsfy - Especialista - Supabase"
+  short_description: "Supabase com RLS, Auth e operação segura"
+  default_prompt: "Use $specsfy-specialist-supabase para orientar esta tarefa com padrões e validação especializados."
