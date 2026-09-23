@@ -257,3 +257,19 @@ Memória de continuidade. Cada fase é marcada como concluída ao final.
 
 - Imagem Docker: `hygorfragas/clinica:1.1.2` (`linux/amd64`).
 - Migrações: `20260801120000_procedure_bom_items.sql`, `20260801123000_consume_appointment_stock_atomic.sql`.
+
+---
+
+# Release 1.1.5 — Base dos documentos da avaliação (2026-09-23)
+
+As tags `1.1.3` e `1.1.4` já existiam no Docker Hub. Esta release usa a próxima patch livre.
+
+## Repositório
+
+- Spec dos documentos da avaliação na ficha da paciente, com testes RED e a migration `20260923140000_documentos_avaliacao.sql`.
+- A migration ainda não foi aplicada no banco local: o Docker estava parado quando a tarefa tentou subir o Postgres.
+- Script `test:tdd` com o Node test runner.
+
+## Infra
+
+- Imagem Docker: `hygorfragas/clinica:1.1.5` (`linux/amd64`).

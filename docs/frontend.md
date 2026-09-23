@@ -1,0 +1,637 @@
+# Frontend e design system
+
+<!-- specsfy:documentator:start -->
+## Superfícies observadas
+
+- Componentes, páginas ou views: 625.
+- Tailwind: detectado.
+- Tokens CSS: --spacing, --btn-icon, --btn-border, --btn-bg, --radius-lg, --theme, --color-white, --btn-hover-overlay, --color-zinc-500, --color-zinc-700, --color-zinc-400, --color-zinc-900, --color-zinc-950, --color-zinc-600, --color-zinc-300, --color-zinc-800, --color-indigo-500, --color-indigo-600, --color-indigo-300, --color-indigo-200, --color-cyan-300, --color-cyan-400, --color-cyan-500, --color-red-600, --color-red-700, --color-red-300, --color-red-200, --color-orange-500, --color-orange-600, --color-orange-300, --color-orange-200, --color-amber-400, --color-amber-500, --color-amber-600, --color-yellow-300, --color-yellow-400, --color-yellow-600, --color-yellow-700, --color-lime-300, --color-lime-400, --color-lime-600, --color-lime-700, --color-green-600, --color-green-700, --color-emerald-600, --color-emerald-700, --color-teal-600, --color-teal-700, --color-sky-500, --color-sky-600, --color-blue-600, --color-blue-700, --color-blue-400, --color-blue-300, --color-violet-500, --color-violet-600, --color-violet-300, --color-violet-200, --color-purple-500, --color-purple-600, --color-purple-300, --color-purple-200, --color-fuchsia-500, --color-fuchsia-600, --color-fuchsia-300, --color-fuchsia-200, --color-pink-500, --color-pink-600, --color-pink-300, --color-pink-200, --color-rose-500, --color-rose-600, --color-rose-300, --color-rose-200, --gutter, --anchor-gap, --anchor-padding, --anchor-offset, --avatar-radius, --checkbox-checked-bg, --checkbox-checked-border, --checkbox-check, --color-amber-950, --color-yellow-950, --color-lime-950, --color-cyan-950, --input-width, --button-width, --radio-checked-bg, --radio-checked-border, --radio-indicator, --radio-checked-indicator, --switch-bg-ring, --switch-bg, --switch-ring, --switch-shadow, --color-black, --switch, --color-red-900, --color-orange-900, --color-green-900, --color-emerald-500, --color-emerald-900, --color-teal-900, --color-sky-900, --color-blue-900, --color-indigo-900, --color-violet-900, --color-purple-900, --color-fuchsia-900, --color-pink-900, --color-rose-900, --radius-3xl, --radius-md, --container-7xl, --radius-xl, --color-indigo-100, --sx-color-primary, --sx-color-on-primary, --sx-color-primary-container, --sx-color-on-primary-container, --sx-color-secondary, --sx-color-on-secondary, --sx-color-secondary-container, --sx-color-on-secondary-container, --sx-color-tertiary, --sx-color-on-tertiary, --sx-color-tertiary-container, --sx-color-on-tertiary-container, --sx-color-surface, --sx-color-surface-dim, --sx-color-surface-bright, --sx-color-on-surface, --sx-color-surface-container, --sx-color-surface-container-low, --sx-color-surface-container-high, --sx-color-background, --sx-color-on-background, --sx-color-outline, --sx-color-outline-variant, --sx-color-shadow, --sx-color-surface-tint, --sx-color-neutral, --sx-color-neutral-variant, --sx-internal-color-gray-ripple-background, --sx-internal-color-light-gray, --sx-internal-color-text, --sx-spacing-padding1, --sx-spacing-padding2, --sx-spacing-padding3, --sx-spacing-padding4, --sx-spacing-padding6, --sx-spacing-modal-padding, --sx-box-shadow-level3, --sx-rounding-extra-small, --sx-rounding-small, --sx-rounding-extra-large, --sx-border, --sx-font-small, --sx-font-extra-small, --sx-font-large, --sx-font-extra-large, --sx-z-index-week-header, --sx-z-index-event-modal, --sx-calendar-header-popup-z-index, --wide, --previous, --next, --active, --selected, --today, --sx-calendar-header-input-font-size, --sx-calendar-week-grid-padding-left, --dragover, --sx-week-grid-height, --sx-week-grid-offset-top, --sx-week-grid-hour-height, --is-today, --sx-draw-plugin-spacer-display, --sx-draw-plugin-spacer, --left-overflow, --right-overflow, --copy, --sx-time-axis-height, --sx-event-modal-top, --sx-event-modal-left, --sx-event-modal-animation-start, --tw-border-spacing-x, --tw-border-spacing-y, --tw-translate-x, --tw-translate-y, --tw-rotate, --tw-skew-x, --tw-skew-y, --tw-scale-x, --tw-scale-y, --tw-pan-x, --tw-pan-y, --tw-pinch-zoom, --tw-scroll-snap-strictness, --tw-gradient-from-position, --tw-gradient-via-position, --tw-gradient-to-position, --tw-ordinal, --tw-slashed-zero, --tw-numeric-figure, --tw-numeric-spacing, --tw-numeric-fraction, --tw-ring-inset, --tw-ring-offset-width, --tw-ring-offset-color, --tw-ring-color, --tw-ring-offset-shadow, --tw-ring-shadow, --tw-shadow, --tw-shadow-colored, --tw-blur, --tw-brightness, --tw-contrast, --tw-grayscale, --tw-hue-rotate, --tw-invert, --tw-saturate, --tw-sepia, --tw-drop-shadow, --tw-backdrop-blur, --tw-backdrop-brightness, --tw-backdrop-contrast, --tw-backdrop-grayscale, --tw-backdrop-hue-rotate, --tw-backdrop-invert, --tw-backdrop-opacity, --tw-backdrop-saturate, --tw-backdrop-sepia, --tw-contain-size, --tw-contain-layout, --tw-contain-paint, --tw-contain-style, --tw-content, --font-sans, --canvas, --foreground, --tw-space-y-reverse, --tw-divide-x-reverse, --tw-divide-y-reverse, --border, --radius-sm, --tw-border-opacity, --brand, --tw-bg-opacity, --brand-soft, --muted, --surface, --secondary-container, --tw-gradient-stops, --tw-gradient-from, --tw-gradient-to, --tw-text-opacity, --foreground-muted, --destructive, --foreground-subtle, --on-secondary-container, --tw-shadow-color, --shadow-card-bento, --shadow-lift, --shadow-panel, --shadow-sidebar, --tw-ring-opacity, --brand-hover, --brand-container, --ring, --------, ------------------------------------------, ---------------------------, --------------------------------------------------------------------------.
+
+| Arquivo |
+| --- |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/alert 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/alert.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-dismissible-gradient 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-dismissible-gradient.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-inline-link-gradient 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-inline-link-gradient.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-link-dark 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-link-dark-compact 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-link-dark-compact.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-link-dark.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-link-indigo 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-link-indigo.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-sticky-bottom-dark 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-sticky-bottom-dark.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-sticky-bottom-floating-centered-dark 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-sticky-bottom-floating-centered-dark.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-sticky-bottom-floating-dark 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/banner-announcement-sticky-bottom-floating-dark.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/button 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/button.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/cookie-consent-floating-card 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/cookie-consent-floating-card-centered 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/cookie-consent-floating-card-centered.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/cookie-consent-floating-card-inline 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/cookie-consent-floating-card-inline.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/cookie-consent-floating-card.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/cookie-consent-sticky-bar 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/cookie-consent-sticky-bar.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/dialog 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/dialog.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/dropdown 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/actions-feedback/dropdown.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/data-display/avatar 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/data-display/avatar.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/data-display/badge 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/data-display/badge.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/data-display/description-list 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/data-display/description-list.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/data-display/table 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/data-display/table.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/checkbox 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/checkbox.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/combobox 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/combobox.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/fieldset 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/fieldset.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/input 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/input.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/listbox 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/listbox.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/radio 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/radio.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/select 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/select.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/switch 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/switch.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/textarea 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/forms/textarea.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-background-image-navbar 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-background-image-navbar.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-code-panel 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-code-panel.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-mobile-app 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-mobile-app.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-diagonal-split-image 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-diagonal-split-image.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-hero-card-logo-cloud 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-hero-card-logo-cloud.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-image-collage 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-image-collage.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-megamenu-split-image 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-megamenu-split-image.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-screenshot 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-screenshot.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-skewed-image 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-skewed-image.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-video-waitlist 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar-video-waitlist.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-navbar.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-screenshot 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-screenshot.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-split-image 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/hero/hero-with-split-image.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/auth-layout 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/auth-layout.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-centered-links-social 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-centered-links-social.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-cta-multi-column-social 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-cta-multi-column-social-branded-icons 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-cta-multi-column-social-branded-icons.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-cta-multi-column-social.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-logo-columns 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-logo-columns.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-multi-column-social 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-multi-column-social.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-newsletter-column 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-newsletter-column-branded-icons 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-newsletter-column-branded-icons.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-newsletter-column.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-newsletter-row 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-newsletter-row-branded-icons 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-newsletter-row-branded-icons.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-newsletter-row-locale-branded-icons 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-newsletter-row-locale-branded-icons-dark 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-newsletter-row-locale-branded-icons-dark.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-newsletter-row-locale-branded-icons.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-newsletter-row.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-social-simple 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-social-simple-branded-icons 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-social-simple-branded-icons.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/footer-social-simple.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-centered-logo 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-centered-logo.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-dual-popover 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-dual-popover-sticky-mobile-cta 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-dual-popover-sticky-mobile-cta.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-dual-popover.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-indigo-stacked-mobile-links 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-indigo-stacked-mobile-links.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-mega-menu 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-mega-menu-full-width 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-mega-menu-full-width.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-mega-menu.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-popover-editorial-blog 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-popover-editorial-blog.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-popover-enterprise 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-popover-enterprise-split-nav 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-popover-enterprise-split-nav.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-popover-enterprise.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-popover-overlay 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-popover-overlay.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-simple 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-simple-full-bleed 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-simple-full-bleed.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-simple-indigo 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-simple-indigo.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-simple-inline-login 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-simple-inline-login.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-simple-left-grouped 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-simple-left-grouped.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-simple-signup-cta 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-simple-signup-cta.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar-marketing-simple.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/navbar.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/pagination 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/pagination.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/sidebar 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/sidebar-layout 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/sidebar-layout.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/sidebar.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/stacked-layout 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/layout-navigation/stacked-layout.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/careers-background-stats 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/careers-background-stats.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/careers-benefits-card 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/careers-benefits-card.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/careers-hero-image-panel 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/careers-hero-image-panel.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/careers-job-openings 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/careers-job-openings.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/company-timeline-horizontal 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/company-timeline-horizontal.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-directory-locations 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-directory-locations.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-info-form-panel 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-info-form-panel.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-project-brief-form 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-project-brief-form.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-sales-form-gradient 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-sales-form-gradient.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-side-info-form 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-side-info-form.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-support-columns 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-support-columns.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-work-together-form 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/contact-work-together-form.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/offices-simple-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/offices-simple-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/support-contact-cards-background 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/support-contact-cards-background.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/support-contact-cards-overlap 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/support-contact-cards-overlap.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/support-contact-hero-background 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/support-contact-hero-background.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/support-contact-icon-links 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/support-contact-icon-links.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/support-contact-split-form 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/support-contact-split-form.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-about-list 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-about-list.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-avatar-dense-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-avatar-dense-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-image-social-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-image-social-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-leadership-bio-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-leadership-bio-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-leadership-list 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-leadership-list.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-leadership-social-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-leadership-social-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-location-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-location-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-social-card-bio-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-social-card-bio-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-social-card-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-company/team-social-card-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-featured-list 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-featured-list-with-authors 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-featured-list-with-authors.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-featured-list.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-image-overlay-cards 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-image-overlay-cards.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-list-with-images 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-list-with-images-and-authors 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-list-with-images-and-authors.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-list-with-images.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-single-column-list 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-single-column-list.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-single-column-with-authors 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-single-column-with-authors.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-three-column-category-badges 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-three-column-category-badges.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-three-column-images 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-three-column-images.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-three-column-shadow-cards 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-three-column-shadow-cards.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-three-column-text 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/blog-three-column-text.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-case-study-vertical-image 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-case-study-vertical-image.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-company-values-stats 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-company-values-stats.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-editorial-columns-cta 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-editorial-columns-cta.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-long-editorial-checklist 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-long-editorial-checklist.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-mission-collage-stats 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-mission-collage-stats.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-mission-stats 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-mission-stats.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-overview-stats 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/content-overview-stats.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-disclosure-centered-icons 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-disclosure-centered-icons.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-disclosure-list 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-disclosure-list.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-grid-three-columns 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-grid-three-columns-centered 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-grid-three-columns-centered.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-grid-three-columns.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-grid-two-columns 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-grid-two-columns-centered 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-grid-two-columns-centered.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-grid-two-columns-indigo 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-grid-two-columns-indigo.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-grid-two-columns.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-row-grid-list 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-row-grid-list.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-sidebar-list 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-sidebar-list.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-split-support-link 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-split-support-link.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-two-column-list 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/faq-two-column-list.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/press-grid-with-newsletter-signup 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-content/press-grid-with-newsletter-signup.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-dark-centered 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-dark-centered.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-dark-panel-with-screenshot 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-dark-panel-with-screenshot.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-gradient-centered 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-gradient-centered.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-indigo-band 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-indigo-band.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-simple-centered 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-simple-centered.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-simple-left 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-simple-left.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-split-image-overlap 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-split-image-overlap.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-split-simple 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-split-simple.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-split-tinted 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/cta-split-tinted.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-dark-panel-centered 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-dark-panel-centered.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-dark-panel-split 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-dark-panel-split.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-indigo-pattern-panel 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-indigo-pattern-panel.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-indigo-rounded-panel 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-indigo-rounded-panel.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-left-simple 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-left-simple.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-split-indigo 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-split-indigo.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-split-simple 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-split-simple.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-with-benefits 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/newsletter-with-benefits.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-comparison-table-highlight 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-comparison-table-highlight.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-dark-comparison 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-dark-comparison.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-dark-header-discount 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-dark-header-discount-neutral 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-dark-header-discount-neutral.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-dark-header-discount.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-feature-split-checklist 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-feature-split-checklist.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-four-tier-frequency-toggle 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-four-tier-frequency-toggle.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-hero-currency-select 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-hero-currency-select-light 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-hero-currency-select-light.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-hero-currency-select.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-single-lifetime 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-single-lifetime.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-split-feature-checklist 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-split-feature-checklist.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-three-column-simple 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-three-column-simple.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-three-tier-comparison 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-three-tier-comparison.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-three-tier-featured-center-spotlight 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-three-tier-featured-center-spotlight.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-three-tier-frequency-toggle 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-three-tier-frequency-toggle.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-three-tier-popular-stepped 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-three-tier-popular-stepped.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-three-tier-popular-toggle 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-three-tier-popular-toggle.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-two-tier-card-highlight 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-two-tier-card-highlight.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-two-tier-highlighted 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-conversion/pricing-two-tier-highlighted.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-bento-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-bento-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-bento-mosaic-five 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-bento-mosaic-five.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-bento-mosaic-four 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-bento-mosaic-four.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-checklist-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-checklist-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-content-overview-screenshot 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-content-overview-screenshot.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-dark-grid-eight-icons 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-dark-grid-eight-icons.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-dark-panel-screenshot 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-dark-panel-screenshot.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-card-icons 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-card-icons.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-card-panels 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-card-panels.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-inline-icons 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-inline-icons.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-simple 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-simple.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-three-column 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-three-column.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-two-column-icons 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-two-column-icons.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-with-screenshot 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-grid-with-screenshot.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-offset-grid-icons 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-offset-grid-icons.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-split-image-dual 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-split-image-dual.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-split-image-long 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-split-image-long.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-split-image-sticky 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-split-image-sticky.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-split-testimonial 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-split-testimonial.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-with-screenshot 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-with-screenshot-panel 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-with-screenshot-panel.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-with-screenshot-reversed 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-with-screenshot-reversed.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-with-screenshot.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-with-testimonial-screenshot 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/feature-with-testimonial-screenshot.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/people-image-collage 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/people-image-collage.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/screenshot-showcase 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/screenshot-showcase.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-center-background-centered 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-center-background-centered.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-center-background-left 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-center-background-left.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-center-eyebrow-centered 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-center-eyebrow-centered.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-center-eyebrow-left 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-center-eyebrow-left.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-center-simple-centered 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-center-simple-centered.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-center-simple-left 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-center-simple-left.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-split-image 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-split-image-stats 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-split-image-stats.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-features/support-split-image.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-customer-stories-callout 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-customer-stories-callout.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-indigo-band 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-indigo-band.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-left-aligned 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-left-aligned.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-minimal-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-minimal-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-soft-indigo-split 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-soft-indigo-split.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-split-cta 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-split-cta.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-tile-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-tile-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-trusted-teams 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/logo-cloud-trusted-teams.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-background-track-record 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-background-track-record.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-dark-split-metrics 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-dark-split-metrics.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-feature-cards 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-feature-cards.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-indigo-band-three-metrics 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-indigo-band-three-metrics.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-simple-three-column 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-simple-three-column.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-split-image-track-record 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-split-image-track-record.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-summary-card-three-metrics 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-summary-card-three-metrics.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-trust-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/stats-trust-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-background-logo 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-background-logo.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-centered-logo 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-centered-logo.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-columns-simple 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-columns-simple.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-dark-panel-image 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-dark-panel-image.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-masonry-grid 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-masonry-grid.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-star-rating 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-star-rating.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-two-column 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-two-column-indigo-band 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-two-column-indigo-band.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-two-column.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-with-portrait 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/marketing-proof/testimonial-with-portrait.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/typography/divider 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/typography/divider.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/typography/heading 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/typography/heading.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/typography/link 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/typography/link.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/typography/text 2.tsx |
+| .agents/skills/specsfy-specialist-react-ui-components/assets/components/typography/text.tsx |
+| .next/static/css/a055cdc61e8d3f1e.css |
+| .next/static/css/c967cd30d7194f56.css |
+| app/(auth)/cadastro/cadastro-form.tsx |
+| app/(auth)/cadastro/page.tsx |
+| app/(auth)/layout.tsx |
+| app/(auth)/login/login-form.tsx |
+| app/(auth)/login/page.tsx |
+| app/(dashboard)/agenda/loading.tsx |
+| app/(dashboard)/agenda/page.tsx |
+| app/(dashboard)/configuracoes/agenda/page.tsx |
+| app/(dashboard)/configuracoes/anamnese/[templateId]/page.tsx |
+| app/(dashboard)/configuracoes/anamnese/page.tsx |
+| app/(dashboard)/configuracoes/aparencia/page.tsx |
+| app/(dashboard)/configuracoes/contratos/[templateId]/campos/page.tsx |
+| app/(dashboard)/configuracoes/contratos/page.tsx |
+| app/(dashboard)/configuracoes/documentos/page.tsx |
+| app/(dashboard)/configuracoes/evolucao/[templateId]/page.tsx |
+| app/(dashboard)/configuracoes/evolucao/page.tsx |
+| app/(dashboard)/configuracoes/layout.tsx |
+| app/(dashboard)/configuracoes/loading.tsx |
+| app/(dashboard)/configuracoes/perfil/page.tsx |
+| app/(dashboard)/configuracoes/profissional/page.tsx |
+| app/(dashboard)/equipe/layout.tsx |
+| app/(dashboard)/equipe/page.tsx |
+| app/(dashboard)/error.tsx |
+| app/(dashboard)/estoque/page.tsx |
+| app/(dashboard)/financeiro/categorias/page.tsx |
+| app/(dashboard)/financeiro/contas/page.tsx |
+| app/(dashboard)/financeiro/lancamentos/page.tsx |
+| app/(dashboard)/financeiro/layout.tsx |
+| app/(dashboard)/financeiro/page.tsx |
+| app/(dashboard)/financeiro/relatorios/page.tsx |
+| app/(dashboard)/inicio/page.tsx |
+| app/(dashboard)/layout.tsx |
+| app/(dashboard)/loading.tsx |
+| app/(dashboard)/orcamentos/loading.tsx |
+| app/(dashboard)/orcamentos/page.tsx |
+| app/(dashboard)/pacientes/[clientId]/anamnese/page.tsx |
+| app/(dashboard)/pacientes/[clientId]/anexos/page.tsx |
+| app/(dashboard)/pacientes/[clientId]/contratos/page.tsx |
+| app/(dashboard)/pacientes/[clientId]/documentos/page.tsx |
+| app/(dashboard)/pacientes/[clientId]/evolucao/page.tsx |
+| app/(dashboard)/pacientes/[clientId]/financeiro/page.tsx |
+| app/(dashboard)/pacientes/[clientId]/fotos/page.tsx |
+| app/(dashboard)/pacientes/[clientId]/historico/page.tsx |
+| app/(dashboard)/pacientes/[clientId]/layout.tsx |
+| app/(dashboard)/pacientes/[clientId]/loading.tsx |
+| app/(dashboard)/pacientes/[clientId]/not-found.tsx |
+| app/(dashboard)/pacientes/[clientId]/page.tsx |
+| app/(dashboard)/pacientes/loading.tsx |
+| app/(dashboard)/pacientes/novo/page.tsx |
+| app/(dashboard)/pacientes/page.tsx |
+| app/(dashboard)/plataforma/layout.tsx |
+| app/(dashboard)/plataforma/loading.tsx |
+| app/(dashboard)/plataforma/page.tsx |
+| app/(dashboard)/plataforma/usuarios/page.tsx |
+| app/(dashboard)/template.tsx |
+| app/(dashboard)/vendas/loading.tsx |
+| app/(dashboard)/vendas/nova/page.tsx |
+| app/(dashboard)/vendas/page.tsx |
+| app/aguardando-acesso/page.tsx |
+| app/anamnese/interativa/[clientId]/[submissionId]/layout.tsx |
+| app/anamnese/interativa/[clientId]/[submissionId]/page.tsx |
+| app/anamnese/interativa/error.tsx |
+| app/auth/callback/page.tsx |
+| app/contratos/interativa/[clientId]/[submissionId]/page.tsx |
+| app/contratos/interativa/error.tsx |
+| app/evolucao/interativa/[clientId]/[submissionId]/page.tsx |
+| app/evolucao/interativa/error.tsx |
+| app/global-error.tsx |
+| app/globals.css |
+| app/layout.tsx |
+| app/page.tsx |
+| components/agenda/agenda-calendar.tsx |
+| components/agenda/agenda-notifications-provider.tsx |
+| components/agenda/appointment-dialog.tsx |
+| components/agenda/appointment-quick-actions.tsx |
+| components/agenda/appointment-stock-consume.tsx |
+| components/agenda/google-calendar-nudge.tsx |
+| components/agenda/next-appointment-banner.tsx |
+| components/anamnesis/anamnesis-submissions-panel.tsx |
+| components/anamnesis/desktop-anamnesis-editor.tsx |
+| components/anamnesis/ink-layer-error-boundary.tsx |
+| components/anamnesis/ink-layer.tsx |
+| components/anamnesis/interactive-anamnesis-editor.tsx |
+| components/anamnesis/interactive-route-error.tsx |
+| components/anamnesis/interactive-toolbar.tsx |
+| components/anamnesis/page-thumbnails.tsx |
+| components/anamnesis/pdf-page-canvas.tsx |
+| components/anamnesis/signature-pad-modal.tsx |
+| components/anamnesis/template-field-designer.tsx |
+| components/anamnesis/templates-manager.tsx |
+| components/auth/auth-split-layout.tsx |
+| components/auth/supabase-hash-session-handler.tsx |
+| components/budgets/budgets-manager.tsx |
+| components/clients/clinical-photo-uploader.tsx |
+| components/clients/face-puppet-guide.tsx |
+| components/clients/novo-paciente-wizard.tsx |
+| components/clients/paciente-anamnese-form.tsx |
+| components/clients/paciente-cadastro-form.tsx |
+| components/clients/paciente-dados-editor.tsx |
+| components/clients/paciente-documentos-panel.tsx |
+| components/clients/paciente-evolucao-panel.tsx |
+| components/clients/paciente-ficha-nav.tsx |
+| components/clients/paciente-foto-library-uploader.tsx |
+| components/clients/paciente-fotos-biblioteca.tsx |
+| components/clients/paciente-historico-compras-panel.tsx |
+| components/clients/paciente-historico-panel.tsx |
+| components/clients/paciente-ocultar-da-lista-button.tsx |
+| components/clients/pacientes-lista.tsx |
+| components/clients/patient-search-dialog.tsx |
+| components/clients/photo-upload-progress-card.tsx |
+| components/clinic/stat-card.tsx |
+| components/configuracoes/agenda-config-panel.tsx |
+| components/configuracoes/configuracoes-subnav.tsx |
+| components/configuracoes/contract-templates-manager.tsx |
+| components/configuracoes/document-branding-manager.tsx |
+| components/configuracoes/document-preview-a4.tsx |
+| components/configuracoes/professional-assets-form.tsx |
+| components/contracts/contract-html-preview.tsx |
+| components/contracts/contract-rich-editor.tsx |
+| components/equipe/invite-agent-form.tsx |
+| components/evolutions/evolucao-interactive-editor.tsx |
+| components/evolutions/evolution-photo-side-panel.tsx |
+| components/evolutions/evolution-templates-manager.tsx |
+| components/financeiro/categorias-panel.tsx |
+| components/financeiro/contas-panel.tsx |
+| components/financeiro/financeiro-subnav.tsx |
+| components/financeiro/lancamentos-panel.tsx |
+| components/financeiro/relatorios-panel.tsx |
+| components/financeiro/visao-geral-panel.tsx |
+| components/layout/app-shell.tsx |
+| components/layout/clinic-nav.tsx |
+| components/layout/mobile-nav-drawer.tsx |
+| components/layout/sign-out-button.tsx |
+| components/plataforma/create-clinic-form.tsx |
+| components/plataforma/platform-clinics-panel.tsx |
+| components/plataforma/platform-users-panel.tsx |
+| components/providers/query-provider.tsx |
+| components/sales/new-sale-wizard.tsx |
+| components/sales/sales-chart.tsx |
+| components/setup/cadastro-migration-required.tsx |
+| components/setup/missing-supabase-env-card.tsx |
+| components/stock/procedures-panel.tsx |
+| components/stock/products-panel.tsx |
+| components/stock/stock-tabs.tsx |
+| components/theme/clinic-appearance-panel.tsx |
+| components/theme/profile-theme-panel.tsx |
+| components/theme/theme-init-script.tsx |
+| components/theme/theme-pickers.tsx |
+| components/theme/theme-provider.tsx |
+| components/ui/button.tsx |
+| components/ui/card.tsx |
+| components/ui/clinic-datetime-picker.tsx |
+| components/ui/confirm-dialog.tsx |
+| components/ui/digital-signature-pad.tsx |
+| components/ui/input.tsx |
+| components/ui/label.tsx |
+| components/ui/skeleton.tsx |
+| components/ui/toaster.tsx |
+| recuperado-docker/.next/static/css/a055cdc61e8d3f1e.css |
+| recuperado-docker/.next/static/css/efe5abf2f5ea2155.css |
+| tailwind.config.ts |
+<!-- specsfy:documentator:end -->
